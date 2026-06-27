@@ -1,0 +1,25 @@
+# Secrets and local configurations
+.env
+*.key
+secrets.key
+real_data.key
+
+# Python cached files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local data inputs and outputs
+*.enc
+*.jsonl
+real_data_inputs/
+encrypted_real_data/
+test_env_inputs/
+test_env_outputs/
+decrypted_outputs/
+encrypted_outputs/
+raw_inputs/
+raw_shred/
+shred_outputs/
+shred_out/

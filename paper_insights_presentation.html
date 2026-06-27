@@ -1,0 +1,369 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --font-sans: "Inter", "SF Pro Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-tertiary: #6B7280;
+  --color-background-primary: #FFFFFF;
+  --color-background-secondary: #F7F8FB;
+  --color-background-tertiary: #F1F5F9;
+  --color-border-primary: #D1D5DB;
+  --color-border-secondary: #E5E7EB;
+  --color-border-tertiary: #EEF2F7;
+  --border-radius-lg: 18px;
+  --border-radius-md: 12px;
+  --shadow-lg: 0 12px 30px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: radial-gradient(1200px 600px at 10% -10%, #E9EDFF 0%, rgba(233, 237, 255, 0) 60%),
+              radial-gradient(900px 500px at 110% 10%, #DFF7F1 0%, rgba(223, 247, 241, 0) 55%),
+              #F8FAFC;
+}
+.app { max-width: 1120px; margin: 0 auto; padding: 28px 18px 48px; }
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 22px;
+}
+.header h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.header p { font-size: 13px; color: var(--color-text-secondary); }
+.chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #EEF2FF;
+  color: #3730A3;
+  border: 1px solid #E0E7FF;
+}
+.content { display: grid; grid-template-columns: 220px 1fr; gap: 18px; }
+.nav-panel {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  height: fit-content;
+  position: sticky;
+  top: 20px;
+}
+.nav-title { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.nav { display: flex; flex-direction: column; gap: 8px; }
+.nav-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 12px;
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.nav-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.nav-btn.active {
+  background: #111827;
+  border-color: #111827;
+  color: #F9FAFB;
+}
+.cards-panel { display: grid; gap: 16px; }
+.card {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 20px 22px;
+  display: none;
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.25s ease;
+}
+.card.visible { display: block; }
+.card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border-tertiary); }
+.badge { font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.b-purple { background: #EEEDFE; color: #3C3489; }
+.b-teal { background: #E1F5EE; color: #085041; }
+.b-blue { background: #E6F1FB; color: #0C447C; }
+.b-coral { background: #FAECE7; color: #712B13; }
+.b-amber { background: #FAEEDA; color: #633806; }
+.b-red { background: #FCEBEB; color: #791F1F; }
+.b-green { background: #EAF3DE; color: #27500A; }
+.b-pink { background: #FBEAF0; color: #72243E; }
+.card-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  background: var(--color-background-tertiary);
+  border-radius: 12px;
+  min-width: 44px;
+  text-align: center;
+  padding: 6px 0;
+}
+.card-title-block { flex: 1; }
+.card-title { font-size: 16px; font-weight: 600; line-height: 1.4; margin-bottom: 3px; }
+.card-sub { font-size: 12px; color: var(--color-text-secondary); }
+.section { margin-bottom: 1rem; }
+.section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 6px; }
+.section-body { font-size: 13px; color: var(--color-text-primary); line-height: 1.7; }
+.insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 6px; }
+.insight-box { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; border: 1px solid var(--color-border-tertiary); }
+.insight-box .label { font-size: 10px; color: var(--color-text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.insight-box .val { font-size: 13px; line-height: 1.55; }
+.key-num { font-size: 18px; font-weight: 700; }
+.gap-box { background: #FCEBEB; border-radius: var(--border-radius-md); padding: 12px; border-left: 4px solid #E24B4A; }
+.gap-box .label { font-size: 10px; color: #A32D2D; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.gap-box .val { font-size: 13px; color: #791F1F; line-height: 1.55; }
+.connect-box { background: #E1F5EE; border-radius: var(--border-radius-md); padding: 12px; border-left: 4px solid #1D9E75; }
+.connect-box .label { font-size: 10px; color: #0F6E56; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.connect-box .val { font-size: 13px; color: #085041; line-height: 1.55; }
+.quote { font-size: 12px; color: var(--color-text-secondary); font-style: italic; border-left: 3px solid var(--color-border-secondary); padding-left: 12px; margin-top: 8px; line-height: 1.7; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { font-size: 11px; padding: 4px 8px; border-radius: 999px; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 1px solid var(--color-border-tertiary); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 920px) {
+  .content { grid-template-columns: 1fr; }
+  .nav-panel { position: static; }
+  .nav { flex-direction: row; flex-wrap: wrap; }
+}
+@media (max-width: 640px) {
+  .topbar { flex-direction: column; align-items: flex-start; }
+  .insight-grid { grid-template-columns: 1fr; }
+}
+</style>
+<div class="app">
+  <div class="topbar">
+    <div class="header">
+      <h1>Paper insights — presentation guide</h1>
+      <p>Select a paper to see deep technical insights for your jury presentation</p>
+    </div>
+    <div class="chip">8 papers • curated</div>
+  </div>
+  <div class="content">
+    <div class="nav-panel">
+      <div class="nav-title">Browse papers</div>
+      <div class="nav" id="nav"></div>
+    </div>
+    <div class="cards-panel" id="cards"></div>
+  </div>
+</div>
+<script>
+const papers = [
+  {
+    num: "01",
+    badge: "ICLR 2022", bClass: "b-purple",
+    title: "LoRA: Low-Rank Adaptation of Large Language Models",
+    authors: "Hu, Shen, Wallis et al. — Microsoft Research",
+    core: "Pre-trained LLMs are massively over-parameterized. When you fine-tune on a new task, the actual 'useful' change in the weight matrices lives in a very low-dimensional subspace — a rank as small as 1 or 2 out of dimensions like 12,288. LoRA exploits this by decomposing ΔW = B×A, freezing the original weights, and only training the tiny matrices B and A.",
+    hypothesis: "The weight update ΔW during domain adaptation has a low 'intrinsic rank' — meaning the essential adaptation information can be captured in far fewer dimensions than the full matrix.",
+    nums: [
+      { label: "Parameter reduction", val: "10,000×", sub: "vs full fine-tuning on GPT-3 175B" },
+      { label: "GPU memory saving", val: "3×", sub: "vs Adam optimizer on same model" },
+      { label: "Inference overhead", val: "0%", sub: "BA merged with W₀ at deploy time" },
+      { label: "Accuracy vs full FT", val: "≥ Baseline", sub: "On GLUE benchmark tasks" }
+    ],
+    gap: "LoRA makes adapters tiny (~35 MB for GPT-3). This compactness is a double-edged sword — the same property that makes LoRA efficient makes it trivially exfiltrable and cloneable. The paper has zero discussion of security.",
+    connect: "LoRA is the foundation of our entire system. Every math equation in our paper (Eq. 1–2), the adapter files we encrypt (Eq. 12), and the security threat we defend against all originate from this work.",
+    quote: "We show a very low rank suffices — r=1 or r=2 — even when the full rank d is as high as 12,288.",
+    tags: ["PEFT", "Low-Rank", "Transformer", "Parameter Efficiency", "Zero Inference Latency"]
+  },
+  {
+    num: "02",
+    badge: "ICLR 2022", bClass: "b-blue",
+    title: "Differentially Private Fine-Tuning of Language Models",
+    authors: "Yu, Naik, Backurs, Gopi et al. — Google / Microsoft",
+    core: "The first paper to formally study DP fine-tuning of LLMs with parameter-efficient methods. It shows that applying DP-SGD to LoRA adapters is far more efficient than full-model DP fine-tuning, but it identifies a critical weakness: simultaneously updating both A and B matrices amplifies the Gaussian noise quadratically, hurting accuracy.",
+    hypothesis: "Parameter-efficient methods (LoRA, adapters, prefix tuning) used as 'adapters' for DP training significantly reduce the sensitivity of gradient updates, thereby requiring less noise for the same ε — improving the privacy-utility tradeoff.",
+    nums: [
+      { label: "Best accuracy (MNLI)", val: "87.8%", sub: "RoBERTa-Large at ε=6.7" },
+      { label: "Non-private baseline", val: "90.2%", sub: "Same model without DP" },
+      { label: "Accuracy gap", val: "~2.4%", sub: "Cost of ε<8 privacy guarantee" },
+      { label: "Prior best (ε=8)", val: "83.9%", sub: "This paper improved it to 90.3%" }
+    ],
+    gap: "DP-LoRA still has the joint matrix update problem — when both A and B are updated simultaneously with DP-SGD, the noise variance compounds. The paper notes this but does not solve it. LA-LoRA (our Ref [3]) later solves this, and our paper adds hardware binding on top.",
+    connect: "This is our most direct baseline. Our framework targets the same ε < 8 privacy budget and < 3% accuracy degradation goal. The noise amplification equation (Eq. 5 in our paper) quantifies the exact problem this paper identified.",
+    quote: "DP adaptations of PEFT approaches outperform previous private algorithms in utility, privacy, and computational cost of private training.",
+    tags: ["DP-SGD", "DP-LoRA", "Privacy Budget", "GLUE", "LLM Fine-tuning"]
+  },
+  {
+    num: "03",
+    badge: "ACM CCS 2016", bClass: "b-teal",
+    title: "Deep Learning with Differential Privacy",
+    authors: "Abadi, Chu, Goodfellow, McMahan, Mironov et al. — Google Brain",
+    core: "The seminal paper that made DP training of deep neural networks practical. It introduced DP-SGD: clip every per-sample gradient to norm C, then add Gaussian noise σ·C·I to the sum before updating weights. It also introduced the Moments Accountant — a tool to tightly track cumulative privacy loss across training steps.",
+    hypothesis: "A carefully calibrated Gaussian noise mechanism applied to clipped gradients can train neural networks with meaningful privacy guarantees (small ε) at an acceptable cost to accuracy.",
+    nums: [
+      { label: "MNIST accuracy (ε=0.25)", val: "90%", sub: "First practical DP deep learning result" },
+      { label: "Clipping norm C", val: "Tunable", sub: "Controls sensitivity of each gradient step" },
+      { label: "Noise multiplier σ", val: "Tunable", sub: "Higher σ = more noise = better privacy" },
+      { label: "Privacy accounting", val: "Moments", sub: "Tighter than naive composition by ~10×" }
+    ],
+    gap: "When applied directly to LoRA — where the update is a product BA — the noise gets amplified by both ‖A‖ and ‖B‖ simultaneously. This paper was designed for scalar weight updates, not matrix products.",
+    connect: "Eq. 4 in our paper is directly from this work. Our Stage 2 implementation uses the Opacus library, which implements exactly this DP-SGD algorithm. The ε < 8 we target is from the privacy budget framework introduced here.",
+    quote: "We can train deep neural networks with non-convex objectives under a modest privacy budget at a manageable cost in training efficiency and model quality.",
+    tags: ["DP-SGD", "Moments Accountant", "Gaussian Mechanism", "Gradient Clipping", "ε-δ DP"]
+  },
+  {
+    num: "04",
+    badge: "IEEE S&P 2022", bClass: "b-blue",
+    title: "Membership Inference Attacks From First Principles",
+    authors: "Carlini, Chien, Nasr, Song, Terzis, Tramèr — Google Research",
+    core: "Prior MIA papers measured attack success using average accuracy — a metric that can be high even when the attack rarely catches real members confidently. This paper argues the correct metric is True Positive Rate (TPR) at very low False Positive Rates (FPR < 0.1%). It then introduces LiRA: a shadow-model likelihood ratio test that is 10× more powerful at this rigorous metric.",
+    hypothesis: "For a privacy attack to be practically meaningful, it must reliably identify at least some individual members with high confidence (low FPR). Average accuracy is a misleading proxy — an attack that guesses 60% correctly at 50% FPR tells you nothing.",
+    nums: [
+      { label: "Power vs prior attacks", val: "10×", sub: "At FPR < 0.1%, the important regime" },
+      { label: "LiRA shadow models", val: "Multiple", sub: "Estimates member/non-member distributions" },
+      { label: "DP defense target", val: "~50% AUC", sub: "Random guessing = fully private" },
+      { label: "Without DP", val: ">60% AUC", sub: "Significant membership leakage detected" }
+    ],
+    gap: "LiRA requires training many shadow models, which is computationally expensive for large LLMs. The paper also does not study LoRA-specific adapters — it works on the full model.",
+    connect: "We use LiRA AUC as our primary privacy evaluation metric. Our Objective 1 states: 'MIA success reduced to ~50% AUC (random guessing baseline).' If our system is working, LiRA should fail on our model — that is the proof of privacy.",
+    quote: "We argue attacks should be evaluated at low false-positive rates. Most prior attacks perform poorly in this regime.",
+    tags: ["Membership Inference", "LiRA", "Shadow Models", "TPR/FPR", "IEEE S&P"]
+  },
+  {
+    num: "05",
+    badge: "ACM/IEEE DAC 2020", bClass: "b-amber",
+    title: "Hardware-Assisted Intellectual Property Protection of Deep Learning Models",
+    authors: "Chakraborty, Mondal, Srivastava — University of Maryland",
+    core: "Introduces HPNN: a framework where a neural network is trained as a function of a secret hardware key. The key is embedded in the chip's multiply-and-accumulate (MAC) units, which flip weight signs based on key bits. On unauthorized hardware the key defaults to all-ones, producing completely garbled outputs.",
+    hypothesis: "If a neural network's inference is mathematically bound to a secret key that lives in hardware, then even a perfectly copied model file is useless without the authorized chip — making the hardware the root of trust.",
+    nums: [
+      { label: "Accuracy on valid HW", val: "0% drop", sub: "Identical to unprotected model" },
+      { label: "Accuracy on invalid HW", val: "73–80% drop", sub: "Model completely non-functional" },
+      { label: "Key embedding method", val: "MAC units", sub: "Custom ASIC modification required" },
+      { label: "Hardware requirement", val: "Custom silicon", sub: "Not deployable on GPUs" }
+    ],
+    gap: "The fatal limitation: it requires custom MAC hardware. You cannot run HPNN on NVIDIA GPUs, TPUs, or any commodity hardware. It is theoretically elegant but practically impossible for anyone without chip fabrication access.",
+    connect: "Our framework achieves the same security goal — 100% failure on unauthorized hardware — but using pure software: SHA-256 key derivation from CPU/OS/disk fingerprints + AES-256-GCM. No hardware modification needed. This is explicitly our improvement over HPNN.",
+    quote: "Only an authorized end-user possessing a trustworthy hardware device with the secret key embedded on-chip can run intended deep learning applications.",
+    tags: ["Hardware Security", "IP Protection", "HPNN", "MAC Units", "Model Binding"]
+  },
+  {
+    num: "06",
+    badge: "IEEE CSF 2017", bClass: "b-purple",
+    title: "Rényi Differential Privacy",
+    authors: "Mironov — Google Brain",
+    core: "Standard (ε,δ)-DP composition gives loose, overly pessimistic bounds when you run many training steps. Mironov proposed Rényi DP (RDP): instead of tracking worst-case privacy loss, track the Rényi divergence of order α between the output distributions on adjacent inputs. RDP composes exactly linearly, allows conversion back to (ε,δ)-DP, and gives tighter results — meaning you can use less noise for the same guarantee.",
+    hypothesis: "The privacy loss of a sequence of mechanisms can be tracked more tightly using Rényi divergence than using standard DP composition — leading to better privacy-utility tradeoffs in multi-step training.",
+    nums: [
+      { label: "Composition tightness", val: "~10×", sub: "Tighter than naive advanced composition" },
+      { label: "Rényi order α", val: "Tunable", sub: "Higher α = tighter for Gaussian mechanisms" },
+      { label: "Conversion formula", val: "ε = εα + ln(1/δ)/(α-1)", sub: "Exact (ε,δ)-DP recovery" },
+      { label: "Underpins", val: "All modern DP-SGD", sub: "PyTorch Opacus, TF Privacy, etc." }
+    ],
+    gap: "RDP works per-step but the bound still grows with the number of training steps T. Very long training runs can exhaust the budget. Also, the optimal α differs per mechanism — there is no single α that works best for all settings.",
+    connect: "Equations 8 and 9 in our paper are RDP. Our Opacus implementation tracks εα at each training step and converts it to the final (ε < 8, δ = 10⁻⁵) guarantee we claim. Without RDP, we could not make a tight ε < 8 claim.",
+    quote: "RDP allows tighter analysis of composite heterogeneous mechanisms — the new definition shares important properties with standard DP while allowing more accurate composition.",
+    tags: ["Rényi Divergence", "Privacy Accounting", "Composition", "Gaussian Mechanism", "IEEE CSF"]
+  },
+  {
+    num: "07",
+    badge: "USENIX Security 2021", bClass: "b-red",
+    title: "Extracting Training Data from Large Language Models",
+    authors: "Carlini, Tramèr, Wallace, Jagielski et al. — Google Brain, UC Berkeley",
+    core: "Proves that LLMs memorize and will verbatim reproduce individual training records when queried with targeted prefixes. The attack: sample 600,000 candidate generations from GPT-2, filter using 6 membership signals (perplexity, zlib compression ratio, lowercase perplexity, etc.), and manually verify. Result: even the smallest GPT-2 exposes hundreds of real training records including personal information.",
+    hypothesis: "Larger LLMs are not just more capable — they are proportionally more dangerous from a memorization standpoint. Model scale, training data repetition, and context length all directly increase verbatim memorization.",
+    nums: [
+      { label: "GPT-2 training set", val: "40 GB", sub: "WebText dataset" },
+      { label: "Records extracted", val: "600+", sub: "From the 600K candidate sample" },
+      { label: "Fine-tune extraction", val: ">50%", sub: "Of fine-tuning dataset in targeted settings" },
+      { label: "Scaling finding", val: "Monotonic", sub: "Larger models = more leakage, not less" }
+    ],
+    gap: "The attack requires query access to the model. If the model is locked behind hardware binding (our system), targeted prefix attacks cannot be issued from unauthorized hardware — a key defense layer our paper adds.",
+    connect: "This paper is the primary motivation for our Objective 1. It proves that without DP, fine-tuned models will leak training data. Our LA-LoRA + DP combination is the direct technical answer to the threat it identifies.",
+    quote: "Larger models are more vulnerable than smaller models — eidetic memorization scales with model capacity.",
+    tags: ["Data Extraction", "Memorization", "GPT-2", "Privacy Attack", "Verbatim Leakage"]
+  },
+  {
+    num: "08",
+    badge: "AISTATS 2017", bClass: "b-green",
+    title: "Communication-Efficient Learning of Deep Networks from Decentralized Data (FedAvg)",
+    authors: "McMahan, Moore, Ramage, Hampson, Arcas — Google",
+    core: "Introduces Federated Learning (FL) and the FedAvg algorithm: K clients each train on their private local data, compute weight updates, and send only the deltas to a central server — which aggregates them via weighted averaging. Raw data never leaves the device. FedAvg reduces required communication rounds by 10–100× vs synchronized SGD.",
+    hypothesis: "Collaborative training of a shared model across many clients with private data is possible using only model updates — not raw data — as the communication primitive. This fundamentally decouples ML capability from data centralization.",
+    nums: [
+      { label: "Communication saving", val: "10–100×", sub: "Rounds to convergence vs sync-SGD" },
+      { label: "Datasets tested", val: "4", sub: "MNIST, CIFAR-10, Shakespeare LSTM, etc." },
+      { label: "Model architectures", val: "5", sub: "CNNs, LSTMs, 2-layer NNs" },
+      { label: "Data assumption", val: "Non-IID", sub: "Robust to unbalanced distributions" }
+    ],
+    gap: "FedAvg has no built-in privacy guarantee — gradients still leak information about local data. Also, it assumes symmetric updates from all clients, which conflicts with LA-LoRA's alternating freeze schedule. This is our open research gap.",
+    connect: "Our Future Scope proposes device-bound LoRA + FedAvg: each node trains a hardware-locked adapter locally, and only the adapter deltas are aggregated. This would extend our security guarantees to the full distributed setting. FedAvg is the base aggregation equation (Eq. 14–15 in our paper).",
+    quote: "We term this decentralized approach Federated Learning — leaving training data distributed on mobile devices while learning a shared model by aggregating locally-computed updates.",
+    tags: ["Federated Learning", "FedAvg", "Decentralized Training", "Communication Efficiency", "Non-IID Data"]
+  }
+];
+
+const navEl = document.getElementById('nav');
+const cardsEl = document.getElementById('cards');
+let active = 0;
+
+papers.forEach((p, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-btn' + (i === 0 ? ' active' : '');
+  btn.textContent = 'Paper ' + (i + 1);
+  btn.onclick = () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('visible'));
+    document.getElementById('card-' + i).classList.add('visible');
+  };
+  navEl.appendChild(btn);
+
+  const card = document.createElement('div');
+  card.className = 'card' + (i === 0 ? ' visible' : '');
+  card.id = 'card-' + i;
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="card-num">${p.num}</div>
+      <div class="card-title-block">
+        <div class="card-title">${p.title}</div>
+        <div class="card-sub">${p.authors}</div>
+        <div style="margin-top:6px;"><span class="badge ${p.bClass}">${p.badge}</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Core idea</div>
+      <div class="section-body">${p.core}</div>
+    </div>
+    <div class="section">
+      <div class="section-label">Central hypothesis</div>
+      <div class="section-body">${p.hypothesis}</div>
+    </div>
+    <div class="section">
+      <div class="section-label">Key numbers to quote in front of jury</div>
+      <div class="insight-grid">
+        ${p.nums.map(n => `<div class="insight-box"><div class="label">${n.label}</div><div class="val"><span class="key-num">${n.val}</span><br><span style="font-size:11px;color:var(--color-text-secondary)">${n.sub}</span></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Gap this paper leaves open</div>
+      <div class="gap-box"><div class="label">limitation</div><div class="val">${p.gap}</div></div>
+    </div>
+    <div class="section">
+      <div class="section-label">How this connects to your framework</div>
+      <div class="connect-box"><div class="label">your contribution</div><div class="val">${p.connect}</div></div>
+    </div>
+    <div class="section">
+      <div class="section-label">Quotable line from the paper</div>
+      <div class="quote">"${p.quote}"</div>
+    </div>
+    <div class="section">
+      <div class="section-label">Key terms to know</div>
+      <div class="tag-row">${p.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+    </div>
+  `;
+  cardsEl.appendChild(card);
+});
+</script>
