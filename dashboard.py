@@ -7,13 +7,12 @@ from flask import Flask, jsonify, request, render_template_string
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
 
-# Global variables for model state to avoid reloading on every request
+# Global cache for lazy model loading
 base_model = None
 peft_model = None
 tokenizer = None
@@ -177,13 +176,6 @@ HTML_TEMPLATE = """
             color: #fff;
         }
 
-        /* Playground styles */
-        .playground-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
         textarea {
             width: 100%;
             height: 100px;
@@ -224,10 +216,6 @@ HTML_TEMPLATE = """
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 20px rgba(0, 242, 254, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
         }
 
         .compare-grid {
@@ -332,7 +320,7 @@ HTML_TEMPLATE = """
 
     <div class="container">
         
-        <!-- Left Side: Config & Stats -->
+        <!-- Left Column: Metrics and Controls -->
         <div>
             <div class="card">
                 <div class="card-title">
@@ -351,7 +339,7 @@ HTML_TEMPLATE = """
                 </div>
                 
                 <div class="info-row">
-                    <span class="info-lbl">Base Backbone</span>
+                    <span class="info-lbl">Base Model</span>
                     <span class="info-val" id="model-name">--</span>
                 </div>
                 <div class="info-row">
@@ -363,8 +351,8 @@ HTML_TEMPLATE = """
                     <span class="info-val" id="dataset-status">Checking...</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-lbl">AES Key Binding</span>
-                    <span class="info-val" id="key-status">Checking...</span>
+                    <span class="info-lbl">Dataset Name</span>
+                    <span class="info-val" id="dataset-name-val">--</span>
                 </div>
             </div>
             
@@ -374,29 +362,29 @@ HTML_TEMPLATE = """
                     Pipeline Control
                 </div>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Launch model training dynamically. The system will ephemerally decrypt the source data in-memory and perform LoRA injection.
+                    Triggers training dynamically in the local CPU environment.
                 </p>
                 <button class="btn" id="btn-train" onclick="triggerTraining()">
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
                     Run Fine-Tuning
                 </button>
                 <div class="logs-panel" id="log-panel">
-                    [System idle. Awaiting action...]
+                    [System idle. Awaiting actions...]
                 </div>
             </div>
         </div>
         
-        <!-- Right Side: Playground comparison -->
+        <!-- Right Column: Verification Playground -->
         <div>
             <div class="card" style="height: 100%;">
                 <div class="card-title">
                     <svg width="20" height="20" fill="var(--accent-cyan)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
-                    Side-by-Side Model Verification Playground
+                    Side-by-Side Playground
                 </div>
                 
-                <div class="playground-container">
+                <div style="display: flex; flex-direction: column; height: 100%;">
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                        Type a custom prompt to query both the baseline frozen LLM and the trained low-rank adapter in real-time.
+                        Submit query prompts to evaluate baseline predictions against fine-tuned LoRA responses.
                     </p>
                     <textarea id="prompt-input" placeholder="e.g. What is the corporate data storage policy?"></textarea>
                     
@@ -425,7 +413,6 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        // Load initial status on page mount
         async function fetchStatus() {
             try {
                 const response = await fetch('/api/status');
@@ -434,16 +421,23 @@ HTML_TEMPLATE = """
                 document.getElementById('model-name').innerText = data.model_name || 'JackFram/llama-68m';
                 document.getElementById('dataset-status').innerText = data.dataset_encrypted ? 'Encrypted (AES-GCM)' : 'Not Found';
                 document.getElementById('dataset-status').style.color = data.dataset_encrypted ? 'var(--accent-green)' : '#f2994a';
-                document.getElementById('key-status').innerText = data.key_bound ? 'Owner-Bound (0600)' : 'Unset';
-                document.getElementById('key-status').style.color = data.key_bound ? 'var(--accent-green)' : '#f2994a';
+                document.getElementById('dataset-name-val').innerText = data.dataset_name || 'Unknown';
                 
+                // Set context-specific placeholders dynamically
+                const inputArea = document.getElementById('prompt-input');
+                if (data.dataset_name === "OpenPIIMaskingDataset") {
+                    inputArea.placeholder = "Mask all Personally Identifiable Information (PII) in the text.\\nInput: Nombre: Emel Blaise Ben M\'rad. Edad: 15. Sexo: Masculino. Número de identificación: 59225457L.";
+                } else {
+                    inputArea.placeholder = "e.g. What is the corporate data storage policy?";
+                }
+
                 if (data.report) {
                     document.getElementById('val-loss').innerText = parseFloat(data.report.validation_loss).toFixed(3);
                     document.getElementById('perplexity').innerText = parseFloat(data.report.perplexity).toFixed(2);
                     document.getElementById('trainable-params').innerText = data.report.trainable_parameters.toLocaleString();
                 }
             } catch (e) {
-                console.error("Error fetching status:", e);
+                console.error("Failed to load status:", e);
             }
         }
 
@@ -453,8 +447,8 @@ HTML_TEMPLATE = """
             
             document.getElementById('loader').style.display = 'inline-block';
             document.getElementById('btn-generate').disabled = true;
-            document.getElementById('base-response').innerText = 'Generating baseline output...';
-            document.getElementById('lora-response').innerText = 'Running secure GCM decryption and adapter load...';
+            document.getElementById('base-response').innerText = 'Generating baseline response...';
+            document.getElementById('lora-response').innerText = 'Generating LoRA prediction...';
             
             try {
                 const response = await fetch('/api/generate', {
@@ -467,8 +461,8 @@ HTML_TEMPLATE = """
                 document.getElementById('base-response').innerText = data.base_response;
                 document.getElementById('lora-response').innerText = data.lora_response;
             } catch (e) {
-                document.getElementById('base-response').innerText = 'Error generating response.';
-                document.getElementById('lora-response').innerText = 'Error loading or querying adapter.';
+                document.getElementById('base-response').innerText = 'Error running base generation.';
+                document.getElementById('lora-response').innerText = 'Error running adapter generation.';
             } finally {
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('btn-generate').disabled = false;
@@ -479,20 +473,19 @@ HTML_TEMPLATE = """
             const btn = document.getElementById('btn-train');
             btn.disabled = true;
             const logPanel = document.getElementById('log-panel');
-            logPanel.innerText = 'Initializing training subprocess...\\n';
+            logPanel.innerText = 'Spawning training run...\\n';
             
             const eventSource = new EventSource('/api/train-stream');
             eventSource.onmessage = function(event) {
                 logPanel.innerText += event.data + '\\n';
                 logPanel.scrollTop = logPanel.scrollHeight;
-                if (event.data.includes("PHASE 2 VALIDATION COMPLETED") || event.data.includes("Evaluation report generated")) {
+                if (event.data.includes("Evaluation report saved")) {
                     eventSource.close();
                     btn.disabled = false;
                     fetchStatus();
                 }
             };
             eventSource.onerror = function() {
-                logPanel.innerText += '\\n[Training complete or connection closed]';
                 eventSource.close();
                 btn.disabled = false;
                 fetchStatus();
@@ -506,12 +499,11 @@ HTML_TEMPLATE = """
 """
 
 def load_models_lazy():
-    """Helper to lazily load model state in CPU memory when first needed."""
     global base_model, peft_model, tokenizer, current_model_name
     from config import TrainingConfig
     
     if base_model is None or current_model_name != TrainingConfig.MODEL_NAME:
-        print(f"Loading Base LLM: {TrainingConfig.MODEL_NAME} in CPU...")
+        print(f"Loading Base model: {TrainingConfig.MODEL_NAME} in CPU RAM...")
         tokenizer = AutoTokenizer.from_pretrained(TrainingConfig.MODEL_NAME)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
@@ -522,15 +514,14 @@ def load_models_lazy():
         )
         current_model_name = TrainingConfig.MODEL_NAME
 
-    # Check if adapter weights are present and load PEFT
     adapter_path = TrainingConfig.OUTPUT_DIR
     if adapter_path.exists() and (adapter_path / "adapter_config.json").exists():
         try:
             from peft import PeftModel
-            print("Loading PEFT Adapters into base model...")
+            print("Wrapping model with PEFT adapters...")
             peft_model = PeftModel.from_pretrained(base_model, str(adapter_path))
         except Exception as e:
-            print(f"Error loading PEFT adapters: {e}")
+            print(f"Failed to wrap PEFT: {e}")
             peft_model = None
     else:
         peft_model = None
@@ -542,10 +533,17 @@ def home():
 @app.route('/api/status')
 def status():
     from config import TrainingConfig
-    # Check if files exist
     dataset_encrypted = TrainingConfig.ENCRYPTED_DATASET_PATH.exists()
-    key_bound = Path(".env").exists() or Path("secrets.key").exists()
     
+    dataset_name = "Unknown"
+    if TrainingConfig.METADATA_PATH.exists():
+        try:
+            with open(TrainingConfig.METADATA_PATH, "r") as f:
+                meta = json.load(f)
+                dataset_name = meta.get("dataset_name", "Unknown")
+        except:
+            pass
+            
     report = None
     report_file = Path("eval_report.json")
     if report_file.exists():
@@ -555,7 +553,7 @@ def status():
     return jsonify({
         "model_name": TrainingConfig.MODEL_NAME,
         "dataset_encrypted": dataset_encrypted,
-        "key_bound": key_bound,
+        "dataset_name": dataset_name,
         "report": report
     })
 
@@ -568,12 +566,10 @@ def generate():
         
     load_models_lazy()
     
-    device = "cpu" # Default local dev CPU
-    
-    # 1. Generate Base LLM response
     formatted_prompt = f"Instruction: {prompt}\nResponse: "
-    inputs = tokenizer(formatted_prompt, return_tensors="pt").to(device)
+    inputs = tokenizer(formatted_prompt, return_tensors="pt").to("cpu")
     
+    # 1. Base prediction
     base_model.eval()
     with torch.no_grad():
         base_outputs = base_model.generate(
@@ -589,7 +585,7 @@ def generate():
     if "Response: " in base_response:
         base_response = base_response.split("Response: ")[1].strip()
         
-    # 2. Generate LoRA response if available
+    # 2. LoRA prediction
     if peft_model is not None:
         peft_model.eval()
         with torch.no_grad():
@@ -606,7 +602,7 @@ def generate():
         if "Response: " in lora_response:
             lora_response = lora_response.split("Response: ")[1].strip()
     else:
-        lora_response = "PEFT Adapters not found on disk. Run model training first."
+        lora_response = "Adapters not found on disk. Fine-tune model first."
         
     return jsonify({
         "base_response": base_response,
@@ -615,10 +611,8 @@ def generate():
 
 @app.route('/api/train-stream')
 def train_stream():
-    """Streams training logs in real-time to the dashboard interface."""
     def generate_logs():
-        # Clean up any existing test folders and run the test script
-        # This will train on simulated corporate data and produce actual adapters
+        # Trigger mock / pipeline validation training run
         proc = subprocess.Popen(
             ["python3", "tests/test_phase2.py"],
             stdout=subprocess.PIPE,
@@ -632,5 +626,6 @@ def train_stream():
     return app.response_class(generate_logs(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
-    print("Launching Secure Device-Bound LoRA Validation Web Portal...")
-    app.run(host='0.0.0.0', port=5005, debug=False)
+    port = int(os.getenv("SECURE_LORA_DASHBOARD_PORT", 5005))
+    print(f"Starting dashboard portal on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=False)
