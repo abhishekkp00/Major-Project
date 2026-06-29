@@ -22,4 +22,9 @@ encrypted_outputs/
 raw_inputs/
 raw_shred/
 shred_outputs/
-shred_out/
+# Local logs, environments, and model outputs
+venv/
+logs/
+checkpoints/
+lora_adapters/
+eval_report.json
