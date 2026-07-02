@@ -28,3 +28,19 @@ logs/
 checkpoints/
 lora_adapters/
 eval_report.json
+
+# Phase 3 — Protected adapter runtime outputs (never commit encrypted artefacts or keys)
+outputs/protected_adapter/adapter.enc
+outputs/protected_adapter/adapter.hash
+outputs/protected_adapter/adapter.sig
+outputs/protected_adapter/metadata.json
+outputs/protected_adapter/package_manifest.json
+outputs/protected_adapter/dev_private.pem
+outputs/protected_adapter/public.pem
+outputs/protected_adapter.tar.gz
+
+# Phase 2 — final adapter weights (large binary, not tracked in git)
+outputs/final_adapter/
+
+# Restored / decrypted adapter (never commit plaintext adapter)
+/tmp/restored_adapter_phase3.tar.gz

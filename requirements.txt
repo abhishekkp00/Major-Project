@@ -5,3 +5,7 @@ transformers>=4.30.0
 peft>=0.4.0
 accelerate>=0.20.0
 sentencepiece
+
+# Testing and development
+pytest>=7.4.0
+pytest-cov>=4.1.0
