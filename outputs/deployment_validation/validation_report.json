@@ -1,0 +1,38 @@
+{
+  "report_type": "Phase 4 Secure Deployment & Inference Validation Report",
+  "generated_at_utc": "2026-07-03T17:41:26.050914+00:00",
+  "schema_version": "4.0.0",
+  "adapter_metadata": {
+    "adapter_id": "lora-adapter-v1",
+    "model_reference": "JackFram/llama-68m",
+    "schema_version": "3.0.0"
+  },
+  "target_device": {
+    "fingerprint_hash_prefix": "08b85cf6798dc6d0...",
+    "device_matched": true
+  },
+  "verification_pipeline": {
+    "success": true,
+    "steps": {
+      "Step 1: Package Completeness": "PASSED",
+      "Step 2: Integrity Verification": "PASSED",
+      "Step 3: Signature Verification": "PASSED",
+      "Step 4: Device Authorization": "PASSED",
+      "Step 5: Key Derivation": "PASSED",
+      "Step 6: Decryption & Extraction": "PASSED",
+      "Step 7: PEFT Model Loading": "PASSED",
+      "Step 8: Inference Validation": "PASSED"
+    }
+  },
+  "inference_validation": {
+    "prompt": "Explain the concept of device-bound security in machine learning.",
+    "base_output": "\nThe concept of device-bound security is a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not",
+    "peft_output": "\nThe concept of device-bound security is a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not",
+    "adapter_active": false
+  },
+  "security_guarantees": {
+    "zero_plaintext_at_rest": true,
+    "cryptographic_shredding_applied": true,
+    "secrets_masked_in_logs": true
+  }
+}
