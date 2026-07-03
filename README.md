@@ -1,64 +1,86 @@
 # Secure Device-Bound LoRA Fine-Tuning Framework
 
-A lightweight, secure fine-tuning framework for training Large Language Models locally. This project enables organizations to run Parameter-Efficient Fine-Tuning (PEFT/LoRA) on private datasets while maintaining a strict zero-plaintext-at-rest security policy. 
+Fine-tuning Large Language Models (LLMs) on high-sensitivity corporate data poses a double-sided security challenge: private training datasets are vulnerable to leakage if stored in plaintext, and proprietary adapter weights are vulnerable to theft if deployed on unauthorized, non-compliant devices.
 
-All training data remains encrypted on disk using AES-256-GCM. During a training session, data is streamingly decrypted in memory, tokenized, and the temporary plaintext buffers are immediately shredded to prevent disk leaks. The output is a lightweight set of LoRA adapter weights, keeping the base model frozen and unmodified.
-
----
-
-## Features
-
-- **Zero-Plaintext-at-Rest**: Private datasets are processed and stored encrypted. Decryption only happens dynamically in memory.
-- **PEFT LoRA Training**: Keeps the base LLM completely frozen and only trains lightweight adapter weights.
-- **Crash-Safe & Resumable**: Automatically checkpoints the training state, rotating checkpoints to save disk space, and resumes seamlessly if interrupted.
-- **Interactive Validation Dashboard**: A local web interface to run training, monitor validation metrics, and compare responses between the base model and the fine-tuned adapter side by side.
-- **Dataset Ingestion Tools**: Built-in support to download, format, and encrypt instruction datasets (like Hugging Face OpenPII).
+The **Secure Device-Bound LoRA Framework** solves both challenges. Designed as a complete, secure pipeline, this framework ensures that training data remains fully encrypted at rest, model training happens entirely in-memory, and deployed LoRA adapters can only be decrypted and loaded on authorized hardware targets matching a cryptographically verified system fingerprint.
 
 ---
 
-## Directory Layout
+## 🌟 Core System Design
 
-```
-MAJOR_PROJECT/
-│
-├── secure_lora/               # Crypto & ingestion backend engine
-├── utils/                     # Logging and checkpoint helpers
-├── tests/                     # Validation & pipeline integration tests
-├── config.py                  # Environment settings and validations
-├── train_lora.py              # Training workflow manager
-├── dashboard.py               # Local metrics and validation web portal
-├── ingest_openpii.py          # Hugging Face OpenPII dataset helper
-├── requirements.txt           # Unified dependency specifications
-└── README.md                  # Project overview (This file)
+The framework is structured as a series of secure, chronological phases that form a complete security chain:
+
+```mermaid
+graph TD
+    A[Raw Dataset] -->|Secure Ingestion| B(Encrypted Dataset at Rest)
+    B -->|In-Memory Streaming Decryption| C(PEFT LoRA Training)
+    C -->|Adapter Outputs| D[Phase 3: Hardware Fingerprint Binding & RSA Signing]
+    D -->|Protected Package| E[Phase 4: Deployment Intake & Verification]
+    E -->|Hardware Match & Signature Pass| F(In-Memory Decryption & Model Load)
+    F -->|Plaintext Shredded| G[Side-by-Side Secure Inference Playground]
 ```
 
+### 1. Secure Dataset Ingestion & Training (Phases 1 & 2)
+Raw datasets containing sensitive user records or Personally Identifiable Information (PII) are ingested and converted into an AES-256-GCM encrypted format. 
+* **Zero-Plaintext-at-Rest:** The training engine streamingly decrypts data directly into transient RAM buffers, tokenizes them, and immediately shreds the plaintext variables.
+* **Checkpoint Security:** Training checkpoints are written out securely, automatically rotating to keep disk footprints clean.
+
+### 2. Device Fingerprint Binding & RSA Signing (Phase 3)
+Once training is complete, the resulting LoRA adapter weights are packed and cryptographically bound to the target deployment hardware:
+* **System Fingerprint:** Aggregates machine identifiers (system UUIDs, CPU models, disk structures) into a canonical fingerprint hash.
+* **Digital Signatures:** The package is signed using an RSA-PSS keypair, ensuring complete authenticity and tamper-evidence before it is shipped.
+
+### 3. Verification & Inference Validation (Phase 4)
+The deployment engine acts as a secure gateway on the host machine:
+1. **Completeness & Integrity Check:** Validates that the package structure is intact and computes the SHA-256 hash of the payload.
+2. **Signature Verification:** Validates the RSA-PSS signature against the public key to ensure the package hasn't been altered.
+3. **Hardware Authorization:** Regenerates the local system fingerprint and compares it to the target binding.
+4. **Decryption & Loading:** Re-derives the AES-256 key to decrypt the weights. Plaintext files exist only momentarily on disk and are securely shredded (3-pass random overwrite) the instant they are loaded into RAM.
+
 ---
 
-## Quickstart Guide
+## 💻 The Verification Dashboard
 
-### 1. Setup Environment
-Initialize your virtual environment and install the package requirements:
+To make this complex cryptographic process intuitive and visual, the project includes an interactive web portal. The dashboard provides a visual control center for system administrators and developers:
+
+* **Real-time Pipeline Gates:** Visualizes the 8 stages of Phase 4 verification. Step indicators change dynamically from PENDING to PASSED (green) or FAILED (red).
+* **Live System Info:** Displays the local machine's fingerprint hash prefix and the active salt.
+* **Side-by-Side Playground:** Evaluates model performance in real time. Submit prompts to view predictions generated by the base LLM alongside responses enhanced by the authorized LoRA adapter.
+* **Secure Logs Panel:** Streamlines system diagnostics with output-masking rules that redact sensitive patterns (like emails, SSNs, or keys) from log outputs.
+
+---
+
+## 🚀 Running the Framework
+
+Start by initializing your environment and installing the required dependencies:
+
 ```bash
 python3 -m venv venv
-venv/bin/pip install -r requirements.txt
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### 2. Ingest OpenPII Masking Dataset
-Download a sample dataset from Hugging Face, format it, and save it as an encrypted dataset:
+### 1. Ingest and Format the Dataset
+Download, format, and encrypt the sample masking dataset:
 ```bash
-PYTHONPATH=. venv/bin/python3 ingest_openpii.py --limit 150
+python3 ingest_openpii.py
 ```
 
-### 3. Run Fine-Tuning
-Start the local fine-tuning run on the encrypted dataset:
+### 2. Train the Adapter
+Train the PEFT model on the encrypted training data:
 ```bash
-PYTHONPATH=. venv/bin/python3 train_lora.py
+python3 train_lora.py
 ```
-*If interrupted, restarting the command will automatically pick up from the latest saved checkpoint.*
 
-### 4. Open Validation Dashboard
-Launch the web interface to check training logs, evaluate validation perplexity, and run side-by-side prompt comparisons:
+### 3. Package and Bind to Hardware
+Generate the signed, hardware-bound adapter package:
 ```bash
-PYTHONPATH=. venv/bin/python3 dashboard.py
+python3 -m phase3 protect --archive
 ```
-Navigate to **`http://127.0.0.1:5005`** in your browser.
+
+### 4. Deploy and Verify
+Verify, decrypt, and launch the model via the interactive portal:
+```bash
+python3 dashboard.py
+```
+Navigate to `http://localhost:5005` in your browser. Click **Verify & Load Adapter** to execute the verification pipeline, load the adapter into RAM, and unlock the comparative inference playground.
