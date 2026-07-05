@@ -293,56 +293,19 @@ class JobOrchestrator:
             logger.info("[%s] Phase 2 complete.", job_id)
 
             # ────────────────────────────────────────────────────────────────
-            # PHASE 3: PROTECTION & HARDWARE BINDING
+            # SECURITY PACKAGING & DEPLOYMENT VERIFICATION GATES (Phases 3 & 4)
             # ────────────────────────────────────────────────────────────────
-            self.update_job_state(job_id, status="PACKAGING", stage="hardware_binding", progress=75)
-            logger.info("[%s] Phase 3 Protection started.", job_id)
-
-            env_p3 = os.environ.copy()
-            env_p3["P3_DEVICE_SALT"] = salt
-            env_p3["P3_ADAPTER_INPUT_DIR"] = str(job_dir / "adapter")
-            env_p3["P3_PROTECTED_OUTPUT_DIR"] = str(job_dir / "protected")
-            env_p3["P3_RSA_PRIVATE_KEY_PATH"] = str(job_dir / "protected" / "dev_private.pem")
-            env_p3["P3_RSA_PUBLIC_KEY_PATH"] = str(job_dir / "protected" / "public.pem")
-
-            proc_p3 = subprocess.run(
-                ["./venv/bin/python", "-m", "src.phase3.main", "protect", "--archive"],
-                cwd=str(Path.cwd()),
-                env=env_p3,
-                capture_output=True,
-                text=True
-            )
-            if proc_p3.returncode != 0:
-                raise RuntimeError(f"Phase 3 protect package builder failed: {proc_p3.stderr or proc_p3.stdout}")
-
-            self.update_job_state(job_id, progress=90)
-            logger.info("[%s] Phase 3 complete.", job_id)
-
-            # ────────────────────────────────────────────────────────────────
-            # PHASE 4: VERIFICATION & SECURE DEPLOYMENT VALIDATION
-            # ────────────────────────────────────────────────────────────────
-            self.update_job_state(job_id, status="DEPLOYING", stage="deployment_validation", progress=95)
-            logger.info("[%s] Phase 4 Deployment started.", job_id)
-
-            # Run Phase 4 validator pipeline
-            from src.phase4.main import run_deployment_pipeline
-            package_path = job_dir / "protected" / "protected_adapter.tar.gz"
-            # Fallback if with_suffix renamed it
-            if not package_path.exists():
-                package_path = job_dir / "protected" / "protected.tar.gz"
-            if not package_path.exists():
-                package_path = job_dir / "protected"
-
-            # Execute validation pipeline
-            exit_code = run_deployment_pipeline(
-                package_path=package_path,
+            from src.orchestrator.security_orchestrator import run_security_orchestration
+            
+            security_outcomes = run_security_orchestration(
+                job_id=job_id,
+                job_dir=job_dir,
                 salt=salt,
                 base_model_name=config.model_name,
-                prompt="Verify device binding.",
-                output_dir=job_dir / "deployment"
+                update_state_fn=self.update_job_state
             )
-
-            # Read Phase 4 step details from validation_report.json
+            
+            # Read verification step info if any
             verification_steps = {}
             report_path = job_dir / "deployment" / "validation_report.json"
             if report_path.exists():
@@ -352,17 +315,15 @@ class JobOrchestrator:
                 except Exception as e:
                     logger.warning("Could not read verification report: %s", e)
 
-            if exit_code != 0:
-                raise RuntimeError("Phase 4 deployment verification pipeline failed.")
-
             self.update_job_state(
                 job_id,
                 status="COMPLETED",
-                stage="completed",
+                stage="security_validation_completed",
                 progress=100,
+                security_metrics=security_outcomes,
                 verification_steps=verification_steps
             )
-            logger.info("[%s] Full lifecycle completed successfully!", job_id)
+            logger.info("[%s] Full secure lifecycle completed successfully!", job_id)
 
         except Exception as exc:
             logger.error("[%s] Pipeline execution failed: %s", job_id, exc, exc_info=True)
