@@ -146,3 +146,130 @@ def get_job_logs(job_id):
         return jsonify({"success": True, "logs": "\n".join(lines)})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/metrics", methods=["GET"])
+def get_job_metrics(job_id):
+    """Exposes training and dataset metrics for a job."""
+    job = orchestrator.get_job(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+
+    metrics = {
+        "loss_history": job.get("loss_history", []),
+        "current_epoch": job.get("current_epoch"),
+        "pii_detected_summary": job.get("pii_summary", {}),
+        "num_records": job.get("num_records", 0),
+        "security_metrics": job.get("security_metrics", {})
+    }
+    return jsonify({"success": True, "metrics": metrics})
+
+
+@orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/artifacts", methods=["GET"])
+def list_job_artifacts(job_id):
+    """Lists safe downloadable package artifacts generated for the job."""
+    job = orchestrator.get_job(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+
+    protected_dir = orchestrator.base_jobs_dir / job_id / "protected"
+    if not protected_dir.exists():
+        return jsonify({"success": True, "artifacts": []})
+
+    artifacts = []
+    # Exclude secret keys (e.g. .pem, .key)
+    safe_extensions = [".enc", ".hash", ".sig", ".json", ".gz", ".pem"]
+    for path in protected_dir.iterdir():
+        if path.is_file() and path.suffix in safe_extensions:
+            # Never expose private key
+            if "private" in path.name or (path.name.endswith(".pem") and path.name != "public.pem"):
+                continue
+            artifacts.append({
+                "name": path.name,
+                "size_bytes": path.stat().st_size,
+                "download_url": f"/api/orchestrator/jobs/{job_id}/download/{path.name}"
+            })
+
+    return jsonify({"success": True, "artifacts": artifacts})
+
+
+@orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/download/<filename>", methods=["GET"])
+def download_job_artifact(job_id, filename):
+    """Serves a specific safe package artifact for download."""
+    from flask import send_from_directory
+    job = orchestrator.get_job(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+
+    protected_dir = orchestrator.base_jobs_dir / job_id / "protected"
+    safe_extensions = [".enc", ".hash", ".sig", ".json", ".gz", ".pem"]
+    target_path = protected_dir / filename
+
+    if not target_path.exists() or target_path.suffix not in safe_extensions:
+        return jsonify({"success": False, "error": "Access denied or file not found"}), 403
+
+    if "private" in filename or (filename.endswith(".pem") and filename != "public.pem"):
+        return jsonify({"success": False, "error": "Access denied"}), 403
+
+    return send_from_directory(str(protected_dir), filename, as_attachment=True)
+
+
+@orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/report", methods=["GET"])
+def get_job_report(job_id):
+    """Retrieves the final validation report from the deployment verification pipeline."""
+    import json
+    job = orchestrator.get_job(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+
+    report_file = orchestrator.base_jobs_dir / job_id / "deployment" / "validation_report.json"
+    if not report_file.exists():
+        return jsonify({"success": False, "error": "Validation report not generated yet"}), 404
+
+    try:
+        report_data = json.loads(report_file.read_text(encoding="utf-8"))
+        return jsonify({"success": True, "report": report_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/stream", methods=["GET"])
+def stream_job_events(job_id):
+    """Exposes a Server-Sent Events (SSE) stream for real-time progress updates."""
+    import time
+    import json
+    from flask import Response
+
+    job = orchestrator.get_job(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+
+    def event_stream():
+        while True:
+            current_job = orchestrator.get_job(job_id)
+            if not current_job:
+                break
+
+            payload = {
+                "job_id": current_job.get("job_id"),
+                "status": current_job.get("status"),
+                "stage": current_job.get("stage"),
+                "progress": current_job.get("progress"),
+                "last_updated": current_job.get("last_updated"),
+                "loss_history": current_job.get("loss_history", []),
+                "current_epoch": current_job.get("current_epoch"),
+                "pii_summary": current_job.get("pii_summary"),
+                "num_records": current_job.get("num_records"),
+                "security_metrics": current_job.get("security_metrics"),
+                "verification_steps": current_job.get("verification_steps"),
+                "error": current_job.get("error")
+            }
+
+            yield f"data: {json.dumps(payload)}\n\n"
+
+            if current_job.get("status") in ["COMPLETED", "FAILED"]:
+                break
+
+            time.sleep(1)
+
+    return Response(event_stream(), mimetype="text/event-stream")

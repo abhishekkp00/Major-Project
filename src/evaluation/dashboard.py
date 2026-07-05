@@ -639,6 +639,24 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
                 </div>
+
+                <div class="card" id="job-validation-card" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-title">Security &amp; Simulation Audit</div>
+                    </div>
+                    <div class="info-grid" id="validation-audit-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="card" id="job-artifacts-card" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-title">Deployable Package Artifacts</div>
+                    </div>
+                    <div class="info-grid" id="artifacts-list-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
             </div>
 
             <!-- Right Panel: Job Monitor -->
@@ -898,20 +916,20 @@ HTML_TEMPLATE = """
             }
         }
 
-        // Poll job status
+        // Subscribe to real-time Server-Sent Events (SSE) status stream
         function pollJobStatus() {
-            const timer = setInterval(async () => {
-                if (!activeJobId) {
-                    clearInterval(timer);
-                    return;
-                }
+            if (!activeJobId) return;
 
+            const consoleBox = document.getElementById('orchestrator-console-log');
+            consoleBox.innerHTML += `<div class="console-line">[SSE] Connecting to real-time event stream...</div>`;
+
+            const eventSource = new EventSource(`/api/orchestrator/jobs/${activeJobId}/stream`);
+
+            eventSource.onmessage = async function(event) {
                 try {
-                    const res = await fetch(`/api/orchestrator/jobs/${activeJobId}`);
-                    const data = await res.json();
-                    if (!data.success) throw new Error(data.error);
+                    const job = JSON.parse(event.data);
+                    if (!job || !job.job_id) return;
 
-                    const job = data.job;
                     document.getElementById('active-job-status').innerText = job.status;
                     document.getElementById('active-job-stage').innerText = job.stage;
                     document.getElementById('job-progress-bar').style.width = job.progress + "%";
@@ -925,38 +943,105 @@ HTML_TEMPLATE = """
                         chart.update();
                     }
 
-                    // Poll logs
+                    // Poll logs in background
                     const logsRes = await fetch(`/api/orchestrator/jobs/${activeJobId}/logs`);
                     const logsData = await logsRes.json();
                     if (logsData.success) {
-                        const consoleBox = document.getElementById('orchestrator-console-log');
                         consoleBox.innerHTML = '';
                         logsData.logs.split('\n').forEach(line => {
+                            if (!line.trim()) return;
                             const div = document.createElement('div');
-                            div.className = line.includes('ERROR') || line.includes('failed') ? 'console-line console-err' : 'console-line';
+                            div.className = line.includes('ERROR') || line.includes('failed') || line.includes('FAILED') ? 'console-line console-err' : 'console-line';
                             div.innerText = line;
                             consoleBox.appendChild(div);
                         });
                         consoleBox.scrollTop = consoleBox.scrollHeight;
                     }
 
-                    // Handle completion or failure
+                    // Handle terminal states
                     if (job.status === 'COMPLETED') {
-                        clearInterval(timer);
-                        document.getElementById('orchestrator-console-log').innerHTML += `<div class="console-line" style="color:#10b981;">[COMPLETE] Job completed successfully! LoRA package signed and verified. Ready for inference in Tab 2.</div>`;
+                        eventSource.close();
+                        consoleBox.innerHTML += `<div class="console-line" style="color:#10b981;">[COMPLETE] Job completed successfully! LoRA package signed, verified, and simulations passed. Ready for deployment.</div>`;
                         document.getElementById('btn-create-job').disabled = false;
-                        // Refresh the deployment gate tab status
+                        
+                        // Fetch additional data
+                        fetchJobArtifacts(job.job_id);
+                        fetchJobReport(job.job_id);
                         fetchStatus();
                     } else if (job.status === 'FAILED') {
-                        clearInterval(timer);
-                        document.getElementById('orchestrator-console-log').innerHTML += `<div class="console-line console-err">[FAILED] Job failed: ${job.error}</div>`;
+                        eventSource.close();
+                        consoleBox.innerHTML += `<div class="console-line console-err">[FAILED] Job failed: ${job.error}</div>`;
                         document.getElementById('btn-create-job').disabled = false;
                     }
 
                 } catch (e) {
-                    console.error("Error polling job status:", e);
+                    console.error("Error parsing event payload:", e);
                 }
-            }, 2500);
+            };
+
+            eventSource.onerror = function(err) {
+                console.error("SSE stream error, client connection closed.", err);
+                eventSource.close();
+            };
+        }
+
+        async function fetchJobArtifacts(jobId) {
+            try {
+                const res = await fetch(`/api/orchestrator/jobs/${jobId}/artifacts`);
+                const data = await res.json();
+                if (data.success && data.artifacts.length > 0) {
+                    const grid = document.getElementById('artifacts-list-grid');
+                    grid.innerHTML = '';
+                    data.artifacts.forEach(art => {
+                        const row = document.createElement('div');
+                        row.className = 'info-row';
+                        row.innerHTML = `
+                            <span class="info-label">${art.name} (${(art.size_bytes / 1024).toFixed(1)} KB)</span>
+                            <span class="info-value">
+                                <a href="${art.download_url}" style="color:var(--cyan); text-decoration:none;" download>Download</a>
+                            </span>
+                        `;
+                        grid.appendChild(row);
+                    });
+                    document.getElementById('job-artifacts-card').style.display = 'block';
+                }
+            } catch(e) {
+                console.error("Error fetching artifacts:", e);
+            }
+        }
+
+        async function fetchJobReport(jobId) {
+            try {
+                const res = await fetch(`/api/orchestrator/jobs/${jobId}/report`);
+                const data = await res.json();
+                if (data.success && data.report) {
+                    const grid = document.getElementById('validation-audit-grid');
+                    grid.innerHTML = '';
+                    const outcomes = data.report.security_validation_outcomes || {};
+                    const steps = data.report.verification_pipeline?.steps || {};
+
+                    const rows = [
+                        { label: "Authorized Device Binding", val: outcomes.authorized_deployment === "pass" ? "PASS" : "FAIL" },
+                        { label: "Tamper Evidence Check", val: outcomes.tamper_simulation === "pass" ? "PASS" : "FAIL" },
+                        { label: "Unauthorized Device Block", val: outcomes.unauthorized_device_simulation === "pass" ? "PASS" : "FAIL" },
+                        { label: "Inference Validation Step", val: steps["Step 8: Inference Validation"] === "PASSED" ? "PASS" : "FAIL" }
+                    ];
+
+                    rows.forEach(r => {
+                        const row = document.createElement('div');
+                        row.className = 'info-row';
+                        const color = r.val === "PASS" ? "var(--emerald)" : "var(--rose)";
+                        row.innerHTML = `
+                            <span class="info-label">${r.label}</span>
+                            <span class="info-value" style="color:${color}; font-weight:bold;">${r.val}</span>
+                        `;
+                        grid.appendChild(row);
+                    });
+                    document.getElementById('job-validation-card').style.display = 'block';
+                }
+            } catch(e) {
+                console.error("Error loading job report:", e);
+            }
         }
 
         async function fetchStatus() {
