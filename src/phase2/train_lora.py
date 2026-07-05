@@ -53,6 +53,45 @@ class SecureCheckpointCallback(TrainerCallback):
         rotate_checkpoints(Path(args.output_dir), max_to_keep=2)
 
 
+class SecureProgressCallback(TrainerCallback):
+    def __init__(self, progress_file_path: Path):
+        self.progress_file_path = progress_file_path
+        self.history = []
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs:
+            from datetime import datetime, timezone
+            step = state.global_step
+            epoch = state.epoch
+            max_steps = state.max_steps
+            
+            progress_data = {
+                "current_step": step,
+                "total_steps": max_steps,
+                "epoch": epoch,
+                "learning_rate": logs.get("learning_rate"),
+                "loss": logs.get("loss"),
+                "eval_loss": logs.get("eval_loss"),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            if "loss" in logs or "eval_loss" in logs:
+                self.history.append(progress_data)
+                
+            try:
+                temp_path = self.progress_file_path.with_suffix(".tmp")
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "current_step": step,
+                        "total_steps": max_steps,
+                        "epoch": epoch,
+                        "history": self.history
+                    }, f, indent=4)
+                temp_path.replace(self.progress_file_path)
+            except Exception as e:
+                pass
+
+
+
 def generate_sample(model, tokenizer, prompt_text=None) -> str:
     if not prompt_text:
         prompt_text = os.getenv("SECURE_LORA_SAMPLE_PROMPT", "Mask all Personally Identifiable Information (PII) in the text.\nInput: Nombre: Blaise. Edad: 25.")
@@ -225,13 +264,18 @@ def run_training():
         padding=True
     )
 
+    callbacks = [SecureCheckpointCallback()]
+    progress_file = os.getenv("SECURE_LORA_PROGRESS_FILE")
+    if progress_file:
+        callbacks.append(SecureProgressCallback(Path(progress_file)))
+
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         data_collator=data_collator,
-        callbacks=[SecureCheckpointCallback()]
+        callbacks=callbacks
     )
 
     latest_checkpoint = find_latest_checkpoint(config.checkpoint_dir)

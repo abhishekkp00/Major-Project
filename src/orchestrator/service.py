@@ -200,6 +200,7 @@ class JobOrchestrator:
             self.update_job_state(job_id, status="TRAINING", stage="fine_tuning", progress=30)
             logger.info("[%s] Phase 2 Training started.", job_id)
 
+            progress_json_path = job_dir / "progress.json"
             env = os.environ.copy()
             env["SECURE_LORA_INPUT_DIR"] = str(raw_dir)
             env["SECURE_LORA_OUTPUT_DIR"] = str(enc_dir)
@@ -211,6 +212,7 @@ class JobOrchestrator:
             env["SECURE_LORA_EPOCHS"] = str(epochs)
             env["SECURE_LORA_BATCH_SIZE"] = "2"
             env["SECURE_LORA_SEED"] = "42"
+            env["SECURE_LORA_PROGRESS_FILE"] = str(progress_json_path)
 
             log_file = job_dir / "training.log"
             process = subprocess.Popen(
@@ -228,22 +230,49 @@ class JobOrchestrator:
                 for line in iter(process.stdout.readline, ""):
                     lf.write(line)
                     lf.flush()
-                    # Look for HF logging dicts: e.g. {'loss': 0.8123, 'epoch': 1.0, ...}
-                    if "{'loss':" in line or "'loss':" in line:
+                    
+                    if progress_json_path.exists():
                         try:
-                            # Clean and extract dictionary
-                            start_idx = line.find("{")
-                            end_idx = line.rfind("}")
-                            if start_idx != -1 and end_idx != -1:
-                                data_str = line[start_idx:end_idx+1].replace("'", '"')
-                                metric_data = json.loads(data_str)
-                                loss = metric_data.get("loss")
-                                epoch = metric_data.get("epoch")
-                                if loss is not None and epoch is not None:
-                                    loss_history.append({"epoch": epoch, "loss": loss})
-                                    self.update_job_state(job_id, loss_history=loss_history)
-                        except Exception as parse_err:
-                            logger.debug("Failed parsing training loss line: %s", parse_err)
+                            prog_data = json.loads(progress_json_path.read_text(encoding="utf-8"))
+                            current_step = prog_data.get("current_step", 0)
+                            total_steps = max(1, prog_data.get("total_steps", 100))
+                            epoch = prog_data.get("epoch", 0.0)
+                            history = prog_data.get("history", [])
+                            
+                            loss_history = [
+                                {
+                                    "epoch": h.get("epoch"),
+                                    "loss": h.get("loss"),
+                                    "eval_loss": h.get("eval_loss")
+                                }
+                                for h in history
+                                if h.get("loss") is not None or h.get("eval_loss") is not None
+                            ]
+                            
+                            fine_tuning_progress = min(70, 30 + int(40 * (current_step / total_steps)))
+                            self.update_job_state(
+                                job_id,
+                                progress=fine_tuning_progress,
+                                loss_history=loss_history,
+                                current_epoch=epoch
+                            )
+                        except Exception:
+                            pass
+                    else:
+                        if "{'loss':" in line or "'loss':" in line:
+                            try:
+                                start_idx = line.find("{")
+                                end_idx = line.rfind("}")
+                                if start_idx != -1 and end_idx != -1:
+                                    data_str = line[start_idx:end_idx+1].replace("'", '"')
+                                    metric_data = json.loads(data_str)
+                                    loss = metric_data.get("loss")
+                                    epoch = metric_data.get("epoch")
+                                    if loss is not None and epoch is not None:
+                                        loss_history.append({"epoch": epoch, "loss": loss})
+                                        self.update_job_state(job_id, loss_history=loss_history)
+                            except Exception as parse_err:
+                                logger.debug("Failed parsing training loss line: %s", parse_err)
 
             process.wait()
             if process.returncode != 0:
