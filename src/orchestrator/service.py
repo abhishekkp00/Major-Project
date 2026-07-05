@@ -157,19 +157,41 @@ class JobOrchestrator:
             logger.info("[%s] Phase 1 Ingestion started.", job_id)
 
             key = (job_dir / "secrets.key").read_bytes()
-            pipeline = SecureDatasetPipeline(key)
-            
             raw_dir = job_dir / "raw_inputs"
             enc_dir = job_dir / "encrypted"
 
-            metadata = pipeline.encrypt_dataset(
-                input_dir=raw_dir,
+            # Find uploaded file in raw_dir
+            uploaded_files = list(raw_dir.glob("*"))
+            if not uploaded_files:
+                raise RuntimeError("No uploaded files found in raw input directory.")
+            
+            uploaded_file = uploaded_files[0]
+            
+            from src.orchestrator.dataset_processor import (
+                validate_dataset_file,
+                preprocess_and_standardize,
+                encrypt_and_save_dataset
+            )
+
+            raw_records, file_meta = validate_dataset_file(uploaded_file)
+            processed_records = preprocess_and_standardize(raw_records)
+            
+            metadata = encrypt_and_save_dataset(
+                processed_records=processed_records,
+                key=key,
                 output_dir=enc_dir,
                 dataset_name=dataset_name,
                 version=version,
-                shred_raw=False
+                pii_summary=file_meta.get("pii_detected_summary", {})
             )
-            self.update_job_state(job_id, progress=25)
+
+            self.update_job_state(
+                job_id,
+                progress=25,
+                pii_summary=file_meta.get("pii_detected_summary", {}),
+                schema_detected=file_meta.get("schema_detected", "unknown"),
+                num_records=metadata.get("num_records", 0)
+            )
             logger.info("[%s] Phase 1 complete. Ingested %d records.", job_id, metadata.get("num_records", 0))
 
             # ────────────────────────────────────────────────────────────────

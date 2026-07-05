@@ -57,3 +57,9 @@ class VerificationError(SecureLoraError, RuntimeError):
     """Raised when Phase 4 pipeline verification fails."""
     pass
 
+
+class DatasetValidationError(SecureLoraError, ValueError):
+    """Raised when uploaded private dataset format or validation checks fail."""
+    pass
+
+

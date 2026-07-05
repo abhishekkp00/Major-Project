@@ -1,11 +1,49 @@
+import os
 import logging
+import tempfile
+from pathlib import Path
 from flask import Blueprint, jsonify, request, current_app
 from werkzeug.utils import secure_filename
 
 from .service import orchestrator
+from src.orchestrator.dataset_processor import validate_dataset_file
+from src.common.exceptions import DatasetValidationError
 
 logger = logging.getLogger("secure_lora.orchestrator.routes")
 orchestrator_bp = Blueprint("orchestrator", __name__)
+
+
+@orchestrator_bp.route("/api/orchestrator/validate", methods=["POST"])
+def pre_validate_dataset():
+    """Parses and runs PII inspection on an uploaded dataset file before job creation."""
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "No file part in request"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "No file selected"}), 400
+
+    filename = secure_filename(file.filename)
+    suffix = Path(filename).suffix.lower()
+
+    # Save to a temporary file
+    temp_fd, temp_str = tempfile.mkstemp(suffix=suffix)
+    os.close(temp_fd)
+    temp_path = Path(temp_str)
+
+    try:
+        file.save(temp_path)
+        # Validate and inspect
+        _, metadata = validate_dataset_file(temp_path)
+        return jsonify({"success": True, "metadata": metadata})
+    except DatasetValidationError as val_err:
+        return jsonify({"success": False, "error": str(val_err)}), 400
+    except Exception as e:
+        logger.exception("Pre-validation failure:")
+        return jsonify({"success": False, "error": f"Failed to validate dataset: {str(e)}"}), 500
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs", methods=["POST"])
