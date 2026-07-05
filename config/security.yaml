@@ -1,0 +1,7 @@
+secure_lora_key_path: "secrets.key"
+rsa_key_bits: 2048
+rsa_private_key_path: "outputs/protected_adapter/dev_private.pem"
+rsa_public_key_path: "outputs/protected_adapter/public.pem"
+adapter_id: "lora-adapter-v1"
+model_reference: "JackFram/llama-68m"
+package_version: "3.0.0"

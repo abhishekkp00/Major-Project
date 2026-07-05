@@ -1,0 +1,11 @@
+package_path: "outputs/protected_adapter"
+public_key_path: "outputs/protected_adapter/public.pem"
+output_dir: "outputs/deployment_validation"
+max_new_tokens: 64
+max_package_bytes: 536870912  # 512 MB
+required_package_files:
+  - "adapter.enc"
+  - "adapter.hash"
+  - "adapter.sig"
+  - "metadata.json"
+  - "package_manifest.json"

@@ -63,24 +63,25 @@ pip install -r requirements.txt
 ### 1. Ingest and Format the Dataset
 Download, format, and encrypt the sample masking dataset:
 ```bash
-python3 ingest_openpii.py
+python3 -m src.phase1.cli encrypt
 ```
 
 ### 2. Train the Adapter
 Train the PEFT model on the encrypted training data:
 ```bash
-python3 train_lora.py
+python3 -m src.phase2.train_lora
 ```
 
 ### 3. Package and Bind to Hardware
 Generate the signed, hardware-bound adapter package:
 ```bash
-python3 -m phase3 protect --archive
+python3 -m src.phase3.main protect --archive
 ```
 
 ### 4. Deploy and Verify
 Verify, decrypt, and launch the model via the interactive portal:
 ```bash
-python3 dashboard.py
+python3 -m src.evaluation.dashboard
 ```
 Navigate to `http://localhost:5005` in your browser. Click **Verify & Load Adapter** to execute the verification pipeline, load the adapter into RAM, and unlock the comparative inference playground.
+

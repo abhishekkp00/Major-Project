@@ -1,0 +1,13 @@
+batch_size: 2
+gradient_accumulation_steps: 4
+learning_rate: 0.0002
+num_epochs: 3
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_bias: "none"
+target_modules:
+  - "q_proj"
+  - "v_proj"
+  - "k_proj"
+  - "o_proj"
