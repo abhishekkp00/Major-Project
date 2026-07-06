@@ -570,8 +570,8 @@ HTML_TEMPLATE = """
             <div class="brand-text">LoRA Device Binding Framework</div>
         </div>
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('orchestrator')">Pipeline Orchestrator</button>
-            <button class="tab-btn" onclick="switchTab('deployment')">Deployment Gate</button>
+            <button class="tab-btn active" onclick="switchTab(this, 'orchestrator')">Pipeline Orchestrator</button>
+            <button class="tab-btn" onclick="switchTab(this, 'deployment')">Deployment Gate</button>
         </div>
         <div id="deployment-badge" class="badge badge-unverified">
             🔴 Session Locked
@@ -809,15 +809,14 @@ HTML_TEMPLATE = """
         let chart = null;
 
         // Switch between tabs
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        function switchTab(btn, tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
+            btn.classList.add('active');
             if (tabId === 'orchestrator') {
-                document.querySelector('button[onclick="switchTab(\'orchestrator\')"]').classList.add('active');
                 document.getElementById('tab-orchestrator').classList.add('active');
             } else {
-                document.querySelector('button[onclick="switchTab(\'deployment\')"]').classList.add('active');
                 document.getElementById('tab-deployment').classList.add('active');
             }
         }
@@ -948,7 +947,7 @@ HTML_TEMPLATE = """
                     const logsData = await logsRes.json();
                     if (logsData.success) {
                         consoleBox.innerHTML = '';
-                        logsData.logs.split('\n').forEach(line => {
+                        logsData.logs.split('\\n').forEach(line => {
                             if (!line.trim()) return;
                             const div = document.createElement('div');
                             div.className = line.includes('ERROR') || line.includes('failed') || line.includes('FAILED') ? 'console-line console-err' : 'console-line';
@@ -1370,17 +1369,28 @@ def p4_generate():
         return jsonify({"error": "Base model is not loaded. Trigger verification first."}), 400
 
     # 1. Base prediction
-    base_model.eval()
     with torch.no_grad():
         inputs = tokenizer(prompt, return_tensors="pt")
         inputs = {k: v.to("cpu") for k, v in inputs.items()}
-        base_outputs = base_model.generate(
-            **inputs,
-            max_new_tokens=48,
-            pad_token_id=tokenizer.pad_token_id,
-            eos_token_id=tokenizer.eos_token_id,
-            do_sample=False
-        )
+        if peft_model is not None and adapter_loaded:
+            peft_model.eval()
+            with peft_model.disable_adapter():
+                base_outputs = peft_model.generate(
+                    **inputs,
+                    max_new_tokens=48,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    do_sample=False
+                )
+        else:
+            base_model.eval()
+            base_outputs = base_model.generate(
+                **inputs,
+                max_new_tokens=48,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                do_sample=False
+            )
         base_gen_tokens = base_outputs[0][inputs["input_ids"].shape[1]:]
         base_response = tokenizer.decode(base_gen_tokens, skip_special_tokens=True)
         base_response = mask_sensitive_output(base_response)

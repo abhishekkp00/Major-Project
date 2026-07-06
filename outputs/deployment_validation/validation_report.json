@@ -1,6 +1,6 @@
 {
   "report_type": "Phase 4 Secure Deployment & Inference Validation Report",
-  "generated_at_utc": "2026-07-03T17:41:26.050914+00:00",
+  "generated_at_utc": "2026-07-06T13:52:36.011887+00:00",
   "schema_version": "4.0.0",
   "adapter_metadata": {
     "adapter_id": "lora-adapter-v1",
@@ -8,7 +8,7 @@
     "schema_version": "3.0.0"
   },
   "target_device": {
-    "fingerprint_hash_prefix": "08b85cf6798dc6d0...",
+    "fingerprint_hash_prefix": "6c529fe2395b26be...",
     "device_matched": true
   },
   "verification_pipeline": {
@@ -25,9 +25,9 @@
     }
   },
   "inference_validation": {
-    "prompt": "Explain the concept of device-bound security in machine learning.",
-    "base_output": "\nThe concept of device-bound security is a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not",
-    "peft_output": "\nThe concept of device-bound security is a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not only a concept but also a concept that is not",
+    "prompt": "Secure device binding verification.",
+    "base_output": "\nThe Secure device is a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by",
+    "peft_output": "\nThe Secure device is a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by",
     "adapter_active": false
   },
   "security_guarantees": {

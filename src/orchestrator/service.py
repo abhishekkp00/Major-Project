@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional
 
 from src.phase1.pipeline import SecureDatasetPipeline
 from src.security import generate_key
+from src.common.config_loader import config
 
 logger = logging.getLogger("secure_lora.orchestrator.service")
 
@@ -202,6 +203,9 @@ class JobOrchestrator:
 
             progress_json_path = job_dir / "progress.json"
             env = os.environ.copy()
+            # Set to empty string (not pop) so load_dotenv inside subprocess
+            # cannot re-inject the global .env key — forcing use of SECURE_LORA_KEY_PATH
+            env["SECURE_LORA_KEY_HEX"] = ""
             env["SECURE_LORA_INPUT_DIR"] = str(raw_dir)
             env["SECURE_LORA_OUTPUT_DIR"] = str(enc_dir)
             env["SECURE_LORA_ENCRYPTED_DATA"] = str(enc_dir / "encrypted_dataset.enc")

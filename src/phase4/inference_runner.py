@@ -74,8 +74,9 @@ def run_side_by_side_inference(
     """
     logger.info("Running side-by-side comparative inference.")
 
-    # 1. Base Model Inference
-    base_output = generate_text(base_model, tokenizer, prompt, max_new_tokens, do_sample=False)
+    # 1. Base Model Inference (with adapter disabled)
+    with peft_model.disable_adapter():
+        base_output = generate_text(peft_model, tokenizer, prompt, max_new_tokens, do_sample=False)
 
     # 2. PEFT Model Inference
     peft_output = generate_text(peft_model, tokenizer, prompt, max_new_tokens, do_sample=False)
