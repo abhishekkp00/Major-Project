@@ -689,9 +689,21 @@ HTML_TEMPLATE = """
                             <p id="dropzone-text">Click to select dataset file</p>
                             <input type="file" id="job-file-input" style="display: none;" onchange="handleFileSelected(this)">
                         </div>
-                        <button type="button" class="btn" onclick="loadSampleDataset()" style="margin-top: 0.75rem; background: linear-gradient(135deg, #1f2937, #2d3748); color: #a0aec0; border: 1px solid rgba(255,255,255,0.08); padding: 0.5rem 1rem; border-radius: 6px; width: 100%; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;">
-                            ⚡ Load Demo PII Dataset
-                        </button>
+                        <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                            <label class="form-label" style="margin-bottom: 0.5rem; display: block;">Dataset Templates & Quick Test</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+                                <select id="dataset-template-select" style="flex: 1; height: 38px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #ffffff; padding: 0 0.5rem; outline: none; font-size: 0.85rem;">
+                                    <option value="pii_corporate" style="background: #0d111c; color: #fff;">Corporate Emails (PII Redaction)</option>
+                                    <option value="clinical_notes" style="background: #0d111c; color: #fff;">Clinical Notes PHI (MIMIC-III / HIPAA)</option>
+                                </select>
+                                <button type="button" onclick="showTemplateDetails()" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--cyan); border-radius: 6px; cursor: pointer; padding: 0;" title="Show Dataset Details">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                </button>
+                            </div>
+                            <button type="button" class="btn" id="btn-load-template" onclick="loadSelectedTemplate()" style="background: linear-gradient(135deg, #1f2937, #2d3748); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.2); padding: 0.5rem; border-radius: 6px; width: 100%; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease; font-weight: 600;">
+                                ⚡ Load Template Dataset
+                            </button>
+                        </div>
                     </div>
 
                     <button class="btn" id="btn-create-job" onclick="submitJob()" disabled>
@@ -913,6 +925,35 @@ HTML_TEMPLATE = """
 
     </div>
 
+    <!-- Dataset Details Modal -->
+    <div id="dataset-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        <div style="background: #0d111c; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; max-width: 600px; width: 90%; padding: 1.5rem; color: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto; position: relative;">
+            <span onclick="closeDatasetModal()" style="position: absolute; top: 0.75rem; right: 1.25rem; font-size: 1.75rem; cursor: pointer; color: #9ca3af; transition: color 0.2s ease;">&times;</span>
+            <h3 id="modal-title" style="margin-bottom: 0.75rem; font-size: 1.25rem; color: var(--cyan); display: flex; align-items: center; gap: 0.5rem;"></h3>
+            
+            <div style="margin-bottom: 1rem;">
+                <span style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; display: block; margin-bottom: 0.3rem;">Dataset Description</span>
+                <p id="modal-desc" style="color: #d1d5db; font-size: 0.85rem; line-height: 1.4;"></p>
+            </div>
+
+            <div style="margin-bottom: 1rem; display: flex; gap: 2rem;">
+                <div>
+                    <span style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; display: block; margin-bottom: 0.3rem;">Compliance Target</span>
+                    <span id="modal-compliance" style="background: rgba(0, 242, 254, 0.1); border: 1px solid var(--cyan); color: var(--cyan); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: 600;"></span>
+                </div>
+                <div>
+                    <span style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; display: block; margin-bottom: 0.3rem;">Source Link</span>
+                    <a id="modal-source-link" href="#" target="_blank" style="color: #60a5fa; font-size: 0.75rem; text-decoration: underline; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 250px;"></a>
+                </div>
+            </div>
+
+            <div>
+                <span style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; display: block; margin-bottom: 0.4rem;">Dataset Preview (JSONL)</span>
+                <pre id="modal-preview" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; color: #34d399; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 250px; overflow-y: auto; margin: 0;"></pre>
+            </div>
+        </div>
+    </div>
+
     <script>
         let selectedFile = null;
         let activeJobId = null;
@@ -940,22 +981,102 @@ HTML_TEMPLATE = """
             }
         }
 
-        // Preload sample training dataset for quick testing
-        function loadSampleDataset() {
-            document.getElementById('job-dataset-name').value = "secure_pii_dataset";
-            document.getElementById('job-version').value = "1.0.0";
-            document.getElementById('job-epochs').value = "1";
+        // Preload sample training dataset templates for quick testing
+        const templates = {
+            pii_corporate: {
+                title: "Corporate Emails (PII Redaction)",
+                desc: "A custom dataset containing mock corporate communications (emails, customer messages) with sensitive personal identifiers (SSNs, emails, phone numbers, secret API keys) to demonstrate the automated PII masking fine-tuning workflow.",
+                compliance: "GDPR / CCPA Compliance",
+                source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_pii_data.jsonl",
+                preview: '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333...", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME]..."}\n{"instruction": "Mask Personally Identifiable Information (PII) in this text...", "output": "..."}'
+            },
+            clinical_notes: {
+                title: "Clinical Notes PHI (MIMIC-III / HIPAA)",
+                desc: "A dataset containing realistic anonymized clinical doctor notes and patient transcripts. It simulates clinical speech to test HIPAA compliance gates, scrubbing patient names, medical record numbers (MRNs), age, date of admission, and physician information.",
+                compliance: "HIPAA PHI Safe Harbor Compliance",
+                source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_medical_phi.jsonl",
+                preview: '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985...", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN])..."}\n{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith...", "output": "..."}'
+            }
+        };
+
+        function showTemplateDetails() {
+            const val = document.getElementById('dataset-template-select').value;
+            const t = templates[val];
+            if (!t) return;
             
-            const sampleContent = '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333.", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME], email [MASKED_EMAIL] and SSN is [MASKED_SSN]."}\\n' +
-                                  '{"instruction": "Mask Personally Identifiable Information (PII) in this text: Contact admin at security@corporate.com or call 222-33-4444.", "output": "Mask Personally Identifiable Information (PII) in this text: Contact admin at [MASKED_EMAIL] or call [MASKED_SSN]."}\\n' +
-                                  '{"instruction": "Mask Personally Identifiable Information (PII) in this message: Secret code is secret12345.", "output": "Mask Personally Identifiable Information (PII) in this message: Secret code is [MASKED_SECRET]."}\\n';
+            document.getElementById('modal-title').innerText = t.title;
+            document.getElementById('modal-desc').innerText = t.desc;
+            document.getElementById('modal-compliance').innerText = t.compliance;
+            document.getElementById('modal-source-link').innerText = t.source;
+            document.getElementById('modal-source-link').href = t.source;
+            document.getElementById('modal-preview').innerText = t.preview;
             
-            const file = new File([sampleContent], "sample_pii_data.jsonl", { type: "application/jsonl" });
-            selectedFile = file;
-            document.getElementById('dropzone-text').innerText = "Selected: sample_pii_data.jsonl (Demo Template)";
-            document.getElementById('btn-create-job').disabled = false;
-            
-            updatePipelineFlow('dataset_intake', 0);
+            document.getElementById('dataset-modal').style.display = 'flex';
+        }
+
+        function closeDatasetModal() {
+            document.getElementById('dataset-modal').style.display = 'none';
+        }
+
+        // Close modal if clicked outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('dataset-modal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        async function loadSelectedTemplate() {
+            const val = document.getElementById('dataset-template-select').value;
+            const btn = document.getElementById('btn-load-template');
+            const origText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "⚡ Fetching dataset from internet...";
+
+            const t = templates[val];
+            try {
+                const res = await fetch(t.source);
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                const content = await res.text();
+                
+                document.getElementById('job-dataset-name').value = val === 'pii_corporate' ? 'secure_pii_dataset' : 'secure_hipaa_dataset';
+                document.getElementById('job-version').value = "1.0.0";
+                document.getElementById('job-epochs').value = "1";
+
+                const file = new File([content], val === 'pii_corporate' ? 'sample_pii_data.jsonl' : 'sample_medical_phi.jsonl', { type: "application/jsonl" });
+                selectedFile = file;
+
+                document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Fetched from GitHub)";
+                document.getElementById('btn-create-job').disabled = false;
+                
+                updatePipelineFlow('dataset_intake', 0);
+            } catch (e) {
+                console.error("Failed to fetch template from internet, falling back to local simulation:", e);
+                // Fallback to local offline template in case of network issues
+                let content = "";
+                if (val === 'pii_corporate') {
+                    content = '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333.", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME], email [MASKED_EMAIL] and SSN is [MASKED_SSN]."}\n' +
+                              '{"instruction": "Mask Personally Identifiable Information (PII) in this text: Contact admin at security@corporate.com or call 222-33-4444.", "output": "Mask Personally Identifiable Information (PII) in this text: Contact admin at [MASKED_EMAIL] or call [MASKED_SSN]."}\n';
+                } else {
+                    content = '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985, admitted on 05/10/2026 for acute coronary syndrome. Contact Dr. Sarah Smith at s.smith@hospital.org.", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN]), born [MASKED_DATE], admitted on [MASKED_DATE] for acute coronary syndrome. Contact [MASKED_PHYSICIAN] at [MASKED_EMAIL]."}\n' +
+                              '{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith on 06/15/2026 to St. Jude Care Facility. Next appointment scheduled at Metro Health clinic.", "output": "Scrub HIPAA identifiers: Discharged [MASKED_AGE] female [MASKED_NAME] on [MASKED_DATE] to [MASKED_LOCATION]. Next appointment scheduled at [MASKED_LOCATION]."}\n';
+                }
+                
+                document.getElementById('job-dataset-name').value = val === 'pii_corporate' ? 'secure_pii_dataset' : 'secure_hipaa_dataset';
+                document.getElementById('job-version').value = "1.0.0";
+                document.getElementById('job-epochs').value = "1";
+
+                const file = new File([content], val === 'pii_corporate' ? 'sample_pii_data.jsonl' : 'sample_medical_phi.jsonl', { type: "application/jsonl" });
+                selectedFile = file;
+
+                document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Offline Fallback)";
+                document.getElementById('btn-create-job').disabled = false;
+                
+                updatePipelineFlow('dataset_intake', 0);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = origText;
+            }
         }
 
         // Dynamically update the visual pipeline flow stepper
