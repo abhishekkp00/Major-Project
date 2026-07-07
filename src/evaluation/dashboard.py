@@ -560,6 +560,82 @@ HTML_TEMPLATE = """
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Pipeline Flow Stepper */
+        .pipeline-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem 0.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: visible;
+        }
+
+        .flow-line {
+            position: absolute;
+            top: 40%;
+            left: 8%;
+            right: 8%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+
+        .flow-line-progress {
+            position: absolute;
+            top: 40%;
+            left: 8%;
+            width: 0%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan), var(--emerald));
+            z-index: 2;
+            transform: translateY(-50%);
+            transition: width 0.4s ease;
+        }
+
+        .flow-node {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 16%;
+        }
+
+        .node-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1f2937;
+            border: 2px solid #4b5563;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+        }
+
+        .node-inner {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .node-label {
+            font-size: 0.6rem;
+            color: #9ca3af;
+            margin-top: 0.4rem;
+            text-align: center;
+            font-weight: 500;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -613,6 +689,9 @@ HTML_TEMPLATE = """
                             <p id="dropzone-text">Click to select dataset file</p>
                             <input type="file" id="job-file-input" style="display: none;" onchange="handleFileSelected(this)">
                         </div>
+                        <button type="button" class="btn" onclick="loadSampleDataset()" style="margin-top: 0.75rem; background: linear-gradient(135deg, #1f2937, #2d3748); color: #a0aec0; border: 1px solid rgba(255,255,255,0.08); padding: 0.5rem 1rem; border-radius: 6px; width: 100%; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;">
+                            ⚡ Load Demo PII Dataset
+                        </button>
                     </div>
 
                     <button class="btn" id="btn-create-job" onclick="submitJob()" disabled>
@@ -664,6 +743,37 @@ HTML_TEMPLATE = """
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Real-Time Lifecycle Monitor</div>
+                    </div>
+
+                    <label class="form-label">Active Pipeline Phase</label>
+                    <div class="pipeline-flow">
+                        <div class="flow-line"></div>
+                        <div class="flow-line-progress" id="flow-line-progress"></div>
+                        
+                        <div class="flow-node" id="node-intake">
+                            <div class="node-dot"><div class="node-inner"></div></div>
+                            <span class="node-label">Intake</span>
+                        </div>
+                        <div class="flow-node" id="node-inspect">
+                            <div class="node-dot"><div class="node-inner"></div></div>
+                            <span class="node-label">PII Audit</span>
+                        </div>
+                        <div class="flow-node" id="node-train">
+                            <div class="node-dot"><div class="node-inner"></div></div>
+                            <span class="node-label">Fine-Tune</span>
+                        </div>
+                        <div class="flow-node" id="node-package">
+                            <div class="node-dot"><div class="node-inner"></div></div>
+                            <span class="node-label">Packaging</span>
+                        </div>
+                        <div class="flow-node" id="node-verify">
+                            <div class="node-dot"><div class="node-inner"></div></div>
+                            <span class="node-label">Verify</span>
+                        </div>
+                        <div class="flow-node" id="node-inference">
+                            <div class="node-dot"><div class="node-inner"></div></div>
+                            <span class="node-label">Inference</span>
+                        </div>
                     </div>
                     
                     <label class="form-label">Orchestration Progress</label>
@@ -830,6 +940,81 @@ HTML_TEMPLATE = """
             }
         }
 
+        // Preload sample training dataset for quick testing
+        function loadSampleDataset() {
+            document.getElementById('job-dataset-name').value = "secure_pii_dataset";
+            document.getElementById('job-version').value = "1.0.0";
+            document.getElementById('job-epochs').value = "1";
+            
+            const sampleContent = '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333.", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME], email [MASKED_EMAIL] and SSN is [MASKED_SSN]."}\\n' +
+                                  '{"instruction": "Mask Personally Identifiable Information (PII) in this text: Contact admin at security@corporate.com or call 222-33-4444.", "output": "Mask Personally Identifiable Information (PII) in this text: Contact admin at [MASKED_EMAIL] or call [MASKED_SSN]."}\\n' +
+                                  '{"instruction": "Mask Personally Identifiable Information (PII) in this message: Secret code is secret12345.", "output": "Mask Personally Identifiable Information (PII) in this message: Secret code is [MASKED_SECRET]."}\\n';
+            
+            const file = new File([sampleContent], "sample_pii_data.jsonl", { type: "application/jsonl" });
+            selectedFile = file;
+            document.getElementById('dropzone-text').innerText = "Selected: sample_pii_data.jsonl (Demo Template)";
+            document.getElementById('btn-create-job').disabled = false;
+            
+            updatePipelineFlow('dataset_intake', 0);
+        }
+
+        // Dynamically update the visual pipeline flow stepper
+        function updatePipelineFlow(stage, progress) {
+            const nodes = ['intake', 'inspect', 'train', 'package', 'verify', 'inference'];
+            let activeIdx = 0;
+
+            if (stage === 'dataset_intake') {
+                activeIdx = 0;
+            } else if (stage === 'pii_inspection') {
+                activeIdx = 1;
+            } else if (stage === 'fine_tuning') {
+                activeIdx = 2;
+            } else if (['preparing_adapter', 'deriving_device_binding', 'encrypting_adapter', 'generating_hash', 'generating_signature', 'building_package'].includes(stage)) {
+                activeIdx = 3;
+            } else if (['running_integrity_check', 'running_device_authorization_check', 'running_secure_deployment_check', 'secure_inference_validation'].includes(stage)) {
+                activeIdx = 4;
+            } else if (stage === 'security_validation_completed') {
+                activeIdx = 5;
+            }
+
+            nodes.forEach((name, idx) => {
+                const node = document.getElementById('node-' + name);
+                if (!node) return;
+                const dot = node.querySelector('.node-dot');
+                const inner = node.querySelector('.node-inner');
+                const label = node.querySelector('.node-label');
+
+                if (idx < activeIdx) {
+                    // Completed
+                    dot.style.borderColor = 'var(--emerald)';
+                    dot.style.background = 'rgba(16, 185, 129, 0.1)';
+                    dot.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
+                    inner.style.background = 'var(--emerald)';
+                    label.style.color = '#ffffff';
+                } else if (idx === activeIdx) {
+                    // Active (glowing)
+                    dot.style.borderColor = 'var(--cyan)';
+                    dot.style.background = 'rgba(0, 242, 254, 0.15)';
+                    dot.style.boxShadow = '0 0 12px rgba(0, 242, 254, 0.6)';
+                    inner.style.background = 'var(--cyan)';
+                    label.style.color = 'var(--cyan)';
+                } else {
+                    // Pending
+                    dot.style.borderColor = '#4b5563';
+                    dot.style.background = '#1f2937';
+                    dot.style.boxShadow = 'none';
+                    inner.style.background = 'transparent';
+                    label.style.color = '#9ca3af';
+                }
+            });
+
+            const progressPct = activeIdx * 20; // 5 steps * 20%
+            const line = document.getElementById('flow-line-progress');
+            if (line) {
+                line.style.width = progressPct + '%';
+            }
+        }
+
         // Initialize Loss Chart
         function initChart() {
             const ctx = document.getElementById('lossChart').getContext('2d');
@@ -932,6 +1117,7 @@ HTML_TEMPLATE = """
                     document.getElementById('active-job-status').innerText = job.status;
                     document.getElementById('active-job-stage').innerText = job.stage;
                     document.getElementById('job-progress-bar').style.width = job.progress + "%";
+                    updatePipelineFlow(job.stage, job.progress);
 
                     // Update loss chart
                     if (job.loss_history && job.loss_history.length > 0) {
@@ -1175,6 +1361,7 @@ HTML_TEMPLATE = """
 
         initChart();
         fetchStatus();
+        updatePipelineFlow('dataset_intake', 0);
     </script>
 </body>
 </html>
