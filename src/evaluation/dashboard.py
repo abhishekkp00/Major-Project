@@ -1729,6 +1729,6 @@ def p4_generate():
     })
 
 if __name__ == '__main__':
-    port = int(os.getenv("SECURE_LORA_DASHBOARD_PORT", 5005))
+    port = int(os.getenv("PORT", os.getenv("SECURE_LORA_DASHBOARD_PORT", 5005)))
     logger.info("Starting professional secure dashboard on port %d...", port)
     app.run(host='0.0.0.0', port=port, debug=False)
