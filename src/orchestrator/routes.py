@@ -228,6 +228,7 @@ def get_job_report(job_id):
 
     try:
         report_data = json.loads(report_file.read_text(encoding="utf-8"))
+        report_data["security_validation_outcomes"] = job.get("security_metrics", {})
         return jsonify({"success": True, "report": report_data})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

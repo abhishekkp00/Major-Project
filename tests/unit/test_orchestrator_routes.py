@@ -143,7 +143,8 @@ def test_get_job_report(client, tmp_path, monkeypatch):
     assert response.status_code == 200
     data = response.get_json()
     assert data["success"] is True
-    assert data["report"] == report_content
+    assert data["report"]["verification_pipeline"] == report_content["verification_pipeline"]
+    assert "security_validation_outcomes" in data["report"]
 
 
 def test_stream_job_events(client, monkeypatch):
