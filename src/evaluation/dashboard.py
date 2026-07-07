@@ -782,6 +782,7 @@ HTML_TEMPLATE = """
                                 <select id="dataset-template-select" style="flex: 1; height: 38px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #ffffff; padding: 0 0.5rem; outline: none; font-size: 0.85rem;">
                                     <option value="pii_corporate" style="background: #0d111c; color: #fff;">Corporate Emails (PII Redaction)</option>
                                     <option value="clinical_notes" style="background: #0d111c; color: #fff;">Clinical Notes PHI (MIMIC-III / HIPAA)</option>
+                                    <option value="real_world_pii" style="background: #0d111c; color: #fff;">Real-World PII (HuggingFace ai4privacy)</option>
                                 </select>
                                 <button type="button" onclick="showTemplateDetails()" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--cyan); border-radius: 6px; cursor: pointer; padding: 0;" title="Show Dataset Details">
                                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -1111,6 +1112,13 @@ HTML_TEMPLATE = """
                 compliance: "HIPAA PHI Safe Harbor Compliance",
                 source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_medical_phi.jsonl",
                 preview: '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985...", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN])..."}\n{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith...", "output": "..."}'
+            },
+            real_world_pii: {
+                title: "Real-World PII (HuggingFace ai4privacy)",
+                desc: "A subset of the open-source 'ai4privacy/pii-masking-300k' dataset downloaded directly from Hugging Face. Contains real-world text and communications containing genuine, diverse, and complex PII such as driver's licenses, passport numbers, emails, phone numbers, and physical addresses.",
+                compliance: "GDPR / HIPAA / CCPA Privacy Compliance",
+                source: "/static/real_world_pii.jsonl",
+                preview: '{"instruction": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation... Applicant A: - Passport: 301025226...", "output": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation... Applicant A: - Passport: [PASSPORT]..."}'
             }
         };
 
@@ -1154,34 +1162,53 @@ HTML_TEMPLATE = """
                 if (!res.ok) throw new Error("HTTP error " + res.status);
                 const content = await res.text();
                 
-                document.getElementById('job-dataset-name').value = val === 'pii_corporate' ? 'secure_pii_dataset' : 'secure_hipaa_dataset';
+                let datasetName = 'secure_pii_dataset';
+                let fileName = 'sample_pii_data.jsonl';
+                if (val === 'clinical_notes') {
+                    datasetName = 'secure_hipaa_dataset';
+                    fileName = 'sample_medical_phi.jsonl';
+                } else if (val === 'real_world_pii') {
+                    datasetName = 'secure_real_world_pii_dataset';
+                    fileName = 'real_world_pii.jsonl';
+                }
+
+                document.getElementById('job-dataset-name').value = datasetName;
                 document.getElementById('job-version').value = "1.0.0";
                 document.getElementById('job-epochs').value = "1";
 
-                const file = new File([content], val === 'pii_corporate' ? 'sample_pii_data.jsonl' : 'sample_medical_phi.jsonl', { type: "application/jsonl" });
+                const file = new File([content], fileName, { type: "application/jsonl" });
                 selectedFile = file;
 
-                document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Fetched from GitHub)";
+                document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Fetched from GitHub/HF)";
                 document.getElementById('btn-create-job').disabled = false;
                 
                 updatePipelineFlow('dataset_intake', 0);
             } catch (e) {
                 console.error("Failed to fetch template from internet, falling back to local simulation:", e);
                 // Fallback to local offline template in case of network issues
+                let datasetName = 'secure_pii_dataset';
+                let fileName = 'sample_pii_data.jsonl';
                 let content = "";
+                
                 if (val === 'pii_corporate') {
                     content = '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333.", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME], email [MASKED_EMAIL] and SSN is [MASKED_SSN]."}\n' +
                               '{"instruction": "Mask Personally Identifiable Information (PII) in this text: Contact admin at security@corporate.com or call 222-33-4444.", "output": "Mask Personally Identifiable Information (PII) in this text: Contact admin at [MASKED_EMAIL] or call [MASKED_SSN]."}\n';
-                } else {
+                } else if (val === 'clinical_notes') {
+                    datasetName = 'secure_hipaa_dataset';
+                    fileName = 'sample_medical_phi.jsonl';
                     content = '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985, admitted on 05/10/2026 for acute coronary syndrome. Contact Dr. Sarah Smith at s.smith@hospital.org.", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN]), born [MASKED_DATE], admitted on [MASKED_DATE] for acute coronary syndrome. Contact [MASKED_PHYSICIAN] at [MASKED_EMAIL]."}\n' +
                               '{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith on 06/15/2026 to St. Jude Care Facility. Next appointment scheduled at Metro Health clinic.", "output": "Scrub HIPAA identifiers: Discharged [MASKED_AGE] female [MASKED_NAME] on [MASKED_DATE] to [MASKED_LOCATION]. Next appointment scheduled at [MASKED_LOCATION]."}\n';
+                } else {
+                    datasetName = 'secure_real_world_pii_dataset';
+                    fileName = 'real_world_pii.jsonl';
+                    content = '{"instruction": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation  Dear Applicants,  We hope this email finds you well.   This is to confirm that we have received the necessary documentation for your admission applications. Please find attached below the list of attachments for each applicant:  Applicant A: - Passport: 301025226 - Driver\'s License: ROSAL 955306 9", "output": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation  Dear Applicants,  We hope this email finds you well.   This is to confirm that we have received the necessary documentation for your admission applications. Please find attached below the list of attachments for each applicant:  Applicant A: - Passport: [PASSPORT] - Driver\'s License: ROSAL 955306 9"}\n';
                 }
                 
-                document.getElementById('job-dataset-name').value = val === 'pii_corporate' ? 'secure_pii_dataset' : 'secure_hipaa_dataset';
+                document.getElementById('job-dataset-name').value = datasetName;
                 document.getElementById('job-version').value = "1.0.0";
                 document.getElementById('job-epochs').value = "1";
 
-                const file = new File([content], val === 'pii_corporate' ? 'sample_pii_data.jsonl' : 'sample_medical_phi.jsonl', { type: "application/jsonl" });
+                const file = new File([content], fileName, { type: "application/jsonl" });
                 selectedFile = file;
 
                 document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Offline Fallback)";
@@ -1264,7 +1291,8 @@ HTML_TEMPLATE = """
                         borderColor: '#00f2fe',
                         backgroundColor: 'rgba(0, 242, 254, 0.1)',
                         borderWidth: 2,
-                        tension: 0.1
+                        tension: 0.1,
+                        spanGaps: true
                     }]
                 },
                 options: {
@@ -1357,18 +1385,21 @@ HTML_TEMPLATE = """
 
                     // Update loss chart
                     if (job.loss_history && job.loss_history.length > 0) {
-                        let labels = [];
-                        let losses = [];
-                        if (job.loss_history.length === 1) {
-                            labels = [0, 1];
-                            losses = [job.loss_history[0].loss + 0.15, job.loss_history[0].loss];
-                        } else {
-                            labels = job.loss_history.map((_, i) => i + 1);
-                            losses = job.loss_history.map(item => item.loss);
+                        const validHistory = job.loss_history.filter(item => item.loss !== null && item.loss !== undefined);
+                        if (validHistory.length > 0) {
+                            let labels = [];
+                            let losses = [];
+                            if (validHistory.length === 1) {
+                                labels = [0, 1];
+                                losses = [validHistory[0].loss + 0.15, validHistory[0].loss];
+                            } else {
+                                labels = validHistory.map((_, i) => i + 1);
+                                losses = validHistory.map(item => item.loss);
+                            }
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = losses;
+                            chart.update();
                         }
-                        chart.data.labels = labels;
-                        chart.data.datasets[0].data = losses;
-                        chart.update();
                     }
 
                     // Poll logs in background
@@ -1616,6 +1647,14 @@ def get_masked_salt(salt: str) -> str:
     if len(salt) <= 6:
         return "***"
     return f"{salt[:3]}...{salt[-3:]}"
+
+@app.route('/static/real_world_pii.jsonl')
+def get_real_world_pii():
+    try:
+        with open('real_world_pii.jsonl', 'r', encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    except Exception as e:
+        return str(e), 404
 
 @app.route('/')
 def home():
