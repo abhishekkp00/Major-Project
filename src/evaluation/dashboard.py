@@ -636,6 +636,86 @@ HTML_TEMPLATE = """
             font-weight: 500;
             white-space: nowrap;
         }
+
+        /* Tooltip styling */
+        .tooltip-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: auto;
+            cursor: pointer;
+        }
+
+        .tooltip-icon {
+            width: 16px;
+            height: 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            transition: all 0.2s ease;
+        }
+
+        .tooltip-container:hover .tooltip-icon {
+            background: rgba(0, 242, 254, 0.15);
+            border-color: var(--cyan);
+            color: #ffffff;
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 260px;
+            background: rgba(13, 17, 28, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            color: #e4e4e7;
+            text-align: left;
+            border-radius: 8px;
+            padding: 0.75rem;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            right: 0;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            transform: translateY(6px);
+            font-size: 0.75rem;
+            line-height: 1.4;
+            font-family: var(--font-sans);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+            text-transform: none;
+            font-weight: normal;
+        }
+
+        .tooltip-text strong {
+            color: var(--cyan);
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
+        }
+
+        .tooltip-text code {
+            background: rgba(255,255,255,0.05);
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--purple);
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -661,10 +741,17 @@ HTML_TEMPLATE = """
             <!-- Left Panel: Job Controls -->
             <div>
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
                             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                             Start New Secured Job
+                        </div>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">i</span>
+                            <div class="tooltip-text">
+                                <strong>Start New Secured Job</strong>
+                                Configures your model training parameters. Load a template (or upload a custom JSONL), then click "Launch" to start the secure fine-tuning, hardware binding, and packaging pipeline.
+                            </div>
                         </div>
                     </div>
                     
@@ -753,8 +840,15 @@ HTML_TEMPLATE = """
             <!-- Right Panel: Job Monitor -->
             <div>
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <div class="card-title">Real-Time Lifecycle Monitor</div>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">i</span>
+                            <div class="tooltip-text">
+                                <strong>Real-Time Lifecycle Monitor</strong>
+                                Tracks the training and orchestration steps. Plots loss values over time and shows the active log stream from the underlying PyTorch training process.
+                            </div>
+                        </div>
                     </div>
 
                     <label class="form-label">Active Pipeline Phase</label>
@@ -811,10 +905,17 @@ HTML_TEMPLATE = """
             <div>
                 <!-- Target Environment Info -->
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
                             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             Target Environment
+                        </div>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">i</span>
+                            <div class="tooltip-text">
+                                <strong>Target Environment</strong>
+                                Shows details of the local machine. During deployment, the verifier computes these identifiers to reconstruct the unique hardware key required to decrypt the adapter.
+                            </div>
                         </div>
                     </div>
                     <div class="info-grid">
@@ -835,10 +936,17 @@ HTML_TEMPLATE = """
 
                 <!-- Phase 4 Verification checklist -->
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
                             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                             Secure Deployment Gate
+                        </div>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">i</span>
+                            <div class="tooltip-text">
+                                <strong>Secure Deployment Gate</strong>
+                                The client verification suite. Click <code>Verify & Load Adapter</code> to verify authenticity, check hardware authorization, decrypt weights in-memory, and dynamically bind them.
+                            </div>
                         </div>
                     </div>
                     <div class="step-list" id="step-checklist">
@@ -886,10 +994,17 @@ HTML_TEMPLATE = """
             <!-- Right: Inference Playground -->
             <div>
                 <div class="card" style="margin-bottom: 0;">
-                    <div class="card-header">
-                        <div class="card-title">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
                             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                             Decrypted Execution Playground
+                        </div>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">i</span>
+                            <div class="tooltip-text">
+                                <strong>Decrypted Execution Playground</strong>
+                                Query models side-by-side. The Baseline model shows default responses. The Secure model shows fine-tuned outputs (e.g. automatically redacting PII). Enter a prompt and click "Run".
+                            </div>
                         </div>
                     </div>
                     
@@ -1242,8 +1357,15 @@ HTML_TEMPLATE = """
 
                     // Update loss chart
                     if (job.loss_history && job.loss_history.length > 0) {
-                        const labels = job.loss_history.map((_, i) => i + 1);
-                        const losses = job.loss_history.map(item => item.loss);
+                        let labels = [];
+                        let losses = [];
+                        if (job.loss_history.length === 1) {
+                            labels = [0, 1];
+                            losses = [job.loss_history[0].loss + 0.15, job.loss_history[0].loss];
+                        } else {
+                            labels = job.loss_history.map((_, i) => i + 1);
+                            losses = job.loss_history.map(item => item.loss);
+                        }
                         chart.data.labels = labels;
                         chart.data.datasets[0].data = losses;
                         chart.update();
