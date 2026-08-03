@@ -292,6 +292,14 @@ def run_training():
     model.save_pretrained(config.lora_output_dir)
     tokenizer.save_pretrained(config.lora_output_dir)
 
+    # Save adapter state dict as a pickle file (.pkl)
+    import pickle
+    lora_state_dict = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
+    pkl_path = Path(config.lora_output_dir) / "adapter_model.pkl"
+    logger.info("Saving adapter state dict as pickle to %s...", pkl_path)
+    with open(pkl_path, "wb") as f:
+        pickle.dump(lora_state_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
     logger.info("Running validation evaluations...")
     eval_results = trainer.evaluate()
     val_loss = eval_results.get("eval_loss", float("inf"))
