@@ -794,7 +794,7 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
 
-                    <button class="btn" id="btn-create-job" onclick="submitJob()" disabled>
+                    <button class="btn" id="btn-create-job" onclick="submitJob()">
                         Launch Secure End-to-End Job
                     </button>
                 </div>
@@ -1093,7 +1093,6 @@ HTML_TEMPLATE = """
             if (input.files && input.files[0]) {
                 selectedFile = input.files[0];
                 document.getElementById('dropzone-text').innerText = "Selected: " + selectedFile.name;
-                document.getElementById('btn-create-job').disabled = false;
             }
         }
 
@@ -1154,11 +1153,12 @@ HTML_TEMPLATE = """
             const btn = document.getElementById('btn-load-template');
             const origText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "⚡ Fetching dataset from internet...";
+            btn.innerText = "⚡ Loading dataset...";
 
             const t = templates[val];
             try {
-                const res = await fetch(t.source);
+                // Route through server-side to avoid CORS issues with external URLs
+                const res = await fetch('/api/template/' + val);
                 if (!res.ok) throw new Error("HTTP error " + res.status);
                 const content = await res.text();
                 
@@ -1180,7 +1180,7 @@ HTML_TEMPLATE = """
                 selectedFile = file;
 
                 document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Fetched from GitHub/HF)";
-                document.getElementById('btn-create-job').disabled = false;
+                // button is always enabled
                 
                 updatePipelineFlow('dataset_intake', 0);
             } catch (e) {
@@ -1315,8 +1315,14 @@ HTML_TEMPLATE = """
             const version = document.getElementById('job-version').value.trim();
             const epochs = document.getElementById('job-epochs').value.trim();
             
-            if (!name) return alert("Dataset name is required!");
-            if (!selectedFile) return alert("Please select a training file!");
+            if (!name) {
+                alert("Please enter a Dataset Name first.\n\nTip: Click '⚡ Load Template Dataset' to auto-fill everything.");
+                return;
+            }
+            if (!selectedFile) {
+                alert("No training file selected.\n\nTip: Click '⚡ Load Template Dataset' to load a sample dataset automatically.");
+                return;
+            }
 
             const btn = document.getElementById('btn-create-job');
             btn.disabled = true;
@@ -1655,6 +1661,23 @@ def get_real_world_pii():
             return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
     except Exception as e:
         return str(e), 404
+
+@app.route('/api/template/<string:name>')
+def get_template_dataset(name: str):
+    """Serve local dataset template files to avoid browser CORS issues."""
+    template_files = {
+        'pii_corporate':  'sample_pii_data.jsonl',
+        'clinical_notes': 'sample_medical_phi.jsonl',
+        'real_world_pii': 'real_world_pii.jsonl',
+    }
+    filename = template_files.get(name)
+    if not filename:
+        return jsonify({'error': 'Unknown template'}), 404
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    except FileNotFoundError:
+        return jsonify({'error': f'Template file {filename} not found on server'}), 404
 
 @app.route('/')
 def home():
