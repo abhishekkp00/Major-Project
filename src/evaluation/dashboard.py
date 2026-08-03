@@ -1103,14 +1103,14 @@ HTML_TEMPLATE = """
                 desc: "A custom dataset containing mock corporate communications (emails, customer messages) with sensitive personal identifiers (SSNs, emails, phone numbers, secret API keys) to demonstrate the automated PII masking fine-tuning workflow.",
                 compliance: "GDPR / CCPA Compliance",
                 source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_pii_data.jsonl",
-                preview: '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333...", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME]..."}\n{"instruction": "Mask Personally Identifiable Information (PII) in this text...", "output": "..."}'
+                preview: '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333...", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME]..."}\\n{"instruction": "Mask Personally Identifiable Information (PII) in this text...", "output": "..."}'
             },
             clinical_notes: {
                 title: "Clinical Notes PHI (MIMIC-III / HIPAA)",
                 desc: "A dataset containing realistic anonymized clinical doctor notes and patient transcripts. It simulates clinical speech to test HIPAA compliance gates, scrubbing patient names, medical record numbers (MRNs), age, date of admission, and physician information.",
                 compliance: "HIPAA PHI Safe Harbor Compliance",
                 source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_medical_phi.jsonl",
-                preview: '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985...", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN])..."}\n{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith...", "output": "..."}'
+                preview: '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985...", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN])..."}\\n{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith...", "output": "..."}'
             },
             real_world_pii: {
                 title: "Real-World PII (HuggingFace ai4privacy)",
@@ -1413,7 +1413,7 @@ HTML_TEMPLATE = """
                     const logsData = await logsRes.json();
                     if (logsData.success) {
                         consoleBox.innerHTML = '';
-                        logsData.logs.split('\\n').forEach(line => {
+                        logsData.logs.split('\n').forEach(line => {
                             if (!line.trim()) return;
                             const div = document.createElement('div');
                             div.className = line.includes('ERROR') || line.includes('failed') || line.includes('FAILED') ? 'console-line console-err' : 'console-line';
@@ -1567,7 +1567,7 @@ HTML_TEMPLATE = """
                 item.innerHTML = `
                     <div class="step-info">
                         <span class="step-number">${idx + 1}</span>
-                        <span class="step-name">${stepKey.replace(/^Step \\d+: /, '')}</span>
+                        <span class="step-name">${stepKey.replace(/^Step \d+: /, '')}</span>
                     </div>
                     <span class="step-status ${statusClass}">${status}</span>
                 `;
