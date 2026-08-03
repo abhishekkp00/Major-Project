@@ -44,3 +44,6 @@ outputs/final_adapter/
 
 # Restored / decrypted adapter (never commit plaintext adapter)
 /tmp/restored_adapter_phase3.tar.gz
+
+# Runtime job workspace — contains per-job secrets.key and ephemeral artefacts
+outputs/jobs/
