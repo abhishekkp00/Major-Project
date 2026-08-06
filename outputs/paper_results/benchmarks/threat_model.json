@@ -1,0 +1,286 @@
+{
+  "metadata": {
+    "analysis_version": "1.0.0",
+    "timestamp_utc": "2026-08-06T14:07:29.650904+00:00",
+    "total_threats_analyzed": 7,
+    "total_simulations": 6,
+    "simulations_passed": 6,
+    "simulations_failed": 0,
+    "overall_security_result": "PASS",
+    "system": {
+      "python_version": "3.12.3",
+      "os": "Linux",
+      "os_release": "7.0.0-28-generic"
+    }
+  },
+  "adversary_model": {
+    "model_name": "Dolev-Yao Extended for Edge ML Deployment",
+    "adversary_capabilities": [
+      "Physical access to edge device storage (filesystem clone, disk pull)",
+      "Network interception between model distribution server and edge device",
+      "Read/write access to files on the edge device's filesystem",
+      "Knowledge of publicly documented algorithms (AES-GCM, HKDF, RSA-PSS)",
+      "Ability to dump OS environment variables on the target device",
+      "Access to adapter .enc file, metadata.json, and .hash file"
+    ],
+    "adversary_goals": [
+      "Decrypt LoRA adapter weights for unauthorized use on a different device",
+      "Inject malicious weights into the deployment pipeline undetected",
+      "Extract PII memorized by the model from training data",
+      "Corrupt adapter weights to alter model behavior (backdoor)",
+      "Replay a legitimate adapter package across unauthorized devices"
+    ],
+    "security_assumptions": [
+      "The cryptographic primitives (AES-256-GCM, HKDF-SHA256, RSA-PSS) are computationally secure",
+      "The hardware fingerprint identifiers (machine-id, CPU string, disk UUID) are stable on the authorized device",
+      "The developer's RSA private key is stored securely and is not compromised",
+      "The P3_DEVICE_SALT is kept confidential and rotated per deployment",
+      "The adversary cannot access volatile RAM on the authorized device during decryption"
+    ],
+    "out_of_scope_threats": [
+      "Physical RAM extraction (cold-boot attack) \u2014 mitigated by in-memory-only policy but not formally proven here",
+      "Adversary with root access to the authorized machine at decryption time",
+      "Side-channel attacks (timing, power analysis) on AES-GCM",
+      "Compromise of the CSPRNG (os.urandom) on the deployment device"
+    ]
+  },
+  "threat_catalog": [
+    {
+      "id": "T-01",
+      "stride_category": "I \u2014 Information Disclosure",
+      "name": "Physical Storage Clone / Disk Theft",
+      "description": "An attacker with physical access to the edge device clones the filesystem or removes the storage medium. They attempt to load the cloned adapter files on their own machine.",
+      "attacker_capability": "Physical disk access, full filesystem clone",
+      "asset_at_risk": "LoRA adapter weights (.enc file)",
+      "likelihood": "High (edge/field deployment scenario)",
+      "impact": "Critical (full model IP exposure)",
+      "countermeasure": "AES-256-GCM encryption with hardware-bound key. The decryption key is derived from this device's hardware identifiers via HKDF. Cloned files yield only ciphertext on foreign hardware.",
+      "cryptographic_primitive": "AES-256-GCM + HKDF(fingerprint_hash, salt)",
+      "testable": true,
+      "test_id": "SIM-01",
+      "simulation_result": {
+        "sim_id": "SIM-01",
+        "name": "Physical Disk Clone / Cross-Device Decryption",
+        "result": "PASS",
+        "exception_caught": "CryptoError",
+        "duration_ms": 1.449,
+        "details": {
+          "message": "Decryption correctly rejected with wrong hardware fingerprint",
+          "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
+        }
+      }
+    },
+    {
+      "id": "T-02",
+      "stride_category": "T \u2014 Tampering",
+      "name": "Bit-Level Ciphertext Modification",
+      "description": "An attacker modifies one or more bytes of the encrypted adapter package to corrupt weights, inject backdoor behavior, or bypass integrity checks.",
+      "attacker_capability": "Write access to adapter .enc file or archive",
+      "asset_at_risk": "Cryptographic integrity of adapter weights",
+      "likelihood": "Medium (requires write access to adapter file)",
+      "impact": "High (silent model behavior corruption)",
+      "countermeasure": "SHA-256 payload hash + AES-GCM authentication tag. Any bit modification invalidates the GCM tag during decryption, causing an immediate abort.",
+      "cryptographic_primitive": "SHA-256 + AES-256-GCM authentication tag",
+      "testable": true,
+      "test_id": "SIM-02",
+      "simulation_result": {
+        "sim_id": "SIM-02",
+        "name": "Bit-Level Ciphertext Tampering Detection",
+        "result": "PASS",
+        "exception_caught": "ValueError",
+        "duration_ms": 1.34,
+        "details": {
+          "message": "Integrity check correctly rejected tampered ciphertext",
+          "exception": "Integrity check FAILED. Stored hash: 932a15b98781\u2026 | Computed hash: 9ad66ca17b70\u2026 The encrypted adapter has been tampered with or replaced.",
+          "tamper_offset_bytes": 200,
+          "tamper_method": "XOR bit-flip (0xFF)"
+        }
+      }
+    },
+    {
+      "id": "T-03",
+      "stride_category": "R \u2014 Repudiation",
+      "name": "Malicious Weight Injection (Supply Chain Attack)",
+      "description": "An attacker crafts a malicious adapter package (e.g., a backdoored model) and distributes it as a legitimate deployment artifact. The victim cannot verify the adapter's origin.",
+      "attacker_capability": "Ability to distribute files (e.g., MITM, compromised repo)",
+      "asset_at_risk": "Authenticity and origin of adapter weights",
+      "likelihood": "Medium (supply chain attacks increasingly common in ML)",
+      "impact": "Critical (model behavior poisoning)",
+      "countermeasure": "RSA-PSS digital signature over SHA-256 digest of encrypted payload. Verification fails if the adapter was not signed by the developer's private key.",
+      "cryptographic_primitive": "RSA-2048-PSS-SHA256",
+      "testable": true,
+      "test_id": "SIM-03",
+      "simulation_result": {
+        "sim_id": "SIM-03",
+        "name": "RSA-PSS Signature Forgery / Wrong Public Key",
+        "result": "PASS",
+        "exception_caught": "ValueError",
+        "duration_ms": 160.007,
+        "details": {
+          "message": "Signature verification correctly rejected with wrong public key",
+          "exception": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+        }
+      }
+    },
+    {
+      "id": "T-04",
+      "stride_category": "S \u2014 Spoofing",
+      "name": "Salt/Metadata Replay \u2014 Cross-Device Unauthorized Decryption",
+      "description": "An attacker captures the metadata.json (salt, IV, algorithm) and attempts to replay the key derivation on a different device to reconstruct the AES key.",
+      "attacker_capability": "Access to metadata.json; known salt and algorithm",
+      "asset_at_risk": "AES decryption key for adapter weights",
+      "likelihood": "Medium (metadata stored alongside ciphertext)",
+      "impact": "Critical (full decryption on unauthorized device)",
+      "countermeasure": "HKDF key derivation uses device hardware fingerprint as IKM. Knowledge of salt alone is insufficient \u2014 the exact hardware identifiers are also required. Without the correct machine-id, CPU model, and disk UUID, the derived key produces garbage on decryption.",
+      "cryptographic_primitive": "HKDF(IKM=fingerprint_hash, Salt=P3_DEVICE_SALT)",
+      "testable": true,
+      "test_id": "SIM-04",
+      "simulation_result": {
+        "sim_id": "SIM-04",
+        "name": "Salt Replay with Spoofed Hardware Fingerprint",
+        "result": "PASS",
+        "exception_caught": "CryptoError",
+        "duration_ms": 1.333,
+        "details": {
+          "message": "Salt replay with spoofed HW fingerprint correctly rejected",
+          "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
+          "spoofed_identifier": "disk_uuid"
+        }
+      }
+    },
+    {
+      "id": "T-05",
+      "stride_category": "I \u2014 Information Disclosure",
+      "name": "PII Memorization in Model Weights",
+      "description": "Training data containing SSNs, emails, or PHI is fed directly into the LLM, causing the model to memorize and reproduce sensitive information during inference.",
+      "attacker_capability": "Ability to query the deployed model",
+      "asset_at_risk": "Privacy of individuals in training data",
+      "likelihood": "High (known memorization behavior in LLMs)",
+      "impact": "High (GDPR/HIPAA violation, data breach)",
+      "countermeasure": "Phase 1 PII Inspection Engine scans and masks SSNs, emails, phone numbers, IP addresses, API keys, and credit card numbers before any tokenization occurs.",
+      "cryptographic_primitive": "Regex-based PII masking (6 PII categories)",
+      "testable": false,
+      "test_id": null,
+      "note": "Evaluated separately in pii_metrics.py"
+    },
+    {
+      "id": "T-06",
+      "stride_category": "I \u2014 Information Disclosure",
+      "name": "Plaintext Weight Recovery via Disk Forensics",
+      "description": "After training, an attacker performs disk forensics on the training machine to recover plaintext weight files that were temporarily written during training or decryption.",
+      "attacker_capability": "Forensic access to training machine storage",
+      "asset_at_risk": "Plaintext LoRA adapter weights",
+      "likelihood": "Medium (if no secure cleanup is enforced)",
+      "impact": "Critical (full weight exposure without decryption)",
+      "countermeasure": "Zero-Plaintext-at-Rest mandate: weights are processed only in volatile RAM buffers. Any temporary plaintext files are immediately shredded via 3-pass DoD-style overwrite (urandom \u00d7 3 + rename + unlink).",
+      "cryptographic_primitive": "3-pass random overwrite (src.security.shred)",
+      "testable": false,
+      "test_id": null,
+      "note": "Enforced architecturally by the pipeline design"
+    },
+    {
+      "id": "T-07",
+      "stride_category": "E \u2014 Elevation of Privilege",
+      "name": "Key Extraction via Environment Variable Dump",
+      "description": "An attacker with OS-level access dumps environment variables to recover the P3_DEVICE_SALT, then attempts to brute-force or derive the AES key.",
+      "attacker_capability": "OS-level process introspection or env-var access",
+      "asset_at_risk": "P3_DEVICE_SALT environment variable",
+      "likelihood": "Low-Medium (requires process access)",
+      "impact": "Medium (requires hardware identifiers too \u2014 not sufficient alone)",
+      "countermeasure": "Salt alone is insufficient; the hardware fingerprint hash is also required as HKDF IKM. An attacker who obtains the salt but runs on different hardware will derive a wrong key.",
+      "cryptographic_primitive": "HKDF two-factor derivation (salt + hardware fingerprint)",
+      "testable": true,
+      "test_id": "SIM-04",
+      "simulation_result": {
+        "sim_id": "SIM-04",
+        "name": "Salt Replay with Spoofed Hardware Fingerprint",
+        "result": "PASS",
+        "exception_caught": "CryptoError",
+        "duration_ms": 1.333,
+        "details": {
+          "message": "Salt replay with spoofed HW fingerprint correctly rejected",
+          "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
+          "spoofed_identifier": "disk_uuid"
+        }
+      }
+    }
+  ],
+  "simulation_results": [
+    {
+      "sim_id": "SIM-01",
+      "name": "Physical Disk Clone / Cross-Device Decryption",
+      "result": "PASS",
+      "exception_caught": "CryptoError",
+      "duration_ms": 1.449,
+      "details": {
+        "message": "Decryption correctly rejected with wrong hardware fingerprint",
+        "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
+      }
+    },
+    {
+      "sim_id": "SIM-02",
+      "name": "Bit-Level Ciphertext Tampering Detection",
+      "result": "PASS",
+      "exception_caught": "ValueError",
+      "duration_ms": 1.34,
+      "details": {
+        "message": "Integrity check correctly rejected tampered ciphertext",
+        "exception": "Integrity check FAILED. Stored hash: 932a15b98781\u2026 | Computed hash: 9ad66ca17b70\u2026 The encrypted adapter has been tampered with or replaced.",
+        "tamper_offset_bytes": 200,
+        "tamper_method": "XOR bit-flip (0xFF)"
+      }
+    },
+    {
+      "sim_id": "SIM-03",
+      "name": "RSA-PSS Signature Forgery / Wrong Public Key",
+      "result": "PASS",
+      "exception_caught": "ValueError",
+      "duration_ms": 160.007,
+      "details": {
+        "message": "Signature verification correctly rejected with wrong public key",
+        "exception": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+      }
+    },
+    {
+      "sim_id": "SIM-04",
+      "name": "Salt Replay with Spoofed Hardware Fingerprint",
+      "result": "PASS",
+      "exception_caught": "CryptoError",
+      "duration_ms": 1.333,
+      "details": {
+        "message": "Salt replay with spoofed HW fingerprint correctly rejected",
+        "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
+        "spoofed_identifier": "disk_uuid"
+      }
+    },
+    {
+      "sim_id": "SIM-05",
+      "name": "GCM Authentication Tag Corruption",
+      "result": "PASS",
+      "exception_caught": "InvalidTag",
+      "duration_ms": 0.109,
+      "details": {
+        "message": "GCM authentication tag corruption correctly detected",
+        "tag_corruption_method": "XOR last byte with 0xFF"
+      }
+    },
+    {
+      "sim_id": "SIM-06",
+      "name": "Wrong Salt Key Derivation Rejection",
+      "result": "PASS",
+      "exception_caught": "CryptoError",
+      "duration_ms": 0.943,
+      "details": {
+        "message": "Wrong salt correctly causes decryption failure",
+        "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
+      }
+    }
+  ],
+  "security_summary": {
+    "adapter_theft": "Prevented \u2014 hardware-bound key derivation rejects foreign device decryption",
+    "tamper_evidence": "Enforced \u2014 SHA-256 hash + GCM auth tag detects any bit-level modification",
+    "supply_chain": "Verified \u2014 RSA-PSS signature rejects unsigned or forged adapter packages",
+    "pii_leakage": "Mitigated \u2014 Phase 1 PII scrubbing masks sensitive data before LLM tokenization",
+    "plaintext_at_rest": "Prevented \u2014 3-pass shredding destroys all temporary plaintext artifacts"
+  }
+}

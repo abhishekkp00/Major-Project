@@ -1,0 +1,300 @@
+{
+  "metadata": {
+    "benchmark_version": "1.0.0",
+    "timestamp_utc": "2026-08-06T14:07:29.093069+00:00",
+    "n_runs_per_test": 10,
+    "rsa_key_bits": 2048,
+    "payload_sizes_kb": [
+      16,
+      64,
+      256,
+      1024,
+      4096
+    ],
+    "system": {
+      "python_version": "3.12.3",
+      "os": "Linux",
+      "os_release": "7.0.0-28-generic",
+      "cpu": "x86_64",
+      "cpu_count_logical": 8,
+      "cpu_count_physical": 4,
+      "ram_total_gb": 15.35,
+      "cryptography_library": "cryptography (PyCA)"
+    }
+  },
+  "results": {
+    "hardware_fingerprint": {
+      "operation": "Hardware Fingerprint Collection + SHA-256",
+      "sources": [
+        "machine-id",
+        "cpu-model",
+        "disk-uuid"
+      ],
+      "mean_ms": 0.3789642039919272,
+      "median_ms": 0.321344006806612,
+      "stdev_ms": 0.15411463469184944,
+      "min_ms": 0.30469799821730703,
+      "max_ms": 0.8056600054260343,
+      "n_runs": 10
+    },
+    "hkdf_key_derivation": {
+      "operation": "HKDF Key Derivation (SHA-256, 32-byte output)",
+      "algorithm": "HKDF-SHA256",
+      "mean_ms": 0.04314190009608865,
+      "median_ms": 0.023838496417738497,
+      "stdev_ms": 0.05577631470780128,
+      "min_ms": 0.022100997739471495,
+      "max_ms": 0.20120000408496708,
+      "n_runs": 10
+    },
+    "aes_gcm_encryption": [
+      {
+        "operation": "AES-256-GCM Streaming Encryption (16 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 16,
+        "throughput_mb_per_s": 109.983,
+        "mean_ms": 0.14206799969542772,
+        "median_ms": 0.005634501576423645,
+        "stdev_ms": 0.4278956265999584,
+        "min_ms": 0.005449997843243182,
+        "max_ms": 1.3598539953818545,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Encryption (64 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 64,
+        "throughput_mb_per_s": 5119.762,
+        "mean_ms": 0.012207598774693906,
+        "median_ms": 0.011456497304607183,
+        "stdev_ms": 0.0021662463341858367,
+        "min_ms": 0.011312993592582643,
+        "max_ms": 0.018309001461602747,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Encryption (256 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 256,
+        "throughput_mb_per_s": 3988.831,
+        "mean_ms": 0.06267499993555248,
+        "median_ms": 0.050523492973297834,
+        "stdev_ms": 0.031790595293823665,
+        "min_ms": 0.04987599095329642,
+        "max_ms": 0.15225799870677292,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Encryption (1024 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 1024,
+        "throughput_mb_per_s": 3891.173,
+        "mean_ms": 0.2569919000961818,
+        "median_ms": 0.2167705024476163,
+        "stdev_ms": 0.1320323183560191,
+        "min_ms": 0.20707299700006843,
+        "max_ms": 0.6324390124063939,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Encryption (4096 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 4096,
+        "throughput_mb_per_s": 3439.804,
+        "mean_ms": 1.1628567983279936,
+        "median_ms": 0.9218620034516789,
+        "stdev_ms": 0.6213369065254348,
+        "min_ms": 0.8413109899265692,
+        "max_ms": 2.867545001208782,
+        "n_runs": 10
+      }
+    ],
+    "aes_gcm_decryption": [
+      {
+        "operation": "AES-256-GCM Streaming Decryption (16 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 16,
+        "throughput_mb_per_s": 360.726,
+        "mean_ms": 0.04331539530539885,
+        "median_ms": 0.005557492841035128,
+        "stdev_ms": 0.11646733868962755,
+        "min_ms": 0.005243011401034892,
+        "max_ms": 0.37470500683411956,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Decryption (64 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 64,
+        "throughput_mb_per_s": 4824.803,
+        "mean_ms": 0.012953898112755269,
+        "median_ms": 0.012320990208536386,
+        "stdev_ms": 0.0015609551829721133,
+        "min_ms": 0.012218995834700763,
+        "max_ms": 0.017279991880059242,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Decryption (256 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 256,
+        "throughput_mb_per_s": 4850.244,
+        "mean_ms": 0.05154380341991782,
+        "median_ms": 0.04970900772605091,
+        "stdev_ms": 0.005417274378352781,
+        "min_ms": 0.04922201333101839,
+        "max_ms": 0.06680500518996269,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Decryption (1024 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 1024,
+        "throughput_mb_per_s": 5044.131,
+        "mean_ms": 0.19825019990094006,
+        "median_ms": 0.19880299805663526,
+        "stdev_ms": 0.010161606154947645,
+        "min_ms": 0.18442799046169966,
+        "max_ms": 0.21394800569396466,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Streaming Decryption (4096 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 4096,
+        "throughput_mb_per_s": 3368.026,
+        "mean_ms": 1.1876393997226842,
+        "median_ms": 0.9027554988279007,
+        "stdev_ms": 0.8942325616066031,
+        "min_ms": 0.8198050054488704,
+        "max_ms": 3.7242530088406056,
+        "n_runs": 10
+      }
+    ],
+    "aes_gcm_block": [
+      {
+        "operation": "AES-256-GCM Block Encrypt+Decrypt (64 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 64,
+        "encrypt_mean_ms": 0.0082,
+        "decrypt_mean_ms": 0.0077,
+        "encrypt_stdev_ms": 0.0022,
+        "decrypt_stdev_ms": 0.0011,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Block Encrypt+Decrypt (256 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 256,
+        "encrypt_mean_ms": 0.0378,
+        "decrypt_mean_ms": 0.0351,
+        "encrypt_stdev_ms": 0.0312,
+        "decrypt_stdev_ms": 0.0247,
+        "n_runs": 10
+      },
+      {
+        "operation": "AES-256-GCM Block Encrypt+Decrypt (1024 KB)",
+        "algorithm": "AES-256-GCM",
+        "payload_kb": 1024,
+        "encrypt_mean_ms": 0.1468,
+        "decrypt_mean_ms": 0.1357,
+        "encrypt_stdev_ms": 0.1049,
+        "decrypt_stdev_ms": 0.0847,
+        "n_runs": 10
+      }
+    ],
+    "sha256_hashing": {
+      "operation": "SHA-256 File Integrity Hashing",
+      "algorithm": "SHA-256",
+      "sizes": [
+        {
+          "payload_kb": 64,
+          "mean_ms": 0.0437,
+          "stdev_ms": 0.0039,
+          "throughput_mb_per_s": 1430.19
+        },
+        {
+          "payload_kb": 256,
+          "mean_ms": 0.1584,
+          "stdev_ms": 0.0086,
+          "throughput_mb_per_s": 1578.431
+        },
+        {
+          "payload_kb": 1024,
+          "mean_ms": 0.6828,
+          "stdev_ms": 0.014,
+          "throughput_mb_per_s": 1464.532
+        },
+        {
+          "payload_kb": 4096,
+          "mean_ms": 2.6549,
+          "stdev_ms": 0.0821,
+          "throughput_mb_per_s": 1506.63
+        }
+      ]
+    },
+    "rsa_pss_sign": {
+      "operation": "RSA-PSS Sign (2048-bit)",
+      "algorithm": "RSA-2048-PSS-SHA256",
+      "mean_ms": 0.4282602996681817,
+      "median_ms": 0.2566169932833873,
+      "stdev_ms": 0.5171722267476584,
+      "min_ms": 0.24771899916231632,
+      "max_ms": 1.898670001537539,
+      "n_runs": 10
+    },
+    "rsa_pss_verify": {
+      "operation": "RSA-PSS Verify (2048-bit)",
+      "algorithm": "RSA-2048-PSS-SHA256",
+      "mean_ms": 0.028711398772429675,
+      "median_ms": 0.02686800144147128,
+      "stdev_ms": 0.005331951352452196,
+      "min_ms": 0.025590998120605946,
+      "max_ms": 0.0432419910794124,
+      "n_runs": 10
+    },
+    "rsa_key_generation": {
+      "operation": "RSA Keypair Generation (2048-bit)",
+      "algorithm": "RSA-2048",
+      "mean_ms": 34.91379969927948,
+      "median_ms": 32.16509000048973,
+      "stdev_ms": 22.80855728292877,
+      "min_ms": 15.90695399499964,
+      "max_ms": 93.37131500069518,
+      "n_runs": 10
+    },
+    "e2e_overhead": {
+      "operation": "End-to-End Pipeline Security Overhead",
+      "payload_kb": 512,
+      "baseline_mean_ms": 1.18,
+      "secure_pipeline_mean_ms": 1.132,
+      "security_overhead_ms": -0.048,
+      "overhead_factor_x": 0.96,
+      "n_runs": 10
+    },
+    "file_shredding": {
+      "operation": "3-Pass Secure File Shredding (DoD 5220.22-M style)",
+      "algorithm": "urandom-overwrite \u00d7 3 + rename + unlink",
+      "sizes": [
+        {
+          "payload_kb": 16,
+          "passes": 3,
+          "mean_ms": 3.529,
+          "stdev_ms": 1.945
+        },
+        {
+          "payload_kb": 64,
+          "passes": 3,
+          "mean_ms": 4.356,
+          "stdev_ms": 0.447
+        },
+        {
+          "payload_kb": 256,
+          "passes": 3,
+          "mean_ms": 6.559,
+          "stdev_ms": 1.35
+        }
+      ]
+    }
+  }
+}

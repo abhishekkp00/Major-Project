@@ -1,0 +1,132 @@
+{
+  "metadata": {
+    "comparison_version": "1.0.0",
+    "timestamp_utc": "2026-08-06T14:07:29.482464+00:00",
+    "payload_kb": 512,
+    "n_runs": 8,
+    "security_dimensions": [
+      "adapter_theft_prevention",
+      "hardware_binding",
+      "at_rest_encryption",
+      "tamper_detection",
+      "supply_chain_integrity",
+      "pii_scrubbing",
+      "zero_plaintext_at_rest",
+      "no_tpm_hardware_required"
+    ],
+    "system": {
+      "python_version": "3.12.3",
+      "os": "Linux",
+      "os_release": "7.0.0-28-generic",
+      "cpu": "x86_64"
+    }
+  },
+  "baselines": {
+    "Unprotected LoRA": {
+      "description": "Standard LoRA adapter saved as SafeTensors/bin. No encryption, no signing.",
+      "reference": "Hu et al. (2022) LoRA: Low-Rank Adaptation of LLMs",
+      "security_scores": {
+        "adapter_theft_prevention": 0.0,
+        "hardware_binding": 0.0,
+        "at_rest_encryption": 0.0,
+        "tamper_detection": 0.0,
+        "supply_chain_integrity": 0.0,
+        "pii_scrubbing": 0.0,
+        "zero_plaintext_at_rest": 0.0,
+        "no_tpm_hardware_required": 1.0
+      },
+      "aggregate_security_score": 0.125,
+      "timing": {
+        "mean_ms": 0.599400123974192,
+        "stdev_ms": 0.049172938820583836
+      }
+    },
+    "Password-Only AES": {
+      "description": "AES-256-GCM encryption with a static password-derived key (PBKDF2). No hardware binding.",
+      "reference": "Standard AES-256-GCM with PBKDF2 key derivation",
+      "security_scores": {
+        "adapter_theft_prevention": 0.3,
+        "hardware_binding": 0.0,
+        "at_rest_encryption": 1.0,
+        "tamper_detection": 0.8,
+        "supply_chain_integrity": 0.0,
+        "pii_scrubbing": 0.0,
+        "zero_plaintext_at_rest": 0.5,
+        "no_tpm_hardware_required": 1.0
+      },
+      "aggregate_security_score": 0.45,
+      "timing": {
+        "mean_ms": 14.687110373415635,
+        "stdev_ms": 0.30650344567333937
+      }
+    },
+    "Filesystem ACL (chmod 600)": {
+      "description": "OS-level file permission restriction. Physical disk access bypasses it completely.",
+      "reference": "POSIX file permissions; defeated by physical disk access",
+      "security_scores": {
+        "adapter_theft_prevention": 0.1,
+        "hardware_binding": 0.0,
+        "at_rest_encryption": 0.0,
+        "tamper_detection": 0.0,
+        "supply_chain_integrity": 0.0,
+        "pii_scrubbing": 0.0,
+        "zero_plaintext_at_rest": 0.0,
+        "no_tpm_hardware_required": 1.0
+      },
+      "aggregate_security_score": 0.1375,
+      "timing": {
+        "mean_ms": 0.7399467522191117,
+        "stdev_ms": 0.26711792594059675
+      }
+    },
+    "TPM-Bound Encryption (reference)": {
+      "description": "Hardware TPM chip binds AES key. Requires TPM 2.0 hardware. Not universally available.",
+      "reference": "TCG TPM 2.0 Specification; requires dedicated hardware",
+      "security_scores": {
+        "adapter_theft_prevention": 0.95,
+        "hardware_binding": 1.0,
+        "at_rest_encryption": 1.0,
+        "tamper_detection": 0.9,
+        "supply_chain_integrity": 0.5,
+        "pii_scrubbing": 0.0,
+        "zero_plaintext_at_rest": 0.9,
+        "no_tpm_hardware_required": 0.0
+      },
+      "aggregate_security_score": 0.6562,
+      "timing": {
+        "mean_ms": 24.69428162839904,
+        "stdev_ms": 3.399565480236636,
+        "note": "TPM latency modeled as 15\u201335 ms uniform (Raj et al. 2016 reference values)"
+      }
+    },
+    "SecureLoRA (This Work)": {
+      "description": "Full HW-fingerprint binding via HKDF + AES-256-GCM + RSA-PSS signing + PII scrubbing + Zero-Plaintext-at-Rest mandate. Software-only.",
+      "reference": "This work",
+      "security_scores": {
+        "adapter_theft_prevention": 0.92,
+        "hardware_binding": 0.88,
+        "at_rest_encryption": 1.0,
+        "tamper_detection": 1.0,
+        "supply_chain_integrity": 1.0,
+        "pii_scrubbing": 1.0,
+        "zero_plaintext_at_rest": 0.95,
+        "no_tpm_hardware_required": 1.0
+      },
+      "aggregate_security_score": 0.9688,
+      "timing": {
+        "mean_ms": 1.3056031275482383,
+        "stdev_ms": 0.27403982710941754
+      }
+    }
+  },
+  "security_dimension_descriptions": {
+    "adapter_theft_prevention": "Whether the adapter can be used on an unauthorized device",
+    "hardware_binding": "Whether the decryption key is tied to physical hardware identifiers",
+    "at_rest_encryption": "Whether adapter weights are encrypted on non-volatile storage",
+    "tamper_detection": "Whether any bit-level modification is cryptographically detectable",
+    "supply_chain_integrity": "Whether the adapter origin can be authenticated by the receiver",
+    "pii_scrubbing": "Whether training data PII is scrubbed before the model sees it",
+    "zero_plaintext_at_rest": "Whether decrypted weights are ever written to non-volatile storage",
+    "no_tpm_hardware_required": "Whether the scheme works on commodity hardware without TPM"
+  }
+}
