@@ -1,35 +1,61 @@
-# Secrets and local configurations
+# =============================================================================
+# SecureLoRA — .gitignore
+# =============================================================================
+
+# ── Secrets & Credentials ─────────────────────────────────────────────────────
 .env
 *.key
 secrets.key
 real_data.key
+*.pem                          # Never commit private keys
 
-# Python cached files
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
+.Python
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.egg-info/
+dist/
+build/
 
-# Local data inputs and outputs
+# ── Virtual Environment ────────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Jupyter ────────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+notebook_checkpoints/
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Encrypted Dataset Artefacts (PII — never commit) ──────────────────────────
 *.enc
 *.jsonl
 real_data_inputs/
 encrypted_real_data/
-test_env_inputs/
-test_env_outputs/
-decrypted_outputs/
-encrypted_outputs/
-raw_inputs/
-raw_shred/
-shred_outputs/
-# Local logs, environments, and model outputs
-venv/
-logs/
+
+# ── Training Artefacts ─────────────────────────────────────────────────────────
 checkpoints/
 lora_adapters/
-eval_report.json
+eval_report.json               # root-level legacy copy
 
-# Phase 3 — Protected adapter runtime outputs (never commit encrypted artefacts or keys)
+# ── Runtime Job Workspace (per-job secrets + ephemeral files) ─────────────────
+outputs/jobs/
+raw_inputs/
+raw_shred/
+
+# ── Phase 3 / 4 Protected Adapter Outputs (contain keys / ciphertext) ─────────
 outputs/protected_adapter/adapter.enc
 outputs/protected_adapter/adapter.hash
 outputs/protected_adapter/adapter.sig
@@ -39,11 +65,20 @@ outputs/protected_adapter/dev_private.pem
 outputs/protected_adapter/public.pem
 outputs/protected_adapter.tar.gz
 
-# Phase 2 — final adapter weights (large binary, not tracked in git)
+# ── Final Adapter Weights (large binary, managed separately) ──────────────────
 outputs/final_adapter/
 
-# Restored / decrypted adapter (never commit plaintext adapter)
-/tmp/restored_adapter_phase3.tar.gz
+# ── Test Environment I/O ──────────────────────────────────────────────────────
+test_env_inputs/
+test_env_outputs/
+decrypted_outputs/
+encrypted_outputs/
+shred_outputs/
 
-# Runtime job workspace — contains per-job secrets.key and ephemeral artefacts
-outputs/jobs/
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
