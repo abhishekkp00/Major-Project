@@ -5,11 +5,11 @@
 
 ### 📋 Overview
 - **Deployment Status:** ✅ SUCCESS
-- **Generated At (UTC):** `2026-07-07T19:41:48.444289+00:00`
+- **Generated At (UTC):** `2026-08-10T11:18:40.461817+00:00`
 - **Framework Schema Version:** `4.0.0`
 - **Target Adapter ID:** `lora-adapter-v1`
 - **Base Model Reference:** `JackFram/llama-68m`
-- **Device Fingerprint Hash Prefix:** `6c529fe2395b26be...`
+- **Device Fingerprint Hash Prefix:** `3b2e5a31edf89f14...`
 
 ---
 
@@ -45,11 +45,12 @@ The Secure device is a secure device that is secured by a secure device. Secure 
 #### **Fine-Tuned Model Generation (With Loaded PEFT Adapter):**
 ```text
 
-The Secure device is a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by
+The SIM card is certified by the National Institute for AES-1256 and is certified by the National Institute for AES-1256 and is certified by AES-1256.
+The SIM card is certified by AES-125
 ```
 
 #### **Comparison Diagnosis:**
-- **Outputs Differ (Adapter Active):** `False`
+- **Outputs Differ (Adapter Active):** `True`
 
 ---
 
