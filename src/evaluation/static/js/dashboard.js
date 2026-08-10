@@ -1,571 +1,655 @@
-        let selectedFile = null;
-        let activeJobId = null;
-        let chart = null;
+let selectedFile = null, activeJobId = null, chart = null;
 
-        // Switch between tabs
-        function switchTab(btn, tabId) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            btn.classList.add('active');
-            if (tabId === 'orchestrator') {
-                document.getElementById('tab-orchestrator').classList.add('active');
-            } else {
-                document.getElementById('tab-deployment').classList.add('active');
-            }
+function switchTab(btn, id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'transparency') {
+    loadJobsForSelect();
+    recalculateSdgMetrics();
+  }
+}
+
+function handleFileSelected(inp) {
+  if (inp.files && inp.files[0]) {
+    selectedFile = inp.files[0];
+    document.getElementById('dropzone-text').innerText = 'Selected: ' + selectedFile.name;
+  }
+}
+
+const templates = {
+  pii_corporate: {
+    title: 'Corporate Emails (PII Redaction)',
+    desc: 'Mock corporate communications with SSNs, emails, phone numbers, API keys.',
+    compliance: 'GDPR / CCPA',
+    source: 'https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_pii_data.jsonl',
+    preview: '{"instruction":"Mask PII in this email: My name is Alice, email alice@gmail.com SSN 111-22-3333.","output":"My name is [NAME], email [EMAIL] SSN [SSN]."}'
+  },
+  clinical_notes: {
+    title: 'Clinical Notes PHI (MIMIC-III)',
+    desc: 'Realistic anonymized clinical notes testing HIPAA compliance.',
+    compliance: 'HIPAA PHI Safe Harbor',
+    source: 'https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_medical_phi.jsonl',
+    preview: '{"instruction":"Redact PHI: Patient John Doe (MRN: 987654), born 12/14/1985.","output":"Patient [NAME] (MRN: [MRN]), born [DATE]."}'
+  },
+  real_world_pii: {
+    title: 'Real-World PII (HuggingFace ai4privacy)',
+    desc: 'Subset of ai4privacy/pii-masking-300k with diverse PII types.',
+    compliance: 'GDPR / HIPAA / CCPA',
+    source: '/static/real_world_pii.jsonl',
+    preview: '{"instruction":"Redact PII: Passport: 301025226, Driver License: ROSAL955306","output":"Passport: [PASSPORT], Driver License: [DL]"}'
+  }
+};
+
+function showTemplateDetails() {
+  const v = document.getElementById('dataset-template-select').value, t = templates[v];
+  if (!t) return;
+  document.getElementById('modal-title').innerText = t.title;
+  document.getElementById('modal-desc').innerText = t.desc;
+  document.getElementById('modal-compliance').innerText = t.compliance;
+  document.getElementById('modal-source-link').innerText = t.source;
+  document.getElementById('modal-source-link').href = t.source;
+  document.getElementById('modal-preview').innerText = t.preview;
+  document.getElementById('dataset-modal').style.display = 'flex';
+}
+function closeDatasetModal() { document.getElementById('dataset-modal').style.display = 'none'; }
+
+async function loadSelectedTemplate() {
+  const v = document.getElementById('dataset-template-select').value, btn = document.getElementById('btn-load-template');
+  btn.disabled = true; btn.innerText = 'Loading...';
+  const t = templates[v];
+  let datasetName = v === 'clinical_notes' ? 'secure_hipaa_dataset' : v === 'real_world_pii' ? 'secure_real_world_pii' : 'secure_pii_dataset';
+  let fileName = v === 'clinical_notes' ? 'sample_medical_phi.jsonl' : v === 'real_world_pii' ? 'real_world_pii.jsonl' : 'sample_pii_data.jsonl';
+  try {
+    const res = await fetch('/api/template/' + v);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const content = await res.text();
+    document.getElementById('job-dataset-name').value = datasetName;
+    document.getElementById('job-version').value = '1.0.0';
+    document.getElementById('job-epochs').value = '20';
+    selectedFile = new File([content], fileName, { type: 'application/jsonl' });
+    document.getElementById('dropzone-text').innerText = 'Selected: ' + fileName + ' (fetched)';
+    updatePipelineFlow('dataset_intake', 0);
+  } catch (e) {
+    document.getElementById('job-dataset-name').value = datasetName;
+    selectedFile = new File([t.preview + '\n'], fileName, { type: 'application/jsonl' });
+    document.getElementById('dropzone-text').innerText = 'Selected: ' + fileName + ' (offline fallback)';
+  } finally { btn.disabled = false; btn.innerText = 'Load Template Dataset'; }
+}
+
+function updatePipelineFlow(stage, progress) {
+  const nodes = ['intake', 'inspect', 'train', 'package', 'verify', 'inference'];
+  const map = {
+    dataset_intake: 0, pii_inspection: 1, fine_tuning: 2, preparing_adapter: 3,
+    deriving_device_binding: 3, encrypting_adapter: 3, generating_hash: 3,
+    generating_signature: 3, building_package: 3, running_integrity_check: 4,
+    running_device_authorization_check: 4, running_secure_deployment_check: 4,
+    secure_inference_validation: 4, security_validation_completed: 5
+  };
+  let idx = map[stage] ?? 0;
+  nodes.forEach((n, i) => {
+    const nd = document.getElementById('node-' + n); if (!nd) return;
+    const dot = nd.querySelector('.node-dot'), inner = nd.querySelector('.node-inner'), label = nd.querySelector('.node-label');
+    if (i < idx) {
+      dot.style.borderColor = 'var(--emerald)'; dot.style.background = 'var(--emerald-bg)'; inner.style.background = 'var(--emerald)'; label.style.color = '#fff';
+    } else if (i === idx) {
+      dot.style.borderColor = '#fff'; dot.style.background = '#27272a'; inner.style.background = '#fff'; label.style.color = '#fff';
+    } else {
+      dot.style.borderColor = '#374151'; dot.style.background = '#1e2535'; inner.style.background = 'transparent'; label.style.color = '#64748b';
+    }
+  });
+  const pct = idx * 20;
+  const fl = document.getElementById('flow-line-progress'); if (fl) fl.style.width = pct + '%';
+}
+
+function initChart() {
+  const ctx = document.getElementById('lossChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Training Loss', data: [], borderColor: '#f4f4f5', backgroundColor: 'rgba(255,255,255,.05)', borderWidth: 1.5, tension: .3, pointRadius: 2, spanGaps: true }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 } } }, y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 } } } },
+      plugins: { legend: { labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11 } } } }
+    }
+  });
+}
+
+async function submitJob() {
+  const name = document.getElementById('job-dataset-name').value.trim();
+  const version = document.getElementById('job-version').value.trim();
+  const epochs = document.getElementById('job-epochs').value.trim();
+  if (!name) return alert('Please enter a Dataset Name.');
+  if (!selectedFile) return alert('No training file selected.');
+  const btn = document.getElementById('btn-create-job'); btn.disabled = true;
+  const log = document.getElementById('orchestrator-console-log');
+  log.innerHTML = '<div class="console-line">Initializing secure job record...</div>';
+  try {
+    const r1 = await fetch('/api/orchestrator/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_name: name, version, epochs: parseInt(epochs) }) });
+    const d1 = await r1.json(); if (!d1.success) throw new Error(d1.error);
+    activeJobId = d1.job_id;
+    document.getElementById('active-job-id').innerText = activeJobId;
+    document.getElementById('active-job-details').style.display = 'block';
+    log.innerHTML += '<div class="console-line">Uploading dataset securely...</div>';
+    const fd = new FormData(); fd.append('file', selectedFile);
+    const r2 = await fetch('/api/orchestrator/jobs/' + activeJobId + '/upload', { method: 'POST', body: fd });
+    const d2 = await r2.json(); if (!d2.success) throw new Error(d2.error);
+    log.innerHTML += '<div class="console-line">Starting orchestration worker...</div>';
+    const r3 = await fetch('/api/orchestrator/jobs/' + activeJobId + '/start', { method: 'POST' });
+    const d3 = await r3.json(); if (!d3.success) throw new Error(d3.error);
+    pollJobStatus();
+  } catch (e) { log.innerHTML += `<div class="console-line console-err">[ERROR] ${e.message}</div>`; btn.disabled = false; }
+}
+
+function pollJobStatus() {
+  if (!activeJobId) return;
+  const log = document.getElementById('orchestrator-console-log');
+  log.innerHTML += '<div class="console-line">[SSE] Connecting to real-time stream...</div>';
+  const es = new EventSource('/api/orchestrator/jobs/' + activeJobId + '/stream');
+  es.onmessage = async function (e) {
+    try {
+      const job = JSON.parse(e.data); if (!job || !job.job_id) return;
+      document.getElementById('active-job-status').innerText = job.status || '';
+      document.getElementById('active-job-stage').innerText = job.stage || '';
+      document.getElementById('job-progress-bar').style.width = (job.progress || 0) + '%';
+      updatePipelineFlow(job.stage, job.progress);
+      if (job.loss_history && job.loss_history.length > 0) {
+        const valid = job.loss_history.filter(x => x.loss != null);
+        if (valid.length > 0) {
+          chart.data.labels = valid.length === 1 ? [0, 1] : valid.map((_, i) => i + 1);
+          chart.data.datasets[0].data = valid.length === 1 ? [valid[0].loss + 0.15, valid[0].loss] : valid.map(x => x.loss);
+          chart.update();
         }
+      }
+      const lr = await fetch('/api/orchestrator/jobs/' + activeJobId + '/logs');
+      const ld = await lr.json();
+      if (ld.success) {
+        log.innerHTML = '';
+        ld.logs.split('\n').forEach(line => {
+          if (!line.trim()) return;
+          const d = document.createElement('div'); d.className = 'console-line' + (line.match(/ERROR|FAILED|failed/) ? ' console-err' : ''); d.innerText = line; log.appendChild(d);
+        });
+        log.scrollTop = log.scrollHeight;
+      }
+      if (job.status === 'COMPLETED') {
+        es.close();
+        log.innerHTML += `<div class="console-line" style="color:var(--emerald)">[COMPLETE] Job finished. LoRA adapter secured and verified.</div>`;
+        document.getElementById('btn-create-job').disabled = false;
+        fetchJobArtifacts(job.job_id); fetchJobReport(job.job_id); fetchStatus();
+      } else if (job.status === 'FAILED') {
+        es.close();
+        log.innerHTML += `<div class="console-line console-err">[FAILED] ${job.error}</div>`;
+        document.getElementById('btn-create-job').disabled = false;
+      }
+    } catch (err) { console.error('SSE parse error:', err); }
+  };
+  es.onerror = function () { es.close(); };
+}
 
-        // Handle file drop/selection
-        function handleFileSelected(input) {
-            if (input.files && input.files[0]) {
-                selectedFile = input.files[0];
-                document.getElementById('dropzone-text').innerText = "Selected: " + selectedFile.name;
-            }
-        }
+async function fetchJobArtifacts(jobId) {
+  try {
+    const r = await fetch('/api/orchestrator/jobs/' + jobId + '/artifacts');
+    const d = await r.json();
+    if (d.success && d.artifacts.length > 0) {
+      const g = document.getElementById('artifacts-list-grid'); g.innerHTML = '';
+      d.artifacts.forEach(a => {
+        const row = document.createElement('div'); row.className = 'info-row';
+        row.innerHTML = `<span class="info-label">${a.name} (${(a.size_bytes / 1024).toFixed(1)} KB)</span><span class="info-value"><a href="${a.download_url}" style="color:var(--text-primary);text-decoration:underline" download>Download</a></span>`;
+        g.appendChild(row);
+      });
+      document.getElementById('job-artifacts-card').style.display = 'block';
+    }
+  } catch (e) { console.error(e); }
+}
 
-        // Preload sample training dataset templates for quick testing
-        const templates = {
-            pii_corporate: {
-                title: "Corporate Emails (PII Redaction)",
-                desc: "A custom dataset containing mock corporate communications (emails, customer messages) with sensitive personal identifiers (SSNs, emails, phone numbers, secret API keys) to demonstrate the automated PII masking fine-tuning workflow.",
-                compliance: "GDPR / CCPA Compliance",
-                source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_pii_data.jsonl",
-                preview: '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333...", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME]..."}\\n{"instruction": "Mask Personally Identifiable Information (PII) in this text...", "output": "..."}'
-            },
-            clinical_notes: {
-                title: "Clinical Notes PHI (MIMIC-III / HIPAA)",
-                desc: "A dataset containing realistic anonymized clinical doctor notes and patient transcripts. It simulates clinical speech to test HIPAA compliance gates, scrubbing patient names, medical record numbers (MRNs), age, date of admission, and physician information.",
-                compliance: "HIPAA PHI Safe Harbor Compliance",
-                source: "https://raw.githubusercontent.com/abhishekkp00/Major-Project/main/sample_medical_phi.jsonl",
-                preview: '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985...", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN])..."}\\n{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith...", "output": "..."}'
-            },
-            real_world_pii: {
-                title: "Real-World PII (HuggingFace ai4privacy)",
-                desc: "A subset of the open-source 'ai4privacy/pii-masking-300k' dataset downloaded directly from Hugging Face. Contains real-world text and communications containing genuine, diverse, and complex PII such as driver's licenses, passport numbers, emails, phone numbers, and physical addresses.",
-                compliance: "GDPR / HIPAA / CCPA Privacy Compliance",
-                source: "/static/real_world_pii.jsonl",
-                preview: '{"instruction": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation... Applicant A: - Passport: 301025226...", "output": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation... Applicant A: - Passport: [PASSPORT]..."}'
-            }
-        };
+async function fetchJobReport(jobId) {
+  try {
+    const r = await fetch('/api/orchestrator/jobs/' + jobId + '/report');
+    const d = await r.json();
+    if (d.success && d.report) {
+      const g = document.getElementById('validation-audit-grid'); g.innerHTML = '';
+      const o = d.report.security_validation_outcomes || {};
+      const steps = d.report.verification_pipeline?.steps || {};
+      [{ label: 'Authorized Device Binding', ok: o.authorized_deployment === 'pass' }, { label: 'Tamper Evidence Check', ok: o.tamper_simulation === 'pass' }, { label: 'Unauthorized Device Block', ok: o.unauthorized_device_simulation === 'pass' }, { label: 'Inference Validation', ok: steps['Step 8: Inference Validation'] === 'PASSED' }].forEach(row => {
+        const el = document.createElement('div'); el.className = 'info-row';
+        el.innerHTML = `<span class="info-label">${row.label}</span><span class="info-value" style="color:${row.ok ? 'var(--emerald)' : 'var(--rose)'};font-weight:700">${row.ok ? 'PASS' : 'FAIL'}</span>`;
+        g.appendChild(el);
+      });
+      document.getElementById('job-validation-card').style.display = 'block';
+    }
+  } catch (e) { console.error(e); }
+}
 
-        function showTemplateDetails() {
-            const val = document.getElementById('dataset-template-select').value;
-            const t = templates[val];
-            if (!t) return;
-            
-            document.getElementById('modal-title').innerText = t.title;
-            document.getElementById('modal-desc').innerText = t.desc;
-            document.getElementById('modal-compliance').innerText = t.compliance;
-            document.getElementById('modal-source-link').innerText = t.source;
-            document.getElementById('modal-source-link').href = t.source;
-            document.getElementById('modal-preview').innerText = t.preview;
-            
-            document.getElementById('dataset-modal').style.display = 'flex';
-        }
+async function fetchStatus() {
+  try {
+    const r = await fetch('/api/phase4/status'); const d = await r.json();
+    document.getElementById('info-fingerprint').innerText = d.fingerprint_prefix || 'UNKNOWN';
+    document.getElementById('info-salt').innerText = d.salt_masked || 'UNKNOWN';
+    document.getElementById('info-base-model').innerText = d.base_model_name || 'JackFram/llama-68m';
+    const badge = document.getElementById('deployment-badge');
+    if (d.loaded) { badge.className = 'badge badge-verified'; badge.innerText = '● Deployed & Secured'; document.getElementById('btn-generate').disabled = false; document.getElementById('res-base').innerText = 'Ready for comparison.'; document.getElementById('res-lora').innerText = 'Ready for comparison.'; }
+    else { badge.className = 'badge badge-unverified'; badge.innerText = '● Session Locked'; document.getElementById('btn-generate').disabled = true; }
+    if (d.steps && Object.keys(d.steps).length > 0) renderChecklist(d.steps);
+  } catch (e) { console.error(e); }
+}
 
-        function closeDatasetModal() {
-            document.getElementById('dataset-modal').style.display = 'none';
-        }
+function renderChecklist(steps) {
+  const keys = ['Step 1: Package Completeness', 'Step 2: Integrity Verification', 'Step 3: Signature Verification', 'Step 4: Device Authorization', 'Step 5: Key Derivation', 'Step 6: Decryption & Extraction', 'Step 7: PEFT Model Loading', 'Step 8: Inference Validation'];
+  const names = ['Package Completeness', 'SHA-256 Integrity Verification', 'RSA-PSS Digital Signature', 'Hardware Fingerprint Check', 'AES Key Derivation', 'GCM Decryption (In-Memory)', 'PEFT Weight Loading', 'Inference Side-by-Side Validation'];
+  const c = document.getElementById('step-checklist'); c.innerHTML = '';
+  keys.forEach((k, i) => {
+    const status = steps[k] || 'PENDING';
+    const cls = status === 'PASSED' ? 'status-passed' : status === 'FAILED' ? 'status-failed' : status === 'SKIPPED' ? 'status-skipped' : 'status-pending';
+    const el = document.createElement('div'); el.className = 'step-item' + (status === 'FAILED' ? ' has-error' : '');
+    el.innerHTML = `<div class="step-info"><span class="step-number">${i + 1}</span><span class="step-name">${names[i]}</span></div><span class="step-status ${cls}">${status}</span>`;
+    c.appendChild(el);
+  });
+}
 
-        // Close modal if clicked outside of it
-        window.onclick = function(event) {
-            const modal = document.getElementById('dataset-modal');
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
+async function triggerDeployment() {
+  const btn = document.getElementById('btn-deploy'), spin = document.getElementById('spinner-deploy'), log = document.getElementById('console-log');
+  btn.disabled = true; spin.style.display = 'inline-block';
+  log.innerHTML = '<div class="console-line">Starting Secure Pipeline Verification...</div>';
+  try {
+    const r = await fetch('/api/phase4/verify', { method: 'POST' }); const d = await r.json();
+    if (d.success) log.innerHTML += `<div class="console-line" style="color:var(--emerald)">[SUCCESS] All 8 gates PASSED. Adapter loaded in RAM.</div>`;
+    else log.innerHTML += `<div class="console-line console-err">[FAILURE] ${d.error}</div>`;
+    renderChecklist(d.steps); fetchStatus();
+  } catch (e) { log.innerHTML += `<div class="console-line console-err">[ERROR] Exception during verification.</div>`; }
+  finally { btn.disabled = false; spin.style.display = 'none'; }
+}
 
-        async function loadSelectedTemplate() {
-            const val = document.getElementById('dataset-template-select').value;
-            const btn = document.getElementById('btn-load-template');
-            const origText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "⚡ Loading dataset...";
+async function runInference() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) return alert('Please enter a prompt!');
+  const btn = document.getElementById('btn-generate'), spin = document.getElementById('spinner-generate');
+  btn.disabled = true; spin.style.display = 'inline-block';
+  document.getElementById('res-base').innerText = 'Computing...'; document.getElementById('res-lora').innerText = 'Computing...';
+  try {
+    const r = await fetch('/api/phase4/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+    const d = await r.json();
+    document.getElementById('res-base').innerText = d.base_response || d.error || 'Error';
+    document.getElementById('res-lora').innerText = d.lora_response || d.error || 'Error';
+    const log = document.getElementById('console-log');
+    log.innerHTML += `<div class="console-line">[Inference] Adapter active: ${d.adapter_active}</div>`;
+    log.scrollTop = log.scrollHeight;
+  } catch (e) { document.getElementById('res-base').innerText = 'Error'; document.getElementById('res-lora').innerText = 'Error'; }
+  finally { btn.disabled = false; spin.style.display = 'none'; }
+}
 
-            const t = templates[val];
-            try {
-                // Route through server-side to avoid CORS issues with external URLs
-                const res = await fetch('/api/template/' + val);
-                if (!res.ok) throw new Error("HTTP error " + res.status);
-                const content = await res.text();
-                
-                let datasetName = 'secure_pii_dataset';
-                let fileName = 'sample_pii_data.jsonl';
-                if (val === 'clinical_notes') {
-                    datasetName = 'secure_hipaa_dataset';
-                    fileName = 'sample_medical_phi.jsonl';
-                } else if (val === 'real_world_pii') {
-                    datasetName = 'secure_real_world_pii_dataset';
-                    fileName = 'real_world_pii.jsonl';
-                }
+// ──────────────────────────────────────────────
+// DYNAMIC PHYSICS-BASED SDG-13 CALCULATOR
+// ──────────────────────────────────────────────
+function recalculateSdgMetrics() {
+  const text = document.getElementById('sim-input-text')?.value || "";
+  const tokenCount = Math.max(1, Math.floor(text.length / 4));
+  const epochs = 20;
+  const computeMs = Math.round(tokenCount * epochs * 1.45);
+  const computeHours = computeMs / 3600000;
+  const energyKwh = (300.0 * computeHours) / 1000.0;
+  const co2Grams = (energyKwh * 475.0).toFixed(4);
 
-                document.getElementById('job-dataset-name').value = datasetName;
-                document.getElementById('job-version').value = "1.0.0";
-                document.getElementById('job-epochs').value = "20";
+  const tVal = document.getElementById('sw-token-val'); if (tVal) tVal.innerText = tokenCount;
+  const cVal = document.getElementById('sw-co2-val'); if (cVal) cVal.innerText = co2Grams + 'g';
+  const gVal = document.getElementById('sw-gpu-val'); if (gVal) gVal.innerText = computeMs.toLocaleString() + 'ms';
+  const fSub = document.getElementById('sdg-formula-sub');
+  if (fSub) fSub.innerText = `Formula: (${tokenCount} tokens × 20 Epochs × 1.45ms) @ 300W GPU → 475 gCO₂e/kWh Grid Factor`;
+}
 
-                const file = new File([content], fileName, { type: "application/jsonl" });
-                selectedFile = file;
+// ──────────────────────────────────────────────
+// MULTI-STAGE FLEXIBLE INTERACTIVE SIMULATOR ENGINE
+// ──────────────────────────────────────────────
+let simTimer1 = null, simTimer2 = null, simTimer3 = null;
 
-                document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Fetched from GitHub/HF)";
-                // button is always enabled
-                
-                updatePipelineFlow('dataset_intake', 0);
-            } catch (e) {
-                console.error("Failed to fetch template from internet, falling back to local simulation:", e);
-                // Fallback to local offline template in case of network issues
-                let datasetName = 'secure_pii_dataset';
-                let fileName = 'sample_pii_data.jsonl';
-                let content = "";
-                
-                if (val === 'pii_corporate') {
-                    content = '{"instruction": "Mask Personally Identifiable Information (PII) in this email: My name is Alice, email alice@gmail.com and SSN is 111-22-3333.", "output": "Mask Personally Identifiable Information (PII) in this email: My name is [MASKED_NAME], email [MASKED_EMAIL] and SSN is [MASKED_SSN]."}\n' +
-                              '{"instruction": "Mask Personally Identifiable Information (PII) in this text: Contact admin at security@corporate.com or call 222-33-4444.", "output": "Mask Personally Identifiable Information (PII) in this text: Contact admin at [MASKED_EMAIL] or call [MASKED_SSN]."}\n';
-                } else if (val === 'clinical_notes') {
-                    datasetName = 'secure_hipaa_dataset';
-                    fileName = 'sample_medical_phi.jsonl';
-                    content = '{"instruction": "Redact PHI from this clinical record: Patient John Doe (MRN: 987654), born 12/14/1985, admitted on 05/10/2026 for acute coronary syndrome. Contact Dr. Sarah Smith at s.smith@hospital.org.", "output": "Redact PHI from this clinical record: Patient [MASKED_NAME] (MRN: [MASKED_MRN]), born [MASKED_DATE], admitted on [MASKED_DATE] for acute coronary syndrome. Contact [MASKED_PHYSICIAN] at [MASKED_EMAIL]."}\n' +
-                              '{"instruction": "Scrub HIPAA identifiers: Discharged 80-year-old female Jane Smith on 06/15/2026 to St. Jude Care Facility. Next appointment scheduled at Metro Health clinic.", "output": "Scrub HIPAA identifiers: Discharged [MASKED_AGE] female [MASKED_NAME] on [MASKED_DATE] to [MASKED_LOCATION]. Next appointment scheduled at [MASKED_LOCATION]."}\n';
-                } else {
-                    datasetName = 'secure_real_world_pii_dataset';
-                    fileName = 'real_world_pii.jsonl';
-                    content = '{"instruction": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation  Dear Applicants,  We hope this email finds you well.   This is to confirm that we have received the necessary documentation for your admission applications. Please find attached below the list of attachments for each applicant:  Applicant A: - Passport: 301025226 - Driver\'s License: ROSAL 955306 9", "output": "Redact Personally Identifiable Information (PII) from this text: Subject: Admission Application Attachments Confirmation  Dear Applicants,  We hope this email finds you well.   This is to confirm that we have received the necessary documentation for your admission applications. Please find attached below the list of attachments for each applicant:  Applicant A: - Passport: [PASSPORT] - Driver\'s License: ROSAL 955306 9"}\n';
-                }
-                
-                document.getElementById('job-dataset-name').value = datasetName;
-                document.getElementById('job-version').value = "1.0.0";
-                document.getElementById('job-epochs').value = "20";
+const simPresets = {
+  medical: `Patient Record #9021:
+Name: Dr. Sarah Connor | Email: sarah.connor@cyberdyne.org
+Phone: (555) 019-2834 | SSN: 992-44-1029 | MRN: 40912
+Clinical Note: Patient diagnosed with hypertension. Prescribed Lisinopril 10mg daily.`,
 
-                const file = new File([content], fileName, { type: "application/jsonl" });
-                selectedFile = file;
+  corporate: `Internal Memo - Confidential Project Aurora:
+Author: Mark Vance (mark.vance@techcorp.io)
+Direct Contact: +1 (555) 948-2201 | SSN: 449-10-8821
+Access Key: sk-prod-9948102948192849
+Action: Upload dataset to central LLM fine-tuning cluster immediately.`,
 
-                document.getElementById('dropzone-text').innerText = "Selected: " + file.name + " (Offline Fallback)";
-                document.getElementById('btn-create-job').disabled = false;
-                
-                updatePipelineFlow('dataset_intake', 0);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = origText;
-            }
-        }
+  financial: `Bank Audit Snapshot #4402:
+Account Holder: Jessica Pearson | Email: j.pearson@pearson-specter.com
+SSN: 331-90-5821 | Phone: (555) 831-9920
+Balance: $4,582,100.00 | Wire Route: 021000021
+Transaction Note: Verified internal wire transfer for Q3 audit compliance.`
+};
 
-        // Dynamically update the visual pipeline flow stepper
-        function updatePipelineFlow(stage, progress) {
-            const nodes = ['intake', 'inspect', 'train', 'package', 'verify', 'inference'];
-            let activeIdx = 0;
+function loadSimPreset(presetKey, btn) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const text = simPresets[presetKey] || simPresets.medical;
+  document.getElementById('sim-input-text').value = text;
+  recalculateSdgMetrics();
+  resetSimulationWorkbench();
+}
 
-            if (stage === 'dataset_intake') {
-                activeIdx = 0;
-            } else if (stage === 'pii_inspection') {
-                activeIdx = 1;
-            } else if (stage === 'fine_tuning') {
-                activeIdx = 2;
-            } else if (['preparing_adapter', 'deriving_device_binding', 'encrypting_adapter', 'generating_hash', 'generating_signature', 'building_package'].includes(stage)) {
-                activeIdx = 3;
-            } else if (['running_integrity_check', 'running_device_authorization_check', 'running_secure_deployment_check', 'secure_inference_validation'].includes(stage)) {
-                activeIdx = 4;
-            } else if (stage === 'security_validation_completed') {
-                activeIdx = 5;
-            }
+function updateSimStepNode(stepIdx, status, algoText) {
+  const node = document.getElementById(`sim-node-${stepIdx}`);
+  const badge = document.getElementById(`sn-b${stepIdx}`);
+  if (!node || !badge) return;
 
-            nodes.forEach((name, idx) => {
-                const node = document.getElementById('node-' + name);
-                if (!node) return;
-                const dot = node.querySelector('.node-dot');
-                const inner = node.querySelector('.node-inner');
-                const label = node.querySelector('.node-label');
+  node.classList.remove('active', 'completed', 'attacked');
+  badge.classList.remove('sn-badge-idle', 'sn-badge-active', 'sn-badge-pass', 'sn-badge-fail');
 
-                if (idx < activeIdx) {
-                    // Completed
-                    dot.style.borderColor = 'var(--emerald)';
-                    dot.style.background = 'rgba(16, 185, 129, 0.1)';
-                    dot.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
-                    inner.style.background = 'var(--emerald)';
-                    label.style.color = '#ffffff';
-                } else if (idx === activeIdx) {
-                    // Active (glowing)
-                    dot.style.borderColor = 'var(--cyan)';
-                    dot.style.background = 'rgba(0, 242, 254, 0.15)';
-                    dot.style.boxShadow = '0 0 12px rgba(0, 242, 254, 0.6)';
-                    inner.style.background = 'var(--cyan)';
-                    label.style.color = 'var(--cyan)';
-                } else {
-                    // Pending
-                    dot.style.borderColor = '#4b5563';
-                    dot.style.background = '#1f2937';
-                    dot.style.boxShadow = 'none';
-                    inner.style.background = 'transparent';
-                    label.style.color = '#9ca3af';
-                }
-            });
+  if (status === 'active') {
+    node.classList.add('active');
+    badge.classList.add('sn-badge-active');
+    badge.innerText = 'IN TRANSIT';
+  } else if (status === 'completed') {
+    node.classList.add('completed');
+    badge.classList.add('sn-badge-pass');
+    badge.innerText = 'PASSED';
+  } else if (status === 'attacked') {
+    node.classList.add('attacked');
+    badge.classList.add('sn-badge-fail');
+    badge.innerText = 'ATTACKED';
+  } else {
+    badge.classList.add('sn-badge-idle');
+    badge.innerText = 'READY';
+  }
 
-            const progressPct = activeIdx * 20; // 5 steps * 20%
-            const line = document.getElementById('flow-line-progress');
-            if (line) {
-                line.style.width = progressPct + '%';
-            }
-        }
+  if (algoText && node.querySelector('.sn-algo')) {
+    node.querySelector('.sn-algo').innerText = algoText;
+  }
+}
 
-        // Initialize Loss Chart
-        function initChart() {
-            const ctx = document.getElementById('lossChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Training Loss',
-                        data: [],
-                        borderColor: '#00f2fe',
-                        backgroundColor: 'rgba(0, 242, 254, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        spanGaps: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { display: true, title: { display: true, text: 'Epoch / Step', color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } },
-                        y: { display: true, title: { display: true, text: 'Loss', color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
-                    },
-                    plugins: {
-                        legend: { labels: { color: '#ffffff' } }
-                    }
-                }
-            });
-        }
+function resetSimulationWorkbench() {
+  if (simTimer1) clearTimeout(simTimer1);
+  if (simTimer2) clearTimeout(simTimer2);
+  if (simTimer3) clearTimeout(simTimer3);
 
-        // Create and Start secure pipeline job
-        async function submitJob() {
-            const name = document.getElementById('job-dataset-name').value.trim();
-            const version = document.getElementById('job-version').value.trim();
-            const epochs = document.getElementById('job-epochs').value.trim();
-            
-            if (!name) {
-                alert("Please enter a Dataset Name first.\n\nTip: Click '⚡ Load Template Dataset' to auto-fill everything.");
-                return;
-            }
-            if (!selectedFile) {
-                alert("No training file selected.\n\nTip: Click '⚡ Load Template Dataset' to load a sample dataset automatically.");
-                return;
-            }
+  const laser = document.getElementById('sim-scan-line');
+  if (laser) laser.classList.remove('scanning');
 
-            const btn = document.getElementById('btn-create-job');
-            btn.disabled = true;
-            document.getElementById('orchestrator-console-log').innerHTML = '<div class="console-line">Initializing secure job record...</div>';
+  for (let i = 1; i <= 4; i++) updateSimStepNode(i, 'idle');
 
-            try {
-                // 1. Create Job record
-                const response = await fetch('/api/orchestrator/jobs', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dataset_name: name, version: version, epochs: parseInt(epochs) })
-                });
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error);
+  document.getElementById('sim-text-screen').innerText = 'Select a dataset preset or type custom record text, then click "Run Interactive Transit Simulation" to watch live masking and validation.';
+  document.getElementById('sim-transit-state').innerText = 'Idle';
+  document.getElementById('sim-transit-state').style.color = 'var(--text-primary)';
+  document.getElementById('sim-hash-val').innerText = '—';
 
-                activeJobId = data.job_id;
-                document.getElementById('active-job-id').innerText = activeJobId;
-                document.getElementById('active-job-details').style.display = 'block';
+  document.getElementById('ab-rules').innerText = 'Regex SpaCy Entity Extractor + Token Redactor';
+  document.getElementById('ab-entities').innerText = '—';
+  document.getElementById('ab-checksum-status').innerText = 'Awaiting Execution';
+  document.getElementById('ab-checksum-status').className = 'ab-val';
+  document.getElementById('ab-protection').innerText = 'Active (Immediate Fail-Fast Abort)';
 
-                // 2. Upload file
-                const formData = new FormData();
-                formData.append('file', selectedFile);
-                
-                document.getElementById('orchestrator-console-log').innerHTML += '<div class="console-line">Uploading dataset securely...</div>';
-                const uploadRes = await fetch(`/api/orchestrator/jobs/${activeJobId}/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const uploadData = await uploadRes.json();
-                if (!uploadData.success) throw new Error(uploadData.error);
+  document.getElementById('sim-attack-alert').style.display = 'none';
+  document.getElementById('btn-sim-play').disabled = false;
+  recalculateSdgMetrics();
+}
 
-                // 3. Start Job execution
-                document.getElementById('orchestrator-console-log').innerHTML += '<div class="console-line">Starting background orchestration worker...</div>';
-                const startRes = await fetch(`/api/orchestrator/jobs/${activeJobId}/start`, {
-                    method: 'POST'
-                });
-                const startData = await startRes.json();
-                if (!startData.success) throw new Error(startData.error);
+function runFullSimulation() {
+  resetSimulationWorkbench();
+  const rawText = document.getElementById('sim-input-text').value.trim();
+  if (!rawText) return alert('Please enter input text.');
 
-                // Start polling job status
-                pollJobStatus();
-            } catch (e) {
-                document.getElementById('orchestrator-console-log').innerHTML += `<div class="console-line console-err">[ERROR] Job setup failed: ${e.message}</div>`;
-                btn.disabled = false;
-            }
-        }
+  document.getElementById('btn-sim-play').disabled = true;
+  const screen = document.getElementById('sim-text-screen');
+  const laser = document.getElementById('sim-scan-line');
 
-        // Subscribe to real-time Server-Sent Events (SSE) status stream
-        function pollJobStatus() {
-            if (!activeJobId) return;
+  // STAGE 01: Ingestion
+  updateSimStepNode(1, 'active', 'RAW PII SCANNING');
+  document.getElementById('sim-transit-state').innerText = 'User Ingestion (Client Side)';
+  document.getElementById('sim-transit-state').style.color = 'var(--amber)';
 
-            const consoleBox = document.getElementById('orchestrator-console-log');
-            consoleBox.innerHTML += `<div class="console-line">[SSE] Connecting to real-time event stream...</div>`;
+  let rawHtml = escHtml(rawText)
+    .replace(/(Dr\.\s[A-Za-z\s]+|Jessica Pearson|Mark Vance)/g, '<span class="pii-highlight-raw">$1</span>')
+    .replace(/([\w-\.]+@[\w-]+\.[\w-]+)/g, '<span class="pii-highlight-raw">$1</span>')
+    .replace(/(\(\d{3}\)\s\d{3}-\d{4}|\+\d\s\(\d{3}\)\s\d{3}-\d{4})/g, '<span class="pii-highlight-raw">$1</span>')
+    .replace(/(\d{3}-\d{2}-\d{4})/g, '<span class="pii-highlight-raw">$1</span>')
+    .replace(/(sk-[a-zA-Z0-9-]+)/g, '<span class="pii-highlight-raw">$1</span>');
 
-            const eventSource = new EventSource(`/api/orchestrator/jobs/${activeJobId}/stream`);
+  screen.innerHTML = rawHtml;
+  document.getElementById('sim-hash-val').innerText = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+  document.getElementById('ab-entities').innerText = 'EMAIL, PHONE, SSN, NAME, API_KEY';
 
-            eventSource.onmessage = async function(event) {
-                try {
-                    const job = JSON.parse(event.data);
-                    if (!job || !job.job_id) return;
+  // STAGE 02: In-Transit Masking
+  simTimer1 = setTimeout(() => {
+    updateSimStepNode(1, 'completed');
+    updateSimStepNode(2, 'active', 'PATTERN REDACTION');
+    if (laser) laser.classList.add('scanning');
 
-                    document.getElementById('active-job-status').innerText = job.status;
-                    document.getElementById('active-job-stage').innerText = job.stage;
-                    document.getElementById('job-progress-bar').style.width = job.progress + "%";
-                    updatePipelineFlow(job.stage, job.progress);
+    document.getElementById('sim-transit-state').innerText = 'In-Transit PII Masking Engine';
+    document.getElementById('sim-transit-state').style.color = 'var(--text-primary)';
 
-                    // Update loss chart
-                    if (job.loss_history && job.loss_history.length > 0) {
-                        const validHistory = job.loss_history.filter(item => item.loss !== null && item.loss !== undefined);
-                        if (validHistory.length > 0) {
-                            let labels = [];
-                            let losses = [];
-                            if (validHistory.length === 1) {
-                                labels = [0, 1];
-                                losses = [validHistory[0].loss + 0.15, validHistory[0].loss];
-                            } else {
-                                labels = validHistory.map((_, i) => i + 1);
-                                losses = validHistory.map(item => item.loss);
-                            }
-                            chart.data.labels = labels;
-                            chart.data.datasets[0].data = losses;
-                            chart.update();
-                        }
-                    }
+    let maskingHtml = escHtml(rawText)
+      .replace(/(Dr\.\s[A-Za-z\s]+|Jessica Pearson|Mark Vance)/g, '<span class="pii-highlight-masking">[REDACTING_NAME...]</span>')
+      .replace(/([\w-\.]+@[\w-]+\.[\w-]+)/g, '<span class="pii-highlight-masking">[REDACTING_EMAIL...]</span>')
+      .replace(/(\(\d{3}\)\s\d{3}-\d{4}|\+\d\s\(\d{3}\)\s\d{3}-\d{4})/g, '<span class="pii-highlight-masking">[REDACTING_PHONE...]</span>')
+      .replace(/(\d{3}-\d{2}-\d{4})/g, '<span class="pii-highlight-masking">[REDACTING_SSN...]</span>')
+      .replace(/(sk-[a-zA-Z0-9-]+)/g, '<span class="pii-highlight-masking">[REDACTING_SECRET...]</span>');
 
-                    // Poll logs in background
-                    const logsRes = await fetch(`/api/orchestrator/jobs/${activeJobId}/logs`);
-                    const logsData = await logsRes.json();
-                    if (logsData.success) {
-                        consoleBox.innerHTML = '';
-                        logsData.logs.split('\n').forEach(line => {
-                            if (!line.trim()) return;
-                            const div = document.createElement('div');
-                            div.className = line.includes('ERROR') || line.includes('failed') || line.includes('FAILED') ? 'console-line console-err' : 'console-line';
-                            div.innerText = line;
-                            consoleBox.appendChild(div);
-                        });
-                        consoleBox.scrollTop = consoleBox.scrollHeight;
-                    }
+    screen.innerHTML = maskingHtml;
 
-                    // Handle terminal states
-                    if (job.status === 'COMPLETED') {
-                        eventSource.close();
-                        consoleBox.innerHTML += `<div class="console-line" style="color:#10b981;">[COMPLETE] Job completed successfully! LoRA package signed, verified, and simulations passed. Ready for deployment.</div>`;
-                        document.getElementById('btn-create-job').disabled = false;
-                        
-                        // Fetch additional data
-                        fetchJobArtifacts(job.job_id);
-                        fetchJobReport(job.job_id);
-                        fetchStatus();
-                    } else if (job.status === 'FAILED') {
-                        eventSource.close();
-                        consoleBox.innerHTML += `<div class="console-line console-err">[FAILED] Job failed: ${job.error}</div>`;
-                        document.getElementById('btn-create-job').disabled = false;
-                    }
+    // STAGE 03: Validation & Cryptographic Gate
+    simTimer2 = setTimeout(() => {
+      updateSimStepNode(2, 'completed');
+      updateSimStepNode(3, 'active', 'SHA-256 CHECK');
+      if (laser) laser.classList.remove('scanning');
 
-                } catch (e) {
-                    console.error("Error parsing event payload:", e);
-                }
-            };
+      document.getElementById('sim-transit-state').innerText = 'Cryptographic Verification Gate';
 
-            eventSource.onerror = function(err) {
-                console.error("SSE stream error, client connection closed.", err);
-                eventSource.close();
-            };
-        }
+      let maskedText = escHtml(rawText)
+        .replace(/(Dr\.\s[A-Za-z\s]+|Jessica Pearson|Mark Vance)/g, '[REDACTED_NAME]')
+        .replace(/([\w-\.]+@[\w-]+\.[\w-]+)/g, '[REDACTED_EMAIL]')
+        .replace(/(\(\d{3}\)\s\d{3}-\d{4}|\+\d\s\(\d{3}\)\s\d{3}-\d{4})/g, '[REDACTED_PHONE]')
+        .replace(/(\d{3}-\d{2}-\d{4})/g, '[REDACTED_SSN]')
+        .replace(/(sk-[a-zA-Z0-9-]+)/g, '[REDACTED_SECRET]');
 
-        async function fetchJobArtifacts(jobId) {
-            try {
-                const res = await fetch(`/api/orchestrator/jobs/${jobId}/artifacts`);
-                const data = await res.json();
-                if (data.success && data.artifacts.length > 0) {
-                    const grid = document.getElementById('artifacts-list-grid');
-                    grid.innerHTML = '';
-                    data.artifacts.forEach(art => {
-                        const row = document.createElement('div');
-                        row.className = 'info-row';
-                        row.innerHTML = `
-                            <span class="info-label">${art.name} (${(art.size_bytes / 1024).toFixed(1)} KB)</span>
-                            <span class="info-value">
-                                <a href="${art.download_url}" style="color:var(--cyan); text-decoration:none;" download>Download</a>
-                            </span>
-                        `;
-                        grid.appendChild(row);
-                    });
-                    document.getElementById('job-artifacts-card').style.display = 'block';
-                }
-            } catch(e) {
-                console.error("Error fetching artifacts:", e);
-            }
-        }
+      screen.innerHTML = maskedText
+        .replace(/\[REDACTED_NAME\]/g, '<span class="pii-highlight-secured">[REDACTED_NAME]</span>')
+        .replace(/\[REDACTED_EMAIL\]/g, '<span class="pii-highlight-secured">[REDACTED_EMAIL]</span>')
+        .replace(/\[REDACTED_PHONE\]/g, '<span class="pii-highlight-secured">[REDACTED_PHONE]</span>')
+        .replace(/\[REDACTED_SSN\]/g, '<span class="pii-highlight-secured">[REDACTED_SSN]</span>')
+        .replace(/\[REDACTED_SECRET\]/g, '<span class="pii-highlight-secured">[REDACTED_SECRET]</span>');
 
-        async function fetchJobReport(jobId) {
-            try {
-                const res = await fetch(`/api/orchestrator/jobs/${jobId}/report`);
-                const data = await res.json();
-                if (data.success && data.report) {
-                    const grid = document.getElementById('validation-audit-grid');
-                    grid.innerHTML = '';
-                    const outcomes = data.report.security_validation_outcomes || {};
-                    const steps = data.report.verification_pipeline?.steps || {};
+      document.getElementById('sim-hash-val').innerText = '9a7f34c11b0e4981d3298a0e0f81d11b2394c8e7102948e718294a0d92e8174f';
+      document.getElementById('ab-checksum-status').innerText = 'PASSED (Hash Digest Validated)';
+      document.getElementById('ab-checksum-status').className = 'ab-val pass';
 
-                    const rows = [
-                        { label: "Authorized Device Binding", val: outcomes.authorized_deployment === "pass" ? "PASS" : "FAIL" },
-                        { label: "Tamper Evidence Check", val: outcomes.tamper_simulation === "pass" ? "PASS" : "FAIL" },
-                        { label: "Unauthorized Device Block", val: outcomes.unauthorized_device_simulation === "pass" ? "PASS" : "FAIL" },
-                        { label: "Inference Validation Step", val: steps["Step 8: Inference Validation"] === "PASSED" ? "PASS" : "FAIL" }
-                    ];
+      // STAGE 04: Adapter Ready
+      simTimer3 = setTimeout(() => {
+        updateSimStepNode(3, 'completed');
+        updateSimStepNode(4, 'completed', 'READY FOR LORA');
 
-                    rows.forEach(r => {
-                        const row = document.createElement('div');
-                        row.className = 'info-row';
-                        const color = r.val === "PASS" ? "var(--emerald)" : "var(--rose)";
-                        row.innerHTML = `
-                            <span class="info-label">${r.label}</span>
-                            <span class="info-value" style="color:${color}; font-weight:bold;">${r.val}</span>
-                        `;
-                        grid.appendChild(row);
-                    });
-                    document.getElementById('job-validation-card').style.display = 'block';
-                }
-            } catch(e) {
-                console.error("Error loading job report:", e);
-            }
-        }
+        document.getElementById('sim-transit-state').innerText = 'Adapter Fine-Tuning Ready';
+        document.getElementById('sim-transit-state').style.color = 'var(--emerald)';
+        document.getElementById('btn-sim-play').disabled = false;
+      }, 1600);
 
-        async function fetchStatus() {
-            try {
-                const response = await fetch('/api/phase4/status');
-                const data = await response.json();
-                
-                document.getElementById('info-fingerprint').innerText = data.fingerprint_prefix || 'UNKNOWN';
-                document.getElementById('info-salt').innerText = data.salt_masked || 'UNKNOWN';
-                document.getElementById('info-base-model').innerText = data.base_model_name || 'JackFram/llama-68m';
-                
-                if (data.loaded) {
-                    const badge = document.getElementById('deployment-badge');
-                    badge.className = "badge badge-verified";
-                    badge.innerText = "🟢 Deployed & Secured";
-                    document.getElementById('btn-generate').disabled = false;
-                    document.getElementById('res-base').innerText = "Ready for comparison.";
-                    document.getElementById('res-lora').innerText = "Ready for comparison.";
-                } else {
-                    const badge = document.getElementById('deployment-badge');
-                    badge.className = "badge badge-unverified";
-                    badge.innerText = "🔴 Session Locked";
-                    document.getElementById('btn-generate').disabled = true;
-                }
+    }, 2000);
 
-                if (data.steps && Object.keys(data.steps).length > 0) {
-                    renderChecklist(data.steps);
-                }
-            } catch (e) {
-                console.error("Failed to load status:", e);
-            }
-        }
+  }, 1800);
+}
 
-        function renderChecklist(steps) {
-            const listContainer = document.getElementById('step-checklist');
-            listContainer.innerHTML = '';
-            
-            const stepMapping = [
-                "Step 1: Package Completeness",
-                "Step 2: Integrity Verification",
-                "Step 3: Signature Verification",
-                "Step 4: Device Authorization",
-                "Step 5: Key Derivation",
-                "Step 6: Decryption & Extraction",
-                "Step 7: PEFT Model Loading",
-                "Step 8: Inference Validation"
-            ];
-            
-            stepMapping.forEach((stepKey, idx) => {
-                const status = steps[stepKey] || "PENDING";
-                let statusClass = "status-pending";
-                if (status === "PASSED") statusClass = "status-passed";
-                if (status === "FAILED") statusClass = "status-failed";
-                if (status === "SKIPPED") statusClass = "status-skipped";
-                
-                const item = document.createElement('div');
-                item.className = 'step-item';
-                item.innerHTML = `
-                    <div class="step-info">
-                        <span class="step-number">${idx + 1}</span>
-                        <span class="step-name">${stepKey.replace(/^Step \d+: /, '')}</span>
-                    </div>
-                    <span class="step-status ${statusClass}">${status}</span>
-                `;
-                listContainer.appendChild(item);
-            });
-        }
+// FLEXIBLE MULTI-STAGE ATTACK TRIGGER ENGINE
+async function triggerInTransitAttack() {
+  resetSimulationWorkbench();
+  const rawText = document.getElementById('sim-input-text').value.trim();
+  const targetStage = document.getElementById('sim-attack-target-stage').value;
+  const payload = document.getElementById('sim-attack-payload-input').value.trim();
 
-        async function triggerDeployment() {
-            const btn = document.getElementById('btn-deploy');
-            const spinner = document.getElementById('spinner-deploy');
-            const logBox = document.getElementById('console-log');
-            
-            btn.disabled = true;
-            spinner.style.display = 'inline-block';
-            logBox.innerHTML = '<div class="console-line">Starting Secure Pipeline Verification & Decryption...</div>';
-            
-            try {
-                const response = await fetch('/api/phase4/verify', { method: 'POST' });
-                const data = await response.json();
-                
-                if (data.success) {
-                    logBox.innerHTML += `<div class="console-line" style="color:#34d399;">[SUCCESS] All 8 pipeline gates PASSED. PEFT adapter loaded in RAM. Plaintext files shredded.</div>`;
-                } else {
-                    logBox.innerHTML += `<div class="console-line console-err">[FAILURE] Verification failed: ${data.error}</div>`;
-                }
-                
-                renderChecklist(data.steps);
-                fetchStatus();
-            } catch (e) {
-                logBox.innerHTML += `<div class="console-line console-err">[ERROR] Exception during deployment API call.</div>`;
-            } finally {
-                btn.disabled = false;
-                spinner.style.display = 'none';
-            }
-        }
+  const btn = document.getElementById('btn-sim-attack');
+  btn.disabled = true; btn.innerText = 'Attacking...';
 
-        async function runInference() {
-            const prompt = document.getElementById('prompt-input').value.trim();
-            if (!prompt) return alert("Please enter a prompt!");
-            
-            const btn = document.getElementById('btn-generate');
-            const spinner = document.getElementById('spinner-generate');
-            btn.disabled = true;
-            spinner.style.display = 'inline-block';
-            
-            document.getElementById('res-base').innerText = "Computing baseline tokens...";
-            document.getElementById('res-lora').innerText = "Computing adapter tokens...";
-            
-            try {
-                const response = await fetch('/api/phase4/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-                const data = await response.json();
-                
-                document.getElementById('res-base').innerText = data.base_response;
-                document.getElementById('res-lora').innerText = data.lora_response;
-                
-                const logBox = document.getElementById('console-log');
-                logBox.innerHTML += '<div class="console-line">[Inference] Executed side-by-side. Adapter active: ' + data.adapter_active + '</div>';
-                logBox.scrollTop = logBox.scrollHeight;
-            } catch (e) {
-                document.getElementById('res-base').innerText = "Error running baseline model.";
-                document.getElementById('res-lora').innerText = "Error running PEFT model.";
-            } finally {
-                btn.disabled = false;
-                spinner.style.display = 'none';
-            }
-        }
+  try {
+    const res = await fetch('/api/tamper/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: rawText, stage: targetStage, payload: payload, epochs: 20 })
+    });
 
-        initChart();
-        fetchStatus();
-        updatePipelineFlow('dataset_intake', 0);
+    const d = await res.json();
+    if (!d.success) throw new Error(d.error);
+
+    // Set UI node statuses dynamically based on target stage
+    const stgNum = parseInt(targetStage);
+
+    for (let i = 1; i <= 4; i++) {
+      if (i < stgNum) updateSimStepNode(i, 'completed');
+      else if (i === stgNum) updateSimStepNode(i, 'attacked', 'ATTACK INTERCEPTED');
+      else updateSimStepNode(i, 'idle', 'BLOCKED');
+    }
+
+    const screen = document.getElementById('sim-text-screen');
+    screen.innerHTML = `<span style="color:var(--rose)">[ATTACK INTERCEPTED AT STAGE 0${targetStage}]</span>\n${escHtml(d.corrupted_text)}\n\n[FAIL-FAST REJECTION RULE TRIGGERED — GPU TRAINING ABORTED]`;
+
+    document.getElementById('sim-transit-state').innerText = `FAIL-FAST SECURITY INTERCEPT (STAGE 0${targetStage} BLOCKED)`;
+    document.getElementById('sim-transit-state').style.color = 'var(--rose)';
+
+    document.getElementById('sim-hash-val').innerText = d.chain[stgNum - 1]?.hash || '0xDEADBEEF...';
+    document.getElementById('ab-checksum-status').innerText = `FAILED — REJECTED AT STAGE 0${targetStage}`;
+    document.getElementById('ab-checksum-status').className = 'ab-val fail';
+
+    const alertBox = document.getElementById('sim-attack-alert');
+    alertBox.style.display = 'flex';
+    document.getElementById('aab-title-header').innerText = `STAGE 0${targetStage} ATTACK INTERCEPTED & BLOCKED`;
+    document.getElementById('aab-desc-text').innerText = d.rejection_reason;
+
+    const sdg = d.sdg_impact;
+    if (sdg) {
+      document.getElementById('sw-token-val').innerText = sdg.token_count;
+      document.getElementById('sw-co2-val').innerText = sdg.co2_grams_saved + 'g';
+      document.getElementById('sw-gpu-val').innerText = sdg.compute_ms_saved.toLocaleString() + 'ms';
+      document.getElementById('aab-sdg-text').innerText = `🌱 SDG 13 Climate Action: ${sdg.formula} → Saved ${sdg.co2_grams_saved}g CO₂e (~${sdg.equivalent_searches} searches)!`;
+    }
+
+  } catch (e) {
+    alert('Attack simulation failed: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerText = '⚡ Inject & Execute Attack';
+  }
+}
+
+// ──────────────────────────────────────────────
+// TRANSPARENCY TRACE AUDIT
+// ──────────────────────────────────────────────
+async function loadJobsForSelect() {
+  const sel = document.getElementById('trace-job-select'); if (!sel) return;
+  try {
+    const r = await fetch('/api/orchestrator/jobs'); const d = await r.json();
+    sel.innerHTML = '<option value="">— Select a completed job —</option>';
+    (d.jobs || []).forEach(j => {
+      if (j.status === 'COMPLETED') {
+        const o = document.createElement('option'); o.value = j.job_id; o.innerText = j.job_id + ' (' + j.dataset_name + ')'; sel.appendChild(o);
+      }
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function loadTransparencyTrace() {
+  const jobId = document.getElementById('trace-job-select').value;
+  if (!jobId) { alert('Please select a completed job first.'); return; }
+  const btn = document.getElementById('btn-trace-load'); btn.disabled = true; btn.innerText = 'Running...';
+  try {
+    const r = await fetch('/api/transparency/inspect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job_id: jobId }) });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error);
+    renderTransparencyTrace(d.trace);
+  } catch (e) { alert('Trace failed: ' + e.message); }
+  finally { btn.disabled = false; btn.innerText = 'Run Trace Audit'; }
+}
+
+async function traceCustomJsonl() {
+  const raw = document.getElementById('trace-custom-jsonl').value.trim();
+  if (!raw) { alert('Enter at least one JSONL record.'); return; }
+  try {
+    const r = await fetch('/api/transparency/inspect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_jsonl: raw }) });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error);
+    renderTransparencyTrace(d.trace);
+  } catch (e) { alert('Trace failed: ' + e.message); }
+}
+
+function renderTransparencyTrace(trace) {
+  const container = document.getElementById('trace-records-container');
+  container.innerHTML = '';
+  document.getElementById('rejection-alert').style.display = 'none';
+
+  const s = trace.summary;
+
+  const tampered = trace.records.filter(r => r.tampered);
+  if (tampered.length > 0) {
+    const ra = document.getElementById('rejection-alert');
+    ra.style.display = 'flex';
+    document.getElementById('rejection-stage-name').innerText = tampered[0].integrity_chain.find(c => !c.verified)?.stage || 'Unknown';
+    document.getElementById('rejection-reason-text').innerText = tampered[0].tamper_reason || 'Hash mismatch detected.';
+  }
+
+  trace.records.forEach(rec => {
+    const card = document.createElement('div');
+    card.className = 'trace-record' + (rec.tampered ? ' tampered' : '');
+
+    const chips = rec.pii_types.map(t => `<span class="pii-chip">${t.replace('_', ' ')}</span>`).join('');
+    const tamperBadge = rec.tampered ? '<span class="trace-tamper-badge">Tampered</span>' : '';
+
+    const chainHtml = rec.integrity_chain.map((c, ci) => {
+      const cls = c.attacked ? 'chain-fail' : c.verified ? 'chain-ok' : 'chain-fail';
+      const arrow = ci < rec.integrity_chain.length - 1 ? '<span class="chain-arrow">→</span>' : '';
+      return `<span class="chain-step ${cls}"><span class="chain-step-dot"></span><span class="chain-step-name">${c.stage}</span><span class="chain-step-hash">${c.hash}</span></span>${arrow}`;
+    }).join('');
+
+    let rawHtml = escHtml(rec.raw.text);
+    if (rec.pii_spans.length > 0) {
+      let offset = 0, result = '', original = rec.raw.text;
+      const spans = [...rec.pii_spans].sort((a, b) => a.start - b.start);
+      spans.forEach(sp => {
+        result += escHtml(original.slice(offset, sp.start));
+        result += `<mark class="pii-mark" title="${sp.entity_type}: ${escHtml(sp.matched_text)}">${escHtml(sp.matched_text)}</mark>`;
+        offset = sp.end;
+      });
+      result += escHtml(original.slice(offset));
+      rawHtml = result;
+    }
+
+    card.innerHTML = `
+      <div class="trace-record-header">
+        <span class="trace-record-idx">#${rec.index}</span>
+        <div class="trace-pii-chips">${chips || '<span style="font-size:.7rem;color:#71717a">Clean Record</span>'}</div>
+        ${tamperBadge}
+      </div>
+      <div class="trace-record-body">
+        <div class="trace-stage stage-raw">
+          <div class="trace-stage-label">Raw Ingestion</div>
+          <div class="trace-text">${rawHtml}</div>
+          <div class="trace-hash">SHA-256: ${rec.raw.hash}</div>
+        </div>
+        <div class="trace-stage stage-masked">
+          <div class="trace-stage-label">PII Masked</div>
+          <div class="trace-text">${escHtml(rec.masked.text)}</div>
+          <div class="trace-hash">SHA-256: ${rec.masked.hash}</div>
+        </div>
+        <div class="trace-stage stage-final">
+          <div class="trace-stage-label">Training Ready</div>
+          <div class="trace-text">${escHtml(rec.final.text)}</div>
+          <div class="trace-hash">SHA-256: ${rec.final.hash}</div>
+        </div>
+      </div>
+      <div class="chain-row">${chainHtml}</div>
+    `;
+    container.appendChild(card);
+  });
+
+  const sg = document.getElementById('trace-summary-grid'); sg.innerHTML = '';
+  [{ val: s.total_records, label: 'Total Records' }, { val: s.records_with_pii, label: 'Records with PII' }, { val: s.total_pii_entities, label: 'PII Entities Found' }, { val: Object.keys(s.pii_breakdown).length, label: 'PII Types Detected' }, { val: s.compute_saved_ms + 'ms', label: 'GPU Time Saved' }, { val: s.co2_saved_grams + 'g', label: 'CO₂e Saved (SDG-13)' }].forEach(st => {
+    const el = document.createElement('div'); el.className = 'summary-stat';
+    el.innerHTML = `<span class="summary-stat-val">${st.val}</span><span class="summary-stat-label">${st.label}</span>`;
+    sg.appendChild(el);
+  });
+  document.getElementById('trace-summary-card').style.display = 'block';
+}
+
+function escHtml(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+initChart();
+fetchStatus();
+recalculateSdgMetrics();
+updatePipelineFlow('dataset_intake', 0);
