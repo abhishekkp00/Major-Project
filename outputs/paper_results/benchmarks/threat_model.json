@@ -1,7 +1,7 @@
 {
   "metadata": {
     "analysis_version": "1.0.0",
-    "timestamp_utc": "2026-08-06T14:07:29.650904+00:00",
+    "timestamp_utc": "2026-08-10T14:20:32.778191+00:00",
     "total_threats_analyzed": 7,
     "total_simulations": 6,
     "simulations_passed": 6,
@@ -63,7 +63,7 @@
         "name": "Physical Disk Clone / Cross-Device Decryption",
         "result": "PASS",
         "exception_caught": "CryptoError",
-        "duration_ms": 1.449,
+        "duration_ms": 1.326,
         "details": {
           "message": "Decryption correctly rejected with wrong hardware fingerprint",
           "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
@@ -88,10 +88,10 @@
         "name": "Bit-Level Ciphertext Tampering Detection",
         "result": "PASS",
         "exception_caught": "ValueError",
-        "duration_ms": 1.34,
+        "duration_ms": 1.11,
         "details": {
           "message": "Integrity check correctly rejected tampered ciphertext",
-          "exception": "Integrity check FAILED. Stored hash: 932a15b98781\u2026 | Computed hash: 9ad66ca17b70\u2026 The encrypted adapter has been tampered with or replaced.",
+          "exception": "Integrity check FAILED. Stored hash: a9906d1d268e\u2026 | Computed hash: 592ff93f71b4\u2026 The encrypted adapter has been tampered with or replaced.",
           "tamper_offset_bytes": 200,
           "tamper_method": "XOR bit-flip (0xFF)"
         }
@@ -115,7 +115,7 @@
         "name": "RSA-PSS Signature Forgery / Wrong Public Key",
         "result": "PASS",
         "exception_caught": "ValueError",
-        "duration_ms": 160.007,
+        "duration_ms": 118.97,
         "details": {
           "message": "Signature verification correctly rejected with wrong public key",
           "exception": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
@@ -140,7 +140,7 @@
         "name": "Salt Replay with Spoofed Hardware Fingerprint",
         "result": "PASS",
         "exception_caught": "CryptoError",
-        "duration_ms": 1.333,
+        "duration_ms": 1.418,
         "details": {
           "message": "Salt replay with spoofed HW fingerprint correctly rejected",
           "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
@@ -196,7 +196,7 @@
         "name": "Salt Replay with Spoofed Hardware Fingerprint",
         "result": "PASS",
         "exception_caught": "CryptoError",
-        "duration_ms": 1.333,
+        "duration_ms": 1.418,
         "details": {
           "message": "Salt replay with spoofed HW fingerprint correctly rejected",
           "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
@@ -211,7 +211,7 @@
       "name": "Physical Disk Clone / Cross-Device Decryption",
       "result": "PASS",
       "exception_caught": "CryptoError",
-      "duration_ms": 1.449,
+      "duration_ms": 1.326,
       "details": {
         "message": "Decryption correctly rejected with wrong hardware fingerprint",
         "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
@@ -222,10 +222,10 @@
       "name": "Bit-Level Ciphertext Tampering Detection",
       "result": "PASS",
       "exception_caught": "ValueError",
-      "duration_ms": 1.34,
+      "duration_ms": 1.11,
       "details": {
         "message": "Integrity check correctly rejected tampered ciphertext",
-        "exception": "Integrity check FAILED. Stored hash: 932a15b98781\u2026 | Computed hash: 9ad66ca17b70\u2026 The encrypted adapter has been tampered with or replaced.",
+        "exception": "Integrity check FAILED. Stored hash: a9906d1d268e\u2026 | Computed hash: 592ff93f71b4\u2026 The encrypted adapter has been tampered with or replaced.",
         "tamper_offset_bytes": 200,
         "tamper_method": "XOR bit-flip (0xFF)"
       }
@@ -235,7 +235,7 @@
       "name": "RSA-PSS Signature Forgery / Wrong Public Key",
       "result": "PASS",
       "exception_caught": "ValueError",
-      "duration_ms": 160.007,
+      "duration_ms": 118.97,
       "details": {
         "message": "Signature verification correctly rejected with wrong public key",
         "exception": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
@@ -246,7 +246,7 @@
       "name": "Salt Replay with Spoofed Hardware Fingerprint",
       "result": "PASS",
       "exception_caught": "CryptoError",
-      "duration_ms": 1.333,
+      "duration_ms": 1.418,
       "details": {
         "message": "Salt replay with spoofed HW fingerprint correctly rejected",
         "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
@@ -258,7 +258,7 @@
       "name": "GCM Authentication Tag Corruption",
       "result": "PASS",
       "exception_caught": "InvalidTag",
-      "duration_ms": 0.109,
+      "duration_ms": 0.112,
       "details": {
         "message": "GCM authentication tag corruption correctly detected",
         "tag_corruption_method": "XOR last byte with 0xFF"
@@ -269,7 +269,7 @@
       "name": "Wrong Salt Key Derivation Rejection",
       "result": "PASS",
       "exception_caught": "CryptoError",
-      "duration_ms": 0.943,
+      "duration_ms": 0.976,
       "details": {
         "message": "Wrong salt correctly causes decryption failure",
         "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."

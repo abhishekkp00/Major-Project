@@ -1,7 +1,7 @@
 {
   "metadata": {
     "comparison_version": "1.0.0",
-    "timestamp_utc": "2026-08-06T14:07:29.482464+00:00",
+    "timestamp_utc": "2026-08-10T14:20:32.653273+00:00",
     "payload_kb": 512,
     "n_runs": 8,
     "security_dimensions": [
@@ -37,8 +37,8 @@
       },
       "aggregate_security_score": 0.125,
       "timing": {
-        "mean_ms": 0.599400123974192,
-        "stdev_ms": 0.049172938820583836
+        "mean_ms": 0.5966686258034315,
+        "stdev_ms": 0.08335431332662029
       }
     },
     "Password-Only AES": {
@@ -56,8 +56,8 @@
       },
       "aggregate_security_score": 0.45,
       "timing": {
-        "mean_ms": 14.687110373415635,
-        "stdev_ms": 0.30650344567333937
+        "mean_ms": 14.925213875358168,
+        "stdev_ms": 0.48160591976662126
       }
     },
     "Filesystem ACL (chmod 600)": {
@@ -75,8 +75,8 @@
       },
       "aggregate_security_score": 0.1375,
       "timing": {
-        "mean_ms": 0.7399467522191117,
-        "stdev_ms": 0.26711792594059675
+        "mean_ms": 0.6906069993419806,
+        "stdev_ms": 0.17412940444301087
       }
     },
     "TPM-Bound Encryption (reference)": {
@@ -94,8 +94,8 @@
       },
       "aggregate_security_score": 0.6562,
       "timing": {
-        "mean_ms": 24.69428162839904,
-        "stdev_ms": 3.399565480236636,
+        "mean_ms": 26.076327623741236,
+        "stdev_ms": 5.199071026643955,
         "note": "TPM latency modeled as 15\u201335 ms uniform (Raj et al. 2016 reference values)"
       }
     },
@@ -114,8 +114,8 @@
       },
       "aggregate_security_score": 0.9688,
       "timing": {
-        "mean_ms": 1.3056031275482383,
-        "stdev_ms": 0.27403982710941754
+        "mean_ms": 1.3302754996402655,
+        "stdev_ms": 0.2508699507341706
       }
     }
   },

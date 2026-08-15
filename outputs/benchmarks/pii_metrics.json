@@ -1,7 +1,7 @@
 {
   "metadata": {
     "evaluation_version": "1.0.0",
-    "timestamp_utc": "2026-08-10T14:20:31.496776+00:00",
+    "timestamp_utc": "2026-08-10T14:41:23.940659+00:00",
     "corpus_size": 48,
     "pii_types_evaluated": [
       "SSN",
@@ -40,14 +40,14 @@
       "tn": 40
     },
     "PHONE": {
-      "precision": 0.8571,
+      "precision": 0.75,
       "recall": 1.0,
-      "f1_score": 0.9231,
-      "accuracy": 0.9792,
+      "f1_score": 0.8571,
+      "accuracy": 0.9583,
       "tp": 6,
-      "fp": 1,
+      "fp": 2,
       "fn": 0,
-      "tn": 41
+      "tn": 40
     },
     "IP_ADDRESS": {
       "precision": 1.0,
@@ -71,28 +71,28 @@
     },
     "CREDIT_CARD": {
       "precision": 1.0,
-      "recall": 0.8333,
-      "f1_score": 0.9091,
-      "accuracy": 0.9792,
-      "tp": 5,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "accuracy": 1.0,
+      "tp": 6,
       "fp": 0,
-      "fn": 1,
+      "fn": 0,
       "tn": 42
     }
   },
   "micro_average": {
-    "precision": 0.9737,
-    "recall": 0.9487,
-    "f1": 0.961
+    "precision": 0.95,
+    "recall": 0.9744,
+    "f1": 0.962
   },
   "macro_average": {
-    "precision": 0.9762,
-    "recall": 0.9444,
-    "f1": 0.9569
+    "precision": 0.9583,
+    "recall": 0.9722,
+    "f1": 0.961
   },
-  "sample_accuracy": 0.9375,
+  "sample_accuracy": 0.6042,
   "total_samples": 48,
-  "correct_samples": 45,
+  "correct_samples": 29,
   "sample_predictions": [
     {
       "text_snippet": "Patient John Doe, SSN: 123-45-6789, admitted on Monday.",
@@ -100,10 +100,11 @@
         "SSN"
       ],
       "detected_pii": [
+        "PERSON",
         "SSN"
       ],
-      "masked_output": "Patient John Doe, SSN: [MASKED_SSN], admitted on Monday.",
-      "correct": true
+      "masked_output": "[[GIVENNAME]IVENNAME] [[GIVENNAME]IVENNAME], SSN: [SOCIALNUMBER], admitted on Monday.",
+      "correct": false
     },
     {
       "text_snippet": "Employee record: SS Number 987-65-4321 on file.",
@@ -111,10 +112,11 @@
         "SSN"
       ],
       "detected_pii": [
+        "PERSON",
         "SSN"
       ],
-      "masked_output": "Employee record: SS Number [MASKED_SSN] on file.",
-      "correct": true
+      "masked_output": "record [GIVENNAME]: SS Number [SOCIALNUMBER] on file.",
+      "correct": false
     },
     {
       "text_snippet": "The file shows SSN 000-12-3456 under the tax section.",
@@ -124,7 +126,7 @@
       "detected_pii": [
         "SSN"
       ],
-      "masked_output": "The file shows SSN [MASKED_SSN] under the tax section.",
+      "masked_output": "The file shows [ORGANIZATION]N [SOCIALNUMBER] under the tax section.",
       "correct": true
     },
     {
@@ -135,7 +137,7 @@
       "detected_pii": [
         "SSN"
       ],
-      "masked_output": "Verify identity with [MASKED_SSN] for enrollment.",
+      "masked_output": "Verify identity with [SOCIALNUMBER] for enrollment.",
       "correct": true
     },
     {
@@ -144,10 +146,11 @@
         "SSN"
       ],
       "detected_pii": [
+        "ORGANIZATION",
         "SSN"
       ],
-      "masked_output": "SSN mismatch detected for [MASKED_SSN].",
-      "correct": true
+      "masked_output": "[ORGANIZATION] mismatch detected for [SOCIALNUMBER].",
+      "correct": false
     },
     {
       "text_snippet": "Contact the admin at support@example.com for help.",
@@ -155,10 +158,11 @@
         "EMAIL"
       ],
       "detected_pii": [
-        "EMAIL"
+        "EMAIL",
+        "PERSON"
       ],
-      "masked_output": "Contact the admin at [MASKED_EMAIL] for help.",
-      "correct": true
+      "masked_output": "the admin [GIVENNAME] at [[LOCATION]IL] for help.",
+      "correct": false
     },
     {
       "text_snippet": "Forward results to alice.jones@university.edu immediately.",
@@ -168,7 +172,7 @@
       "detected_pii": [
         "EMAIL"
       ],
-      "masked_output": "Forward results to [MASKED_EMAIL] immediately.",
+      "masked_output": "Forward results to [[ORGANIZATION]IL] immediately.",
       "correct": true
     },
     {
@@ -179,7 +183,7 @@
       "detected_pii": [
         "EMAIL"
       ],
-      "masked_output": "CC: [MASKED_EMAIL]; [MASKED_EMAIL]",
+      "masked_output": "CC: [EMAIL]; [EMAIL]",
       "correct": true
     },
     {
@@ -190,7 +194,7 @@
       "detected_pii": [
         "EMAIL"
       ],
-      "masked_output": "Reply-To: [MASKED_EMAIL]",
+      "masked_output": "Reply-To: [EMAIL]",
       "correct": true
     },
     {
@@ -199,10 +203,11 @@
         "EMAIL"
       ],
       "detected_pii": [
-        "EMAIL"
+        "EMAIL",
+        "PERSON"
       ],
-      "masked_output": "User email: [MASKED_EMAIL] registered.",
-      "correct": true
+      "masked_output": "email [GIV[ORGANIZATION]NNAM[ORGANIZATION]]: [[ORGANIZATION]MAIL] registered.",
+      "correct": false
     },
     {
       "text_snippet": "Call our hotline at (800) 555-1234 for support.",
@@ -212,7 +217,7 @@
       "detected_pii": [
         "PHONE"
       ],
-      "masked_output": "Call our hotline at ([MASKED_PHONE] for support.",
+      "masked_output": "Call our hotline at ([TEL] for support.",
       "correct": true
     },
     {
@@ -221,10 +226,11 @@
         "PHONE"
       ],
       "detected_pii": [
+        "PERSON",
         "PHONE"
       ],
-      "masked_output": "Reach Dr. Smith at [MASKED_PHONE].",
-      "correct": true
+      "masked_output": "Reach [[LOCATION]IVENNAME] at [[LOCATION]IVENNAME] [TEL].",
+      "correct": false
     },
     {
       "text_snippet": "Emergency contact: +1 212 555 9876",
@@ -234,7 +240,7 @@
       "detected_pii": [
         "PHONE"
       ],
-      "masked_output": "Emergency contact: +[MASKED_PHONE]",
+      "masked_output": "Emergency contact: +[TEL]",
       "correct": true
     },
     {
@@ -245,7 +251,7 @@
       "detected_pii": [
         "PHONE"
       ],
-      "masked_output": "Fax: [MASKED_PHONE]",
+      "masked_output": "Fax: [TEL]",
       "correct": true
     },
     {
@@ -256,7 +262,7 @@
       "detected_pii": [
         "PHONE"
       ],
-      "masked_output": "Mobile: [MASKED_PHONE]",
+      "masked_output": "Mobile: [TEL]",
       "correct": true
     },
     {
@@ -267,7 +273,7 @@
       "detected_pii": [
         "IP_ADDRESS"
       ],
-      "masked_output": "Server located at [MASKED_IP] is unreachable.",
+      "masked_output": "Server located at [IPADDRESS] is unreachable.",
       "correct": true
     },
     {
@@ -278,7 +284,7 @@
       "detected_pii": [
         "IP_ADDRESS"
       ],
-      "masked_output": "Block traffic from [MASKED_IP] in the firewall rules.",
+      "masked_output": "Block traffic from [IPADDRESS] in the firewall rules.",
       "correct": true
     },
     {
@@ -289,7 +295,7 @@
       "detected_pii": [
         "IP_ADDRESS"
       ],
-      "masked_output": "Connection from [MASKED_IP] logged.",
+      "masked_output": "Connection from [[ORGANIZATION]DDRESS] logged.",
       "correct": true
     },
     {
@@ -300,7 +306,7 @@
       "detected_pii": [
         "IP_ADDRESS"
       ],
-      "masked_output": "Whitelist [MASKED_IP] for internal access.",
+      "masked_output": "Whitelist [IPADDRESS] for internal access.",
       "correct": true
     },
     {
@@ -311,7 +317,7 @@
       "detected_pii": [
         "IP_ADDRESS"
       ],
-      "masked_output": "Ping [MASKED_IP] to check DNS.",
+      "masked_output": "Ping [IPADDRESS] to check DNS.",
       "correct": true
     },
     {
@@ -322,7 +328,7 @@
       "detected_pii": [
         "API_KEY"
       ],
-      "masked_output": "[MASKED_SECRET]'",
+      "masked_output": "[SECRET]",
       "correct": true
     },
     {
@@ -333,7 +339,7 @@
       "detected_pii": [
         "API_KEY"
       ],
-      "masked_output": "Set [MASKED_SECRET]!!'",
+      "masked_output": "Set [SECRET]!!'",
       "correct": true
     },
     {
@@ -353,7 +359,7 @@
       "detected_pii": [
         "API_KEY"
       ],
-      "masked_output": "[MASKED_SECRET]'",
+      "masked_output": "[SECRET]",
       "correct": true
     },
     {
@@ -364,7 +370,7 @@
       "detected_pii": [
         "API_KEY"
       ],
-      "masked_output": "[MASKED_SECRET]",
+      "masked_output": "[SECRET]",
       "correct": true
     },
     {
@@ -376,7 +382,7 @@
         "CREDIT_CARD",
         "PHONE"
       ],
-      "masked_output": "Payment card: 4111 [MASKED_PHONE] 1111 expires 12/28.",
+      "masked_output": "Payment card: [TEL] [TEL] expires 12/28.",
       "correct": false
     },
     {
@@ -385,10 +391,11 @@
         "CREDIT_CARD"
       ],
       "detected_pii": [
-        "CREDIT_CARD"
+        "CREDIT_CARD",
+        "PHONE"
       ],
-      "masked_output": "Charge card [MASKED_CARD].",
-      "correct": true
+      "masked_output": "Charge card [TEL]-[TEL].",
+      "correct": false
     },
     {
       "text_snippet": "Visa ending in 4242424242424242.",
@@ -398,7 +405,7 @@
       "detected_pii": [
         "CREDIT_CARD"
       ],
-      "masked_output": "Visa ending in [MASKED_CARD].",
+      "masked_output": "Visa ending in [CREDITCARD].",
       "correct": true
     },
     {
@@ -409,7 +416,7 @@
       "detected_pii": [
         "CREDIT_CARD"
       ],
-      "masked_output": "MC: [MASKED_CARD]",
+      "masked_output": "MC: [CREDITCARD]",
       "correct": true
     },
     {
@@ -417,8 +424,11 @@
       "expected_pii": [
         "CREDIT_CARD"
       ],
-      "detected_pii": [],
-      "masked_output": "Amex 3714 496353 98431 declined.",
+      "detected_pii": [
+        "CREDIT_CARD",
+        "ORGANIZATION"
+      ],
+      "masked_output": "[ORGANIZATION]ex [CREDITCARD] declined.",
       "correct": false
     },
     {
@@ -430,11 +440,12 @@
       ],
       "detected_pii": [
         "EMAIL",
+        "PERSON",
         "PHONE",
         "SSN"
       ],
-      "masked_output": "User [MASKED_EMAIL] (SSN: [MASKED_SSN]) called [MASKED_PHONE].",
-      "correct": true
+      "masked_output": "User [EMAIL] (SSN: [SOCIALNUMBER]) called [TEL].",
+      "correct": false
     },
     {
       "text_snippet": "Login failed for bob@corp.net from 192.168.0.5 using api_key='ABCDEFGHIJKLMN'",
@@ -446,10 +457,11 @@
       "detected_pii": [
         "API_KEY",
         "EMAIL",
-        "IP_ADDRESS"
+        "IP_ADDRESS",
+        "ORGANIZATION"
       ],
-      "masked_output": "Login failed for [MASKED_EMAIL] from [MASKED_IP] using [MASKED_SECRET]'",
-      "correct": true
+      "masked_output": "Login failed for [[ORGANIZATION]MAIL] from [IPADDR[ORGANIZATION]SS] using [S[ORGANIZATION]CR[ORGANIZATION]T]",
+      "correct": false
     },
     {
       "text_snippet": "Record: SSN 999-88-7777, email charlie@test.com, card 4111111111111111.",
@@ -461,24 +473,29 @@
       "detected_pii": [
         "CREDIT_CARD",
         "EMAIL",
+        "ORGANIZATION",
         "SSN"
       ],
-      "masked_output": "Record: SSN [MASKED_SSN], email [MASKED_EMAIL], card [MASKED_CARD].",
-      "correct": true
+      "masked_output": "Record: SSN [SOCIALNUMBER], email [EMAIL], card [CREDITCARD].",
+      "correct": false
     },
     {
       "text_snippet": "The weather in London is cloudy with a chance of rain.",
       "expected_pii": [],
-      "detected_pii": [],
-      "masked_output": "The weather in London is cloudy with a chance of rain.",
-      "correct": true
+      "detected_pii": [
+        "LOCATION"
+      ],
+      "masked_output": "The weather in [LOCATION] is cloudy with a chance of rain.",
+      "correct": false
     },
     {
       "text_snippet": "LoRA adapters use low-rank decomposition for efficient fine-tuning.",
       "expected_pii": [],
-      "detected_pii": [],
-      "masked_output": "LoRA adapters use low-rank decomposition for efficient fine-tuning.",
-      "correct": true
+      "detected_pii": [
+        "ORGANIZATION"
+      ],
+      "masked_output": "[ORGANIZATION] adapters use low-rank decomposition for efficient fine-tuning.",
+      "correct": false
     },
     {
       "text_snippet": "The model achieved a perplexity of 14.02 on the validation set.",
@@ -497,9 +514,11 @@
     {
       "text_snippet": "HKDF derives keys deterministically from input key material.",
       "expected_pii": [],
-      "detected_pii": [],
-      "masked_output": "HKDF derives keys deterministically from input key material.",
-      "correct": true
+      "detected_pii": [
+        "ORGANIZATION"
+      ],
+      "masked_output": "[ORGANIZATION] derives keys deterministically from input key material.",
+      "correct": false
     },
     {
       "text_snippet": "Please review the quarterly report for Q3 performance.",
@@ -518,9 +537,11 @@
     {
       "text_snippet": "PyTorch version 2.0 introduced torch.compile for performance.",
       "expected_pii": [],
-      "detected_pii": [],
-      "masked_output": "PyTorch version 2.0 introduced torch.compile for performance.",
-      "correct": true
+      "detected_pii": [
+        "ORGANIZATION"
+      ],
+      "masked_output": "[ORGANIZATION]yTorch version 2.0 introduced torch.compile for performance.",
+      "correct": false
     },
     {
       "text_snippet": "This document contains no sensitive personal information.",
@@ -539,16 +560,20 @@
     {
       "text_snippet": "The RSA signature scheme uses probabilistic padding (PSS).",
       "expected_pii": [],
-      "detected_pii": [],
-      "masked_output": "The RSA signature scheme uses probabilistic padding (PSS).",
-      "correct": true
+      "detected_pii": [
+        "ORGANIZATION"
+      ],
+      "masked_output": "The [ORGANIZATION] signature scheme uses probabilistic padding (PSS).",
+      "correct": false
     },
     {
       "text_snippet": "Federated learning distributes training across multiple clients.",
       "expected_pii": [],
-      "detected_pii": [],
-      "masked_output": "Federated learning distributes training across multiple clients.",
-      "correct": true
+      "detected_pii": [
+        "ORGANIZATION"
+      ],
+      "masked_output": "[ORGANIZATION]erated learning distributes training across multiple clients.",
+      "correct": false
     },
     {
       "text_snippet": "Edge deployment requires hardware-efficient model compression.",

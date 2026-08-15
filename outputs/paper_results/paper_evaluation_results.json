@@ -2,7 +2,7 @@
   "metadata": {
     "report_title": "SecureLoRA: Hardware-Bound LoRA Protection \u2014 Paper Evaluation Results",
     "evaluation_suite_version": "1.0.0",
-    "timestamp_utc": "2026-08-06T14:07:29.650921+00:00",
+    "timestamp_utc": "2026-08-10T14:20:32.778211+00:00",
     "system": {
       "python_version": "3.12.3",
       "os": "Linux",
@@ -13,7 +13,7 @@
   "pii_metrics": {
     "metadata": {
       "evaluation_version": "1.0.0",
-      "timestamp_utc": "2026-08-06T14:07:28.260296+00:00",
+      "timestamp_utc": "2026-08-10T14:20:31.496776+00:00",
       "corpus_size": 48,
       "pii_types_evaluated": [
         "SSN",
@@ -588,7 +588,7 @@
   "crypto_benchmark": {
     "metadata": {
       "benchmark_version": "1.0.0",
-      "timestamp_utc": "2026-08-06T14:07:29.093069+00:00",
+      "timestamp_utc": "2026-08-10T14:20:32.243786+00:00",
       "n_runs_per_test": 10,
       "rsa_key_bits": 2048,
       "payload_sizes_kb": [
@@ -617,21 +617,21 @@
           "cpu-model",
           "disk-uuid"
         ],
-        "mean_ms": 0.3789642039919272,
-        "median_ms": 0.321344006806612,
-        "stdev_ms": 0.15411463469184944,
-        "min_ms": 0.30469799821730703,
-        "max_ms": 0.8056600054260343,
+        "mean_ms": 0.24515829936717637,
+        "median_ms": 0.21343399930628948,
+        "stdev_ms": 0.10903424628567873,
+        "min_ms": 0.18388399621471763,
+        "max_ms": 0.5470120013342239,
         "n_runs": 10
       },
       "hkdf_key_derivation": {
         "operation": "HKDF Key Derivation (SHA-256, 32-byte output)",
         "algorithm": "HKDF-SHA256",
-        "mean_ms": 0.04314190009608865,
-        "median_ms": 0.023838496417738497,
-        "stdev_ms": 0.05577631470780128,
-        "min_ms": 0.022100997739471495,
-        "max_ms": 0.20120000408496708,
+        "mean_ms": 0.027691201103152707,
+        "median_ms": 0.016146997950272635,
+        "stdev_ms": 0.032715401636875564,
+        "min_ms": 0.015048004570417106,
+        "max_ms": 0.12036700354656205,
         "n_runs": 10
       },
       "aes_gcm_encryption": [
@@ -639,60 +639,60 @@
           "operation": "AES-256-GCM Streaming Encryption (16 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 16,
-          "throughput_mb_per_s": 109.983,
-          "mean_ms": 0.14206799969542772,
-          "median_ms": 0.005634501576423645,
-          "stdev_ms": 0.4278956265999584,
-          "min_ms": 0.005449997843243182,
-          "max_ms": 1.3598539953818545,
+          "throughput_mb_per_s": 324.256,
+          "mean_ms": 0.04818729794351384,
+          "median_ms": 0.005548001354327425,
+          "stdev_ms": 0.12989353498439307,
+          "min_ms": 0.0052489995141513646,
+          "max_ms": 0.4176989968982525,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Encryption (64 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 64,
-          "throughput_mb_per_s": 5119.762,
-          "mean_ms": 0.012207598774693906,
-          "median_ms": 0.011456497304607183,
-          "stdev_ms": 0.0021662463341858367,
-          "min_ms": 0.011312993592582643,
-          "max_ms": 0.018309001461602747,
+          "throughput_mb_per_s": 4602.187,
+          "mean_ms": 0.013580499216914177,
+          "median_ms": 0.012641998182516545,
+          "stdev_ms": 0.00256272397456324,
+          "min_ms": 0.011453004844952375,
+          "max_ms": 0.019860999600496143,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Encryption (256 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 256,
-          "throughput_mb_per_s": 3988.831,
-          "mean_ms": 0.06267499993555248,
-          "median_ms": 0.050523492973297834,
-          "stdev_ms": 0.031790595293823665,
-          "min_ms": 0.04987599095329642,
-          "max_ms": 0.15225799870677292,
+          "throughput_mb_per_s": 3459.714,
+          "mean_ms": 0.07226029920275323,
+          "median_ms": 0.04868399992119521,
+          "stdev_ms": 0.07042531440751836,
+          "min_ms": 0.04795999848283827,
+          "max_ms": 0.2725099984672852,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Encryption (1024 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 1024,
-          "throughput_mb_per_s": 3891.173,
-          "mean_ms": 0.2569919000961818,
-          "median_ms": 0.2167705024476163,
-          "stdev_ms": 0.1320323183560191,
-          "min_ms": 0.20707299700006843,
-          "max_ms": 0.6324390124063939,
+          "throughput_mb_per_s": 3858.497,
+          "mean_ms": 0.25916829908965155,
+          "median_ms": 0.21018049665144645,
+          "stdev_ms": 0.14949918375329654,
+          "min_ms": 0.20613800006685778,
+          "max_ms": 0.6842240036348812,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Encryption (4096 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 4096,
-          "throughput_mb_per_s": 3439.804,
-          "mean_ms": 1.1628567983279936,
-          "median_ms": 0.9218620034516789,
-          "stdev_ms": 0.6213369065254348,
-          "min_ms": 0.8413109899265692,
-          "max_ms": 2.867545001208782,
+          "throughput_mb_per_s": 3421.934,
+          "mean_ms": 1.168929599225521,
+          "median_ms": 0.9252689997083507,
+          "stdev_ms": 0.6109063067294739,
+          "min_ms": 0.8716290030861273,
+          "max_ms": 2.8120100032538176,
           "n_runs": 10
         }
       ],
@@ -701,60 +701,60 @@
           "operation": "AES-256-GCM Streaming Decryption (16 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 16,
-          "throughput_mb_per_s": 360.726,
-          "mean_ms": 0.04331539530539885,
-          "median_ms": 0.005557492841035128,
-          "stdev_ms": 0.11646733868962755,
-          "min_ms": 0.005243011401034892,
-          "max_ms": 0.37470500683411956,
+          "throughput_mb_per_s": 1454.679,
+          "mean_ms": 0.01074119791155681,
+          "median_ms": 0.007731996447546408,
+          "stdev_ms": 0.008100523871355852,
+          "min_ms": 0.007037000614218414,
+          "max_ms": 0.03331100015202537,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Decryption (64 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 64,
-          "throughput_mb_per_s": 4824.803,
-          "mean_ms": 0.012953898112755269,
-          "median_ms": 0.012320990208536386,
-          "stdev_ms": 0.0015609551829721133,
-          "min_ms": 0.012218995834700763,
-          "max_ms": 0.017279991880059242,
+          "throughput_mb_per_s": 4099.759,
+          "mean_ms": 0.015244800306390971,
+          "median_ms": 0.014840497897239402,
+          "stdev_ms": 0.0030788746303425534,
+          "min_ms": 0.012429998605512083,
+          "max_ms": 0.022635998902842402,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Decryption (256 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 256,
-          "throughput_mb_per_s": 4850.244,
-          "mean_ms": 0.05154380341991782,
-          "median_ms": 0.04970900772605091,
-          "stdev_ms": 0.005417274378352781,
-          "min_ms": 0.04922201333101839,
-          "max_ms": 0.06680500518996269,
+          "throughput_mb_per_s": 5148.525,
+          "mean_ms": 0.04855759980273433,
+          "median_ms": 0.04767199789057486,
+          "stdev_ms": 0.00424059955866814,
+          "min_ms": 0.045398002839647233,
+          "max_ms": 0.06035999831510708,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Decryption (1024 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 1024,
-          "throughput_mb_per_s": 5044.131,
-          "mean_ms": 0.19825019990094006,
-          "median_ms": 0.19880299805663526,
-          "stdev_ms": 0.010161606154947645,
-          "min_ms": 0.18442799046169966,
-          "max_ms": 0.21394800569396466,
+          "throughput_mb_per_s": 4936.641,
+          "mean_ms": 0.2025668989517726,
+          "median_ms": 0.19820099623757415,
+          "stdev_ms": 0.009790922637845605,
+          "min_ms": 0.19457999587757513,
+          "max_ms": 0.22467500093625858,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Streaming Decryption (4096 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 4096,
-          "throughput_mb_per_s": 3368.026,
-          "mean_ms": 1.1876393997226842,
-          "median_ms": 0.9027554988279007,
-          "stdev_ms": 0.8942325616066031,
-          "min_ms": 0.8198050054488704,
-          "max_ms": 3.7242530088406056,
+          "throughput_mb_per_s": 4191.254,
+          "mean_ms": 0.9543683001538739,
+          "median_ms": 0.8271065016742796,
+          "stdev_ms": 0.3830735748052368,
+          "min_ms": 0.7827989975339733,
+          "max_ms": 2.036063000559807,
           "n_runs": 10
         }
       ],
@@ -763,30 +763,30 @@
           "operation": "AES-256-GCM Block Encrypt+Decrypt (64 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 64,
-          "encrypt_mean_ms": 0.0082,
-          "decrypt_mean_ms": 0.0077,
-          "encrypt_stdev_ms": 0.0022,
-          "decrypt_stdev_ms": 0.0011,
+          "encrypt_mean_ms": 0.0079,
+          "decrypt_mean_ms": 0.0106,
+          "encrypt_stdev_ms": 0.0019,
+          "decrypt_stdev_ms": 0.0105,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Block Encrypt+Decrypt (256 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 256,
-          "encrypt_mean_ms": 0.0378,
-          "decrypt_mean_ms": 0.0351,
-          "encrypt_stdev_ms": 0.0312,
-          "decrypt_stdev_ms": 0.0247,
+          "encrypt_mean_ms": 0.0354,
+          "decrypt_mean_ms": 0.0342,
+          "encrypt_stdev_ms": 0.0341,
+          "decrypt_stdev_ms": 0.0235,
           "n_runs": 10
         },
         {
           "operation": "AES-256-GCM Block Encrypt+Decrypt (1024 KB)",
           "algorithm": "AES-256-GCM",
           "payload_kb": 1024,
-          "encrypt_mean_ms": 0.1468,
-          "decrypt_mean_ms": 0.1357,
-          "encrypt_stdev_ms": 0.1049,
-          "decrypt_stdev_ms": 0.0847,
+          "encrypt_mean_ms": 0.1633,
+          "decrypt_mean_ms": 0.136,
+          "encrypt_stdev_ms": 0.1421,
+          "decrypt_stdev_ms": 0.0963,
           "n_runs": 10
         }
       ],
@@ -796,67 +796,67 @@
         "sizes": [
           {
             "payload_kb": 64,
-            "mean_ms": 0.0437,
-            "stdev_ms": 0.0039,
-            "throughput_mb_per_s": 1430.19
+            "mean_ms": 0.0453,
+            "stdev_ms": 0.0061,
+            "throughput_mb_per_s": 1379.807
           },
           {
             "payload_kb": 256,
-            "mean_ms": 0.1584,
-            "stdev_ms": 0.0086,
-            "throughput_mb_per_s": 1578.431
+            "mean_ms": 0.168,
+            "stdev_ms": 0.0019,
+            "throughput_mb_per_s": 1487.938
           },
           {
             "payload_kb": 1024,
-            "mean_ms": 0.6828,
-            "stdev_ms": 0.014,
-            "throughput_mb_per_s": 1464.532
+            "mean_ms": 0.6646,
+            "stdev_ms": 0.022,
+            "throughput_mb_per_s": 1504.606
           },
           {
             "payload_kb": 4096,
-            "mean_ms": 2.6549,
-            "stdev_ms": 0.0821,
-            "throughput_mb_per_s": 1506.63
+            "mean_ms": 2.6544,
+            "stdev_ms": 0.123,
+            "throughput_mb_per_s": 1506.939
           }
         ]
       },
       "rsa_pss_sign": {
         "operation": "RSA-PSS Sign (2048-bit)",
         "algorithm": "RSA-2048-PSS-SHA256",
-        "mean_ms": 0.4282602996681817,
-        "median_ms": 0.2566169932833873,
-        "stdev_ms": 0.5171722267476584,
-        "min_ms": 0.24771899916231632,
-        "max_ms": 1.898670001537539,
+        "mean_ms": 0.4525860997091513,
+        "median_ms": 0.2806335032801144,
+        "stdev_ms": 0.5365803935637019,
+        "min_ms": 0.27666499954648316,
+        "max_ms": 1.9795829939539544,
         "n_runs": 10
       },
       "rsa_pss_verify": {
         "operation": "RSA-PSS Verify (2048-bit)",
         "algorithm": "RSA-2048-PSS-SHA256",
-        "mean_ms": 0.028711398772429675,
-        "median_ms": 0.02686800144147128,
-        "stdev_ms": 0.005331951352452196,
-        "min_ms": 0.025590998120605946,
-        "max_ms": 0.0432419910794124,
+        "mean_ms": 0.028295799711486325,
+        "median_ms": 0.025868001102935523,
+        "stdev_ms": 0.006723695068228708,
+        "min_ms": 0.025417000870220363,
+        "max_ms": 0.047210996854119,
         "n_runs": 10
       },
       "rsa_key_generation": {
         "operation": "RSA Keypair Generation (2048-bit)",
         "algorithm": "RSA-2048",
-        "mean_ms": 34.91379969927948,
-        "median_ms": 32.16509000048973,
-        "stdev_ms": 22.80855728292877,
-        "min_ms": 15.90695399499964,
-        "max_ms": 93.37131500069518,
+        "mean_ms": 36.936121898907004,
+        "median_ms": 37.638794998201774,
+        "stdev_ms": 12.434783215552963,
+        "min_ms": 20.567209998262115,
+        "max_ms": 57.80965399753768,
         "n_runs": 10
       },
       "e2e_overhead": {
         "operation": "End-to-End Pipeline Security Overhead",
         "payload_kb": 512,
-        "baseline_mean_ms": 1.18,
-        "secure_pipeline_mean_ms": 1.132,
-        "security_overhead_ms": -0.048,
-        "overhead_factor_x": 0.96,
+        "baseline_mean_ms": 1.061,
+        "secure_pipeline_mean_ms": 0.972,
+        "security_overhead_ms": -0.089,
+        "overhead_factor_x": 0.92,
         "n_runs": 10
       },
       "file_shredding": {
@@ -866,20 +866,20 @@
           {
             "payload_kb": 16,
             "passes": 3,
-            "mean_ms": 3.529,
-            "stdev_ms": 1.945
+            "mean_ms": 2.815,
+            "stdev_ms": 0.288
           },
           {
             "payload_kb": 64,
             "passes": 3,
-            "mean_ms": 4.356,
-            "stdev_ms": 0.447
+            "mean_ms": 3.276,
+            "stdev_ms": 0.179
           },
           {
             "payload_kb": 256,
             "passes": 3,
-            "mean_ms": 6.559,
-            "stdev_ms": 1.35
+            "mean_ms": 6.193,
+            "stdev_ms": 2.373
           }
         ]
       }
@@ -888,7 +888,7 @@
   "baseline_comparison": {
     "metadata": {
       "comparison_version": "1.0.0",
-      "timestamp_utc": "2026-08-06T14:07:29.482464+00:00",
+      "timestamp_utc": "2026-08-10T14:20:32.653273+00:00",
       "payload_kb": 512,
       "n_runs": 8,
       "security_dimensions": [
@@ -924,8 +924,8 @@
         },
         "aggregate_security_score": 0.125,
         "timing": {
-          "mean_ms": 0.599400123974192,
-          "stdev_ms": 0.049172938820583836
+          "mean_ms": 0.5966686258034315,
+          "stdev_ms": 0.08335431332662029
         }
       },
       "Password-Only AES": {
@@ -943,8 +943,8 @@
         },
         "aggregate_security_score": 0.45,
         "timing": {
-          "mean_ms": 14.687110373415635,
-          "stdev_ms": 0.30650344567333937
+          "mean_ms": 14.925213875358168,
+          "stdev_ms": 0.48160591976662126
         }
       },
       "Filesystem ACL (chmod 600)": {
@@ -962,8 +962,8 @@
         },
         "aggregate_security_score": 0.1375,
         "timing": {
-          "mean_ms": 0.7399467522191117,
-          "stdev_ms": 0.26711792594059675
+          "mean_ms": 0.6906069993419806,
+          "stdev_ms": 0.17412940444301087
         }
       },
       "TPM-Bound Encryption (reference)": {
@@ -981,8 +981,8 @@
         },
         "aggregate_security_score": 0.6562,
         "timing": {
-          "mean_ms": 24.69428162839904,
-          "stdev_ms": 3.399565480236636,
+          "mean_ms": 26.076327623741236,
+          "stdev_ms": 5.199071026643955,
           "note": "TPM latency modeled as 15\u201335 ms uniform (Raj et al. 2016 reference values)"
         }
       },
@@ -1001,8 +1001,8 @@
         },
         "aggregate_security_score": 0.9688,
         "timing": {
-          "mean_ms": 1.3056031275482383,
-          "stdev_ms": 0.27403982710941754
+          "mean_ms": 1.3302754996402655,
+          "stdev_ms": 0.2508699507341706
         }
       }
     },
@@ -1020,7 +1020,7 @@
   "threat_model": {
     "metadata": {
       "analysis_version": "1.0.0",
-      "timestamp_utc": "2026-08-06T14:07:29.650904+00:00",
+      "timestamp_utc": "2026-08-10T14:20:32.778191+00:00",
       "total_threats_analyzed": 7,
       "total_simulations": 6,
       "simulations_passed": 6,
@@ -1082,7 +1082,7 @@
           "name": "Physical Disk Clone / Cross-Device Decryption",
           "result": "PASS",
           "exception_caught": "CryptoError",
-          "duration_ms": 1.449,
+          "duration_ms": 1.326,
           "details": {
             "message": "Decryption correctly rejected with wrong hardware fingerprint",
             "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
@@ -1107,10 +1107,10 @@
           "name": "Bit-Level Ciphertext Tampering Detection",
           "result": "PASS",
           "exception_caught": "ValueError",
-          "duration_ms": 1.34,
+          "duration_ms": 1.11,
           "details": {
             "message": "Integrity check correctly rejected tampered ciphertext",
-            "exception": "Integrity check FAILED. Stored hash: 932a15b98781\u2026 | Computed hash: 9ad66ca17b70\u2026 The encrypted adapter has been tampered with or replaced.",
+            "exception": "Integrity check FAILED. Stored hash: a9906d1d268e\u2026 | Computed hash: 592ff93f71b4\u2026 The encrypted adapter has been tampered with or replaced.",
             "tamper_offset_bytes": 200,
             "tamper_method": "XOR bit-flip (0xFF)"
           }
@@ -1134,7 +1134,7 @@
           "name": "RSA-PSS Signature Forgery / Wrong Public Key",
           "result": "PASS",
           "exception_caught": "ValueError",
-          "duration_ms": 160.007,
+          "duration_ms": 118.97,
           "details": {
             "message": "Signature verification correctly rejected with wrong public key",
             "exception": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
@@ -1159,7 +1159,7 @@
           "name": "Salt Replay with Spoofed Hardware Fingerprint",
           "result": "PASS",
           "exception_caught": "CryptoError",
-          "duration_ms": 1.333,
+          "duration_ms": 1.418,
           "details": {
             "message": "Salt replay with spoofed HW fingerprint correctly rejected",
             "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
@@ -1215,7 +1215,7 @@
           "name": "Salt Replay with Spoofed Hardware Fingerprint",
           "result": "PASS",
           "exception_caught": "CryptoError",
-          "duration_ms": 1.333,
+          "duration_ms": 1.418,
           "details": {
             "message": "Salt replay with spoofed HW fingerprint correctly rejected",
             "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
@@ -1230,7 +1230,7 @@
         "name": "Physical Disk Clone / Cross-Device Decryption",
         "result": "PASS",
         "exception_caught": "CryptoError",
-        "duration_ms": 1.449,
+        "duration_ms": 1.326,
         "details": {
           "message": "Decryption correctly rejected with wrong hardware fingerprint",
           "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."
@@ -1241,10 +1241,10 @@
         "name": "Bit-Level Ciphertext Tampering Detection",
         "result": "PASS",
         "exception_caught": "ValueError",
-        "duration_ms": 1.34,
+        "duration_ms": 1.11,
         "details": {
           "message": "Integrity check correctly rejected tampered ciphertext",
-          "exception": "Integrity check FAILED. Stored hash: 932a15b98781\u2026 | Computed hash: 9ad66ca17b70\u2026 The encrypted adapter has been tampered with or replaced.",
+          "exception": "Integrity check FAILED. Stored hash: a9906d1d268e\u2026 | Computed hash: 592ff93f71b4\u2026 The encrypted adapter has been tampered with or replaced.",
           "tamper_offset_bytes": 200,
           "tamper_method": "XOR bit-flip (0xFF)"
         }
@@ -1254,7 +1254,7 @@
         "name": "RSA-PSS Signature Forgery / Wrong Public Key",
         "result": "PASS",
         "exception_caught": "ValueError",
-        "duration_ms": 160.007,
+        "duration_ms": 118.97,
         "details": {
           "message": "Signature verification correctly rejected with wrong public key",
           "exception": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
@@ -1265,7 +1265,7 @@
         "name": "Salt Replay with Spoofed Hardware Fingerprint",
         "result": "PASS",
         "exception_caught": "CryptoError",
-        "duration_ms": 1.333,
+        "duration_ms": 1.418,
         "details": {
           "message": "Salt replay with spoofed HW fingerprint correctly rejected",
           "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with.",
@@ -1277,7 +1277,7 @@
         "name": "GCM Authentication Tag Corruption",
         "result": "PASS",
         "exception_caught": "InvalidTag",
-        "duration_ms": 0.109,
+        "duration_ms": 0.112,
         "details": {
           "message": "GCM authentication tag corruption correctly detected",
           "tag_corruption_method": "XOR last byte with 0xFF"
@@ -1288,7 +1288,7 @@
         "name": "Wrong Salt Key Derivation Rejection",
         "result": "PASS",
         "exception_caught": "CryptoError",
-        "duration_ms": 0.943,
+        "duration_ms": 0.976,
         "details": {
           "message": "Wrong salt correctly causes decryption failure",
           "exception": "AES-GCM decryption failed. The key is wrong, or the ciphertext has been tampered with."

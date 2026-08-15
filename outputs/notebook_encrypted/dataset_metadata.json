@@ -1,0 +1,16 @@
+{
+    "dataset_name": "sample_medical_phi",
+    "version": "1.0.0",
+    "encryption_status": "encrypted",
+    "encryption_algorithm": "AES-256-GCM",
+    "timestamp_utc": "2026-08-15T16:36:00.899986+00:00",
+    "encrypted_file_size_bytes": 1427,
+    "encrypted_file_sha256": "a652743eeaa5aee250f013f045fe4df7a3f47160c5783faab6d728116eb8963a",
+    "num_records": 3,
+    "pii_audit_summary": {
+        "email": 1,
+        "phone": 0,
+        "ssn": 0,
+        "credit_card": 0
+    }
+}
