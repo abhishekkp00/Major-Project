@@ -531,30 +531,51 @@ def secure_chat():
 
     records = []
 
-    # Priority 1: job_id supplied — load from that job's raw_inputs
+    has_pipeline_run = False
     job_id = data.get("job_id")
     if job_id:
         job = orchestrator.get_job(job_id)
-        if job:
+        if job and job.get("status") in {"COMPLETED", "RUNNING"}:
             job_dir = orchestrator.base_jobs_dir / job_id
             records = load_records_from_job(job_dir)
+            has_pipeline_run = True
 
-    # Priority 2: inline JSONL in request body
     if not records:
         raw_jsonl = data.get("raw_jsonl", "")
         if raw_jsonl:
             records = load_records_from_jsonl(raw_jsonl)
+            has_pipeline_run = True
 
-    # Priority 3: fall back to the sample files bundled with the project
     if not records:
+        jobs = orchestrator.get_all_jobs()
+        if jobs:
+            latest_job = jobs[0]
+            jid = latest_job.get("job_id") or latest_job.get("id")
+            if jid:
+                job_dir = orchestrator.base_jobs_dir / jid
+                records = load_records_from_job(job_dir)
+                if records:
+                    has_pipeline_run = True
+
+    if not records and adapter_loaded:
         for fallback in ["sample_medical_phi.jsonl", "real_world_pii.jsonl", "sample_pii_data.jsonl"]:
             for candidate in [Path("samples") / fallback, Path(fallback)]:
                 if candidate.exists():
                     records = load_records_from_jsonl(candidate.read_text(encoding="utf-8"))
                     if records:
+                        has_pipeline_run = True
                         break
             if records:
                 break
+
+    if not has_pipeline_run or not records:
+        return jsonify({
+            "success": True,
+            "answer": "🔒 **Pipeline Execution Required**\n\nTo query dataset analytics or perform privacy-preserving Q&A, please first launch and complete the end-to-end processing pipeline in the **Pipeline** tab.",
+            "privacy_status": "BLOCKED",
+            "was_blocked": True,
+            "num_records": 0
+        })
 
 
     try:

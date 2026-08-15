@@ -230,6 +230,52 @@ def _classify_intent(question: str) -> str:
     return "general"
 
 
+def _clean_entity_text(text: str) -> str:
+    """
+    Cleans raw training record text by removing instruction headers,
+    raw PII placeholders like [MASKED_NAME], [MASKED_MRN], [MASKED_DATE],
+    and extracting the underlying natural medical/corporate topics.
+    """
+    if not isinstance(text, str):
+        return str(text)
+
+    # 1. Remove instruction preambles
+    text = re.sub(r"^(Redact|Scrub|Mask)\s+(Personally Identifiable Information \(PII\)|PHI|PII|HIPAA|patient|data|identifiers)?\s*(from|in)?\s*(this|the)?\s*(clinical record|email|text|message|record|data)?:\s*", "", text, flags=re.I)
+    text = re.sub(r"^Patient\s+data:\s*", "", text, flags=re.I)
+
+    # 2. Remove [MASKED_...] and [REDACTED_...] placeholder tokens
+    text = re.sub(r"\[(MASKED_[A-Z0-9_]+|REDACTED_[A-Z0-9_]+|[A-Z_]+)\]", "", text)
+
+    # 3. Clean up extra punctuation/spaces
+    text = re.sub(r"\s+([,.:;])", r"\1", text)
+    text = re.sub(r"\s+", " ", text).strip(" ,.:;-")
+
+    # 4. Extract domain-specific medical/clinical/corporate terms dynamically
+    medical_patterns = [
+        r"\b(acute coronary syndrome|covid-19|hypertension|diabetes|asthma|cancer|arrhythmia|pneumonia|lactic acidosis|lisinopril|myocardial infarction|stroke)\b",
+        r"\b(project aurora|wire transfer|quarterly audit|financial report|security incident|system outage|data breach|corporate communication|pii redaction)\b"
+    ]
+    extracted = []
+    for pat in medical_patterns:
+        matches = re.findall(pat, text, flags=re.I)
+        for m in matches:
+            formatted = m.title() if m.lower() != "covid-19" else "COVID-19"
+            if formatted not in extracted:
+                extracted.append(formatted)
+    
+    if extracted:
+        return ", ".join(extracted)
+
+    # If no specific key terms matched, clean remaining descriptive text
+    cleaned_clause = re.sub(r"\b(Patient|Case|Discharged|MRN|born|admitted on|scheduled at|tested positive for|My name is|email and|SSN is|Secret code is|Contact admin at)\b", "", text, flags=re.I)
+    cleaned_clause = re.sub(r"\s+", " ", cleaned_clause).strip(" ,.:;-")
+
+    if cleaned_clause and len(cleaned_clause) > 3:
+        return cleaned_clause[:100]
+
+    return "Clinical / Enterprise Record"
+
+
 def _answer_from_analytics(question: str, records: List[Dict[str, Any]]) -> str:
     analytics = compute_dataset_analytics(records)
     intent = _classify_intent(question)
@@ -263,22 +309,22 @@ def _answer_from_analytics(question: str, records: List[Dict[str, Any]]) -> str:
         for pf in priority_fields:
             for field, counter in top_vals.items():
                 if pf in field.lower() and counter:
-                    top = counter[:3]
-                    parts.append(f"📈 **Most Common '{field}' values across {analytics['total_records']} records:**\n")
+                    top = counter[:5]
+                    parts.append(f"📈 **Distribution of Clinical & Analytical Topics across {analytics['total_records']} records:**\n")
                     for val, cnt in top:
                         pct = round(100 * cnt / analytics["total_records"], 1)
-                        safe_val, _ = _regex_mask(str(val))
-                        parts.append(f"  - **{safe_val}** — {cnt} records ({pct}%)")
+                        clean_topic = _clean_entity_text(str(val))
+                        parts.append(f"  - **{clean_topic}** — {cnt} records ({pct}%)")
                     answered = True
                     break
             if answered:
                 break
         if not answered and top_vals:
             field, counter = next(iter(top_vals.items()))
-            parts.append(f"📈 **Top values for `{field}`** (out of {analytics['total_records']} records):\n")
+            parts.append(f"📈 **Top Topic Distribution** (out of {analytics['total_records']} records):\n")
             for val, cnt in counter[:5]:
-                safe_val, _ = _regex_mask(str(val))
-                parts.append(f"  - **{safe_val}** — {cnt} records")
+                clean_topic = _clean_entity_text(str(val))
+                parts.append(f"  - **{clean_topic}** — {cnt} records")
         if not parts:
             parts.append(
                 f"📊 This dataset has **{analytics['total_records']} records** with {len(analytics['fields'])} fields.\n\n"
