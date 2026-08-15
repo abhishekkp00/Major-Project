@@ -1,11 +1,11 @@
 {
     "model_name": "JackFram/llama-68m",
-    "trainable_parameters": 49152,
-    "all_parameters": 68079360,
-    "trainable_percent": 0.07219809351909301,
-    "validation_loss": 4.45596981048584,
-    "perplexity": 86.13964948498281,
-    "pre_training_generation": "14.1: 17.2.\nInput: 12.4: 17.3.\nInput: 18.6.2.4:",
-    "post_training_generation": "1.2.1.2. One time, 2.2.2.",
+    "trainable_parameters": 98304,
+    "all_parameters": 68128512,
+    "trainable_percent": 0.1442920109571746,
+    "validation_loss": 2.3407280445098877,
+    "perplexity": 10.388797316966029,
+    "pre_training_generation": "12: Name (1.6): Name (1.6): Name (1.1): Name (1.0): Name (1.6): Name (1.7): Name",
+    "post_training_generation": "62% or less, 29% or less, 15% or less, 10% or less, 10% or less.",
     "status": "completed"
 }
