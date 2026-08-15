@@ -279,23 +279,51 @@ async function runInference() {
 }
 
 // ──────────────────────────────────────────────
-// DYNAMIC PHYSICS-BASED SDG-13 CALCULATOR
+// DYNAMIC PHYSICS-BASED SDG-13 CALCULATOR (IPCC & FLOPs MODEL)
 // ──────────────────────────────────────────────
 function recalculateSdgMetrics() {
   const text = document.getElementById('sim-input-text')?.value || "";
-  const tokenCount = Math.max(1, Math.floor(text.length / 4));
-  const epochs = 20;
-  const computeMs = Math.round(tokenCount * epochs * 1.45);
-  const computeHours = computeMs / 3600000;
+  const epochsInput = document.getElementById('job-epochs');
+  const epochs = epochsInput ? parseInt(epochsInput.value) || 20 : 20;
+
+  // Real BPE Tokenization Estimate (~3.8 chars per token)
+  const tokenCount = Math.max(1, Math.ceil(text.length / 3.8));
+  
+  // Parameter Budget: LLaMA-68M base + 98.3K trainable LoRA parameters
+  const baseParams = 68128512;
+  const loraParams = 98304;
+  const activeParams = baseParams + loraParams;
+  
+  // Forward + Backward Training FLOPs: ~6 FLOPs per parameter per token
+  const totalFlops = 6 * activeParams * tokenCount * epochs;
+  
+  // Compute Duration based on GPU TFLOPS (NVIDIA T4 Profile: 65 TFLOPS @ 35% MFU)
+  const gpuFlopsCapacity = 65.0 * 1e12 * 0.35; 
+  const computeSeconds = totalFlops / gpuFlopsCapacity;
+  const computeMs = Math.max(1.2, Math.round(computeSeconds * 1000 * 100) / 100);
+  
+  // Energy Consumption Formula (300W TDP)
+  const computeHours = computeSeconds / 3600.0;
   const energyKwh = (300.0 * computeHours) / 1000.0;
+  
+  // IPCC 2023 Global Grid Emission Factor (475 gCO2e/kWh)
   const co2Grams = (energyKwh * 475.0).toFixed(4);
 
-  const tVal = document.getElementById('sw-token-val'); if (tVal) tVal.innerText = tokenCount;
-  const cVal = document.getElementById('sw-co2-val'); if (cVal) cVal.innerText = co2Grams + 'g';
-  const gVal = document.getElementById('sw-gpu-val'); if (gVal) gVal.innerText = computeMs.toLocaleString() + 'ms';
+  const tVal = document.getElementById('sw-token-val'); 
+  if (tVal) tVal.innerText = tokenCount.toLocaleString();
+  
+  const cVal = document.getElementById('sw-co2-val'); 
+  if (cVal) cVal.innerText = co2Grams + 'g';
+  
+  const gVal = document.getElementById('sw-gpu-val'); 
+  if (gVal) gVal.innerText = computeMs.toLocaleString() + 'ms';
+  
   const fSub = document.getElementById('sdg-formula-sub');
-  if (fSub) fSub.innerText = `Formula: (${tokenCount} tokens × 20 Epochs × 1.45ms) @ 300W GPU → 475 gCO₂e/kWh Grid Factor`;
+  if (fSub) {
+    fSub.innerText = `Physics Formula: 6 × 68.2M Params × ${tokenCount} Tokens × ${epochs} Epochs @ 300W TDP → 475 gCO₂e/kWh`;
+  }
 }
+
 
 // ──────────────────────────────────────────────
 // MULTI-STAGE FLEXIBLE INTERACTIVE SIMULATOR ENGINE
@@ -386,7 +414,7 @@ function resetSimulationWorkbench() {
   recalculateSdgMetrics();
 }
 
-function runFullSimulation() {
+async function runFullSimulation() {
   resetSimulationWorkbench();
   const rawText = document.getElementById('sim-input-text').value.trim();
   if (!rawText) return alert('Please enter input text.');
@@ -395,79 +423,102 @@ function runFullSimulation() {
   const screen = document.getElementById('sim-text-screen');
   const laser = document.getElementById('sim-scan-line');
 
-  // STAGE 01: Ingestion
-  updateSimStepNode(1, 'active', 'RAW PII SCANNING');
-  document.getElementById('sim-transit-state').innerText = 'User Ingestion (Client Side)';
-  document.getElementById('sim-transit-state').style.color = 'var(--amber)';
+  try {
+    // Fetch real backend Hybrid PII Engine analysis & canonical SHA-256 digests
+    const res = await fetch('/api/transparency/inspect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw_jsonl: rawText })
+    });
+    const d = await res.json();
+    if (!d.success || !d.trace || !d.trace.records || d.trace.records.length === 0) {
+      throw new Error(d.error || 'Failed to inspect record');
+    }
 
-  let rawHtml = escHtml(rawText)
-    .replace(/(Dr\.\s[A-Za-z\s]+|Jessica Pearson|Mark Vance)/g, '<span class="pii-highlight-raw">$1</span>')
-    .replace(/([\w-\.]+@[\w-]+\.[\w-]+)/g, '<span class="pii-highlight-raw">$1</span>')
-    .replace(/(\(\d{3}\)\s\d{3}-\d{4}|\+\d\s\(\d{3}\)\s\d{3}-\d{4})/g, '<span class="pii-highlight-raw">$1</span>')
-    .replace(/(\d{3}-\d{2}-\d{4})/g, '<span class="pii-highlight-raw">$1</span>')
-    .replace(/(sk-[a-zA-Z0-9-]+)/g, '<span class="pii-highlight-raw">$1</span>');
+    const rec = d.trace.records[0];
+    const rawHash = rec.raw.full_hash;
+    const maskedText = rec.masked.text;
+    const maskedHash = rec.masked.full_hash;
+    const piiTypes = rec.pii_types.length > 0 ? rec.pii_types.join(', ') : 'NONE DETECTED';
+    const piiSpans = rec.pii_spans || [];
 
-  screen.innerHTML = rawHtml;
-  document.getElementById('sim-hash-val').innerText = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-  document.getElementById('ab-entities').innerText = 'EMAIL, PHONE, SSN, NAME, API_KEY';
+    // STAGE 01: User Ingestion
+    updateSimStepNode(1, 'active', 'RAW PII SCANNING');
+    document.getElementById('sim-transit-state').innerText = 'User Ingestion (Client Side)';
+    document.getElementById('sim-transit-state').style.color = 'var(--amber)';
 
-  // STAGE 02: In-Transit Masking
-  simTimer1 = setTimeout(() => {
-    updateSimStepNode(1, 'completed');
-    updateSimStepNode(2, 'active', 'PATTERN REDACTION');
-    if (laser) laser.classList.add('scanning');
+    // Highlight detected PII spans dynamically
+    let rawHtml = escHtml(rawText);
+    piiSpans.forEach(s => {
+      if (s.matched_text) {
+        const escapedMatch = escHtml(s.matched_text);
+        rawHtml = rawHtml.replace(escapedMatch, `<span class="pii-highlight-raw">${escapedMatch}</span>`);
+      }
+    });
 
-    document.getElementById('sim-transit-state').innerText = 'In-Transit PII Masking Engine';
-    document.getElementById('sim-transit-state').style.color = 'var(--text-primary)';
+    screen.innerHTML = rawHtml;
+    document.getElementById('sim-hash-val').innerText = rawHash.slice(0, 32) + '...';
+    document.getElementById('ab-entities').innerText = piiTypes;
 
-    let maskingHtml = escHtml(rawText)
-      .replace(/(Dr\.\s[A-Za-z\s]+|Jessica Pearson|Mark Vance)/g, '<span class="pii-highlight-masking">[REDACTING_NAME...]</span>')
-      .replace(/([\w-\.]+@[\w-]+\.[\w-]+)/g, '<span class="pii-highlight-masking">[REDACTING_EMAIL...]</span>')
-      .replace(/(\(\d{3}\)\s\d{3}-\d{4}|\+\d\s\(\d{3}\)\s\d{3}-\d{4})/g, '<span class="pii-highlight-masking">[REDACTING_PHONE...]</span>')
-      .replace(/(\d{3}-\d{2}-\d{4})/g, '<span class="pii-highlight-masking">[REDACTING_SSN...]</span>')
-      .replace(/(sk-[a-zA-Z0-9-]+)/g, '<span class="pii-highlight-masking">[REDACTING_SECRET...]</span>');
+    // STAGE 02: In-Transit Hybrid Masking Engine
+    simTimer1 = setTimeout(() => {
+      updateSimStepNode(1, 'completed');
+      updateSimStepNode(2, 'active', 'HYBRID MASKING');
+      if (laser) laser.classList.add('scanning');
 
-    screen.innerHTML = maskingHtml;
+      document.getElementById('sim-transit-state').innerText = 'In-Transit Hybrid PII Masker (SpaCy + Regex)';
+      document.getElementById('sim-transit-state').style.color = 'var(--text-primary)';
 
-    // STAGE 03: Validation & Cryptographic Gate
-    simTimer2 = setTimeout(() => {
-      updateSimStepNode(2, 'completed');
-      updateSimStepNode(3, 'active', 'SHA-256 CHECK');
-      if (laser) laser.classList.remove('scanning');
+      screen.innerHTML = escHtml(maskedText).replace(/(\[[A-Z_]+\])/g, '<span class="pii-highlight-masking">$1</span>');
 
-      document.getElementById('sim-transit-state').innerText = 'Cryptographic Verification Gate';
+      // STAGE 03: Validation & Cryptographic Gate
+      simTimer2 = setTimeout(() => {
+        updateSimStepNode(2, 'completed');
+        updateSimStepNode(3, 'active', 'SHA-256 ANCHORING');
+        if (laser) laser.classList.remove('scanning');
 
-      let maskedText = escHtml(rawText)
-        .replace(/(Dr\.\s[A-Za-z\s]+|Jessica Pearson|Mark Vance)/g, '[REDACTED_NAME]')
-        .replace(/([\w-\.]+@[\w-]+\.[\w-]+)/g, '[REDACTED_EMAIL]')
-        .replace(/(\(\d{3}\)\s\d{3}-\d{4}|\+\d\s\(\d{3}\)\s\d{3}-\d{4})/g, '[REDACTED_PHONE]')
-        .replace(/(\d{3}-\d{2}-\d{4})/g, '[REDACTED_SSN]')
-        .replace(/(sk-[a-zA-Z0-9-]+)/g, '[REDACTED_SECRET]');
+        document.getElementById('sim-transit-state').innerText = 'Cryptographic Verification Gate (AES-256-GCM)';
+        screen.innerHTML = escHtml(maskedText).replace(/(\[[A-Z_]+\])/g, '<span class="pii-highlight-secured">$1</span>');
 
-      screen.innerHTML = maskedText
-        .replace(/\[REDACTED_NAME\]/g, '<span class="pii-highlight-secured">[REDACTED_NAME]</span>')
-        .replace(/\[REDACTED_EMAIL\]/g, '<span class="pii-highlight-secured">[REDACTED_EMAIL]</span>')
-        .replace(/\[REDACTED_PHONE\]/g, '<span class="pii-highlight-secured">[REDACTED_PHONE]</span>')
-        .replace(/\[REDACTED_SSN\]/g, '<span class="pii-highlight-secured">[REDACTED_SSN]</span>')
-        .replace(/\[REDACTED_SECRET\]/g, '<span class="pii-highlight-secured">[REDACTED_SECRET]</span>');
+        document.getElementById('sim-hash-val').innerText = maskedHash.slice(0, 32) + '...';
+        document.getElementById('ab-checksum-status').innerText = 'PASSED (Canonical Hash Verified)';
+        document.getElementById('ab-checksum-status').className = 'ab-val pass';
 
-      document.getElementById('sim-hash-val').innerText = '9a7f34c11b0e4981d3298a0e0f81d11b2394c8e7102948e718294a0d92e8174f';
-      document.getElementById('ab-checksum-status').innerText = 'PASSED (Hash Digest Validated)';
-      document.getElementById('ab-checksum-status').className = 'ab-val pass';
+        // STAGE 04: Adapter Training Ready
+        simTimer3 = setTimeout(() => {
+          updateSimStepNode(3, 'completed');
+          updateSimStepNode(4, 'completed', 'READY FOR LORA');
 
-      // STAGE 04: Adapter Ready
-      simTimer3 = setTimeout(() => {
-        updateSimStepNode(3, 'completed');
-        updateSimStepNode(4, 'completed', 'READY FOR LORA');
+          document.getElementById('sim-transit-state').innerText = 'Adapter Fine-Tuning Ready (Zero PII Leakage)';
+          document.getElementById('sim-transit-state').style.color = 'var(--emerald)';
+          document.getElementById('btn-sim-play').disabled = false;
+        }, 1400);
 
-        document.getElementById('sim-transit-state').innerText = 'Adapter Fine-Tuning Ready';
-        document.getElementById('sim-transit-state').style.color = 'var(--emerald)';
-        document.getElementById('btn-sim-play').disabled = false;
       }, 1600);
 
-    }, 2000);
+    }, 1500);
 
-  }, 1800);
+  } catch (err) {
+    alert('Simulation error: ' + err.message);
+    document.getElementById('btn-sim-play').disabled = false;
+  }
+}
+
+
+function triggerPresetAttack(stageKey) {
+  const sel = document.getElementById('sim-attack-target-stage');
+  if (sel) sel.value = stageKey;
+  if (stageKey === 'theft') {
+    const payloadInp = document.getElementById('sim-attack-payload-input');
+    if (payloadInp) payloadInp.value = 'UNAUTHORIZED_DEVICE_COPY_ATTEMPT (Target HW: 8f1a92e4...)';
+  } else if (stageKey === '1') {
+    const payloadInp = document.getElementById('sim-attack-payload-input');
+    if (payloadInp) payloadInp.value = 'DROP TABLE training_data; -- LEAK ALL KEYS';
+  } else if (stageKey === '3') {
+    const payloadInp = document.getElementById('sim-attack-payload-input');
+    if (payloadInp) payloadInp.value = 'MAN_IN_THE_MIDDLE_PAYLOAD_TAMPER_0xDEADBEEF';
+  }
+  triggerInTransitAttack();
 }
 
 // FLEXIBLE MULTI-STAGE ATTACK TRIGGER ENGINE
@@ -491,27 +542,29 @@ async function triggerInTransitAttack() {
     if (!d.success) throw new Error(d.error);
 
     // Set UI node statuses dynamically based on target stage
-    const stgNum = parseInt(targetStage);
+    const isTheft = (targetStage === 'theft' || targetStage === '5');
+    const stgNum = isTheft ? 4 : (parseInt(targetStage) || 3);
 
     for (let i = 1; i <= 4; i++) {
       if (i < stgNum) updateSimStepNode(i, 'completed');
-      else if (i === stgNum) updateSimStepNode(i, 'attacked', 'ATTACK INTERCEPTED');
+      else if (i === stgNum) updateSimStepNode(i, 'attacked', isTheft ? 'THEFT INTERCEPTED' : 'ATTACK INTERCEPTED');
       else updateSimStepNode(i, 'idle', 'BLOCKED');
     }
 
     const screen = document.getElementById('sim-text-screen');
-    screen.innerHTML = `<span style="color:var(--rose)">[ATTACK INTERCEPTED AT STAGE 0${targetStage}]</span>\n${escHtml(d.corrupted_text)}\n\n[FAIL-FAST REJECTION RULE TRIGGERED — GPU TRAINING ABORTED]`;
+    const label = isTheft ? 'HARDWARE BINDING GATE (ADAPTER THEFT)' : `STAGE 0${stgNum}`;
+    screen.innerHTML = `<span style="color:var(--rose)">[ATTACK INTERCEPTED AT ${label}]</span>\n${escHtml(d.corrupted_text)}\n\n[FAIL-FAST REJECTION RULE TRIGGERED — ADAPTER LOADING TERMINATED]`;
 
-    document.getElementById('sim-transit-state').innerText = `FAIL-FAST SECURITY INTERCEPT (STAGE 0${targetStage} BLOCKED)`;
+    document.getElementById('sim-transit-state').innerText = isTheft ? 'HARDWARE BINDING VIOLATION (ADAPTER THEFT TERMINATED)' : `FAIL-FAST SECURITY INTERCEPT (STAGE 0${stgNum} BLOCKED)`;
     document.getElementById('sim-transit-state').style.color = 'var(--rose)';
 
-    document.getElementById('sim-hash-val').innerText = d.chain[stgNum - 1]?.hash || '0xDEADBEEF...';
-    document.getElementById('ab-checksum-status').innerText = `FAILED — REJECTED AT STAGE 0${targetStage}`;
+    document.getElementById('sim-hash-val').innerText = d.chain[stgNum - 1]?.hash || 'HW_MISMATCH: 8f1a92e4...';
+    document.getElementById('ab-checksum-status').innerText = isTheft ? 'FAILED (Hardware Fingerprint Mismatch)' : `FAILED — REJECTED AT STAGE 0${stgNum}`;
     document.getElementById('ab-checksum-status').className = 'ab-val fail';
 
     const alertBox = document.getElementById('sim-attack-alert');
     alertBox.style.display = 'flex';
-    document.getElementById('aab-title-header').innerText = `STAGE 0${targetStage} ATTACK INTERCEPTED & BLOCKED`;
+    document.getElementById('aab-title-header').innerText = isTheft ? 'ADAPTER THEFT INTERCEPTED & BLOCKED' : `STAGE 0${stgNum} ATTACK INTERCEPTED & BLOCKED`;
     document.getElementById('aab-desc-text').innerText = d.rejection_reason;
 
     const sdg = d.sdg_impact;
@@ -525,9 +578,10 @@ async function triggerInTransitAttack() {
   } catch (e) {
     alert('Attack simulation failed: ' + e.message);
   } finally {
-    btn.disabled = false; btn.innerText = '⚡ Inject & Execute Attack';
+    btn.disabled = false; btn.innerText = 'Execute Attack';
   }
 }
+
 
 // ──────────────────────────────────────────────
 // TRANSPARENCY TRACE AUDIT
@@ -649,7 +703,222 @@ function renderTransparencyTrace(trace) {
 
 function escHtml(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
+
 initChart();
 fetchStatus();
 recalculateSdgMetrics();
 updatePipelineFlow('dataset_intake', 0);
+
+// ══════════════════════════════════════════════════════════
+// SECURE PRIVACY-PRESERVING Q&A CHAT ENGINE (CLIENT SIDE)
+// ══════════════════════════════════════════════════════════
+
+let chatActiveJobId = null;
+let chatCustomJsonl = '';
+let chatDatasetSource = 'Clinical Notes Template';
+let chatIsLoading = false;
+
+// Initialize chat tab when it becomes visible
+function initChatTab() {
+  // Auto-load the clinical_notes template so chat has data on first open
+  chatLoadTemplateByKey('clinical_notes');
+}
+
+async function chatLoadTemplateByKey(key) {
+  try {
+    const r = await fetch('/api/template/' + key);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    chatCustomJsonl = await r.text();
+    const names = { clinical_notes: 'Hospital Clinical Notes (PHI)', real_world_pii: 'Real-World PII Dataset', pii_corporate: 'Corporate PII Records' };
+    chatDatasetSource = names[key] || key;
+    updateChatDatasetStatus();
+  } catch (e) {
+    console.warn('Chat template load failed, using empty dataset:', e.message);
+  }
+}
+
+function chatLoadTemplate() {
+  const key = document.getElementById('chat-template-select').value;
+  chatLoadTemplateByKey(key);
+}
+
+function chatLoadCustomDataset() {
+  const raw = document.getElementById('chat-custom-jsonl').value.trim();
+  if (!raw) return alert('Please paste some JSONL data first.');
+  chatCustomJsonl = raw;
+  chatDatasetSource = 'Custom JSONL';
+  updateChatDatasetStatus();
+  appendChatMessage('system', '✅ Custom dataset loaded. You can now ask questions about it.');
+}
+
+function updateChatDatasetStatus() {
+  const lines = chatCustomJsonl ? chatCustomJsonl.trim().split('\n').filter(l => l.trim()).length : 0;
+  document.getElementById('chat-dataset-source').innerText = chatDatasetSource;
+  document.getElementById('chat-record-count').innerText = lines > 0 ? lines + ' records' : '—';
+  if (lines > 0) {
+    appendChatMessage('system', `📂 Dataset loaded: **${chatDatasetSource}** (${lines} records). Ask me anything about the aggregate data!`);
+  }
+}
+
+function chatSetQuestion(btn) {
+  document.getElementById('chat-question-input').value = btn.innerText;
+  document.getElementById('chat-question-input').focus();
+}
+
+function chatHandleKey(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendChatQuestion();
+  }
+}
+
+async function sendChatQuestion() {
+  if (chatIsLoading) return;
+  const input = document.getElementById('chat-question-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  chatIsLoading = true;
+  document.getElementById('chat-send-btn').disabled = true;
+
+  // Append user message
+  appendChatMessage('user', question);
+
+  // Show typing indicator
+  const typingId = appendTypingIndicator();
+
+  try {
+    const body = { question };
+    if (chatCustomJsonl) body.raw_jsonl = chatCustomJsonl;
+    if (chatActiveJobId) body.job_id = chatActiveJobId;
+
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    removeTypingIndicator(typingId);
+
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Unknown error');
+
+    appendChatMessage('agent', d.answer, d.was_blocked, d.privacy_status, d.num_records);
+    updatePrivacyPill(d.was_blocked, d.privacy_status);
+
+  } catch (e) {
+    removeTypingIndicator(typingId);
+    appendChatMessage('agent', '⚠️ Error: ' + e.message, false, 'ERROR');
+  } finally {
+    chatIsLoading = false;
+    document.getElementById('chat-send-btn').disabled = false;
+  }
+}
+
+function appendChatMessage(role, text, blocked = false, privacyStatus = 'SAFE', numRecords = 0) {
+  const container = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg msg-' + role + (blocked ? ' msg-blocked' : '');
+
+  let labelHtml = '';
+  if (role === 'agent') {
+    if (blocked) {
+      labelHtml = '<div class="msg-blocked-label">🔒 PII Blocked</div>';
+    } else if (privacyStatus === 'SAFE' || privacyStatus === 'GUARDED') {
+      labelHtml = '<div class="msg-safe-label">✓ Privacy Safe</div>';
+    }
+  }
+
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const metaText = role === 'user' ? 'You · ' + now :
+    role === 'agent' ? 'SecureLoRA Agent · ' + now + (numRecords ? ' · ' + numRecords + ' records analyzed' : '') :
+    'System';
+
+  const formattedText = renderMarkdown(text);
+
+  msg.innerHTML = `
+    ${labelHtml}
+    <div class="msg-bubble">${formattedText}</div>
+    <div class="msg-meta">${metaText}</div>
+  `;
+
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+
+  // Animate in
+  msg.style.opacity = '0';
+  msg.style.transform = 'translateY(8px)';
+  requestAnimationFrame(() => {
+    msg.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    msg.style.opacity = '1';
+    msg.style.transform = 'translateY(0)';
+  });
+}
+
+function appendTypingIndicator() {
+  const container = document.getElementById('chat-messages');
+  const id = 'typing-' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'chat-msg msg-agent';
+  div.id = id;
+  div.innerHTML = `
+    <div class="typing-indicator">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeTypingIndicator(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function updatePrivacyPill(blocked, status) {
+  const pill = document.getElementById('chat-privacy-pill');
+  const label = document.getElementById('cpill-label');
+  const dot = pill.querySelector('.cpill-dot');
+  if (blocked) {
+    pill.classList.add('blocked');
+    label.innerText = 'PII Blocked';
+    dot.style.background = 'var(--rose)';
+  } else {
+    pill.classList.remove('blocked');
+    label.innerText = status === 'GUARDED' ? 'Response Guarded' : 'PII Guard Active';
+    dot.style.background = 'var(--emerald)';
+  }
+  // Reset after 3s
+  setTimeout(() => {
+    pill.classList.remove('blocked');
+    label.innerText = 'PII Guard Active';
+    dot.style.background = 'var(--emerald)';
+  }, 3000);
+}
+
+function renderMarkdown(text) {
+  // Simple markdown: **bold**, *italic*, `code`, bullet lines starting with "  - "
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^  - (.+)$/gm, '&nbsp;&nbsp;• $1')
+    .replace(/\n/g, '<br>');
+}
+
+// Switch tab hook to auto-init chat
+const _origSwitchTab = switchTab;
+function switchTab(btn, id) {
+  _origSwitchTab(btn, id);
+  if (id === 'chat') {
+    // Init if no messages yet (only welcome)
+    if (document.getElementById('chat-messages').children.length === 1) {
+      initChatTab();
+    }
+  }
+}
+

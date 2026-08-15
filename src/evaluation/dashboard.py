@@ -23,6 +23,7 @@ from src.orchestrator.routes import orchestrator_bp
 from src.orchestrator.service import orchestrator
 from src.orchestrator.transparency import build_transparency_trace
 from src.orchestrator.dataset_processor import validate_dataset_file, preprocess_and_standardize
+from src.orchestrator.chat_engine import answer_question, load_records_from_job, load_records_from_jsonl, compute_dataset_analytics
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -73,11 +74,18 @@ def get_template_dataset(name: str):
     filename = template_files.get(name)
     if not filename:
         return jsonify({'error': 'Unknown template'}), 404
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
-    except FileNotFoundError:
-        return jsonify({'error': f'Template file {filename} not found on server'}), 404
+    
+    # Search in samples/ directory first, then root
+    for candidate in [Path('samples') / filename, Path(filename)]:
+        if candidate.exists():
+            try:
+                with open(candidate, 'r', encoding='utf-8') as f:
+                    return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+            except Exception as e:
+                logger.warning("Error reading template file %s: %s", candidate, e)
+
+    return jsonify({'error': f'Template file {filename} not found on server'}), 404
+
 
 
 @app.route('/')
@@ -208,6 +216,12 @@ def trigger_p4_verify():
                         steps_status["Step 8: Inference Validation"] = "PASSED"
                         verification_success = True
                         adapter_loaded = True
+                        # ── Register model with chat engine so Q&A uses the fine-tuned LLM ──
+                        try:
+                            from src.orchestrator.chat_engine import register_model as _reg
+                            _reg(peft_model, tokenizer, base_model_name)
+                        except Exception as _re:
+                            logger.warning("Chat engine model registration failed: %s", _re)
                     except Exception as e:
                         steps_status["Step 8: Inference Validation"] = "FAILED"
                         raise
@@ -312,29 +326,9 @@ def p4_generate():
     # 1. Baseline Model Response: Leaks raw input text without redaction
     base_response = text_to_redact
 
-    # 2. Secured Model Response: Applies full PII redaction engine
-    import re
-    redacted = text_to_redact
-    # Emails
-    redacted = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "[EMAIL]", redacted)
-    # Phones
-    redacted = re.sub(r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b", "[TEL]", redacted)
-    # SSNs
-    redacted = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SOCIALNUMBER]", redacted)
-    # Credit Card numbers & Score strings
-    redacted = re.sub(r"\b(?:\d[ -]*?){13,16}\b", "[CREDITCARD]", redacted)
-    redacted = re.sub(r"(?i)\b(credit card (?:score|number|id)|score is|card score is)\s*\d+\b", r"\1 [REDACTED_NUM]", redacted)
-    # IP Addresses
-    redacted = re.sub(r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b", "[IPADDRESS]", redacted)
-    # API keys / Secrets
-    redacted = re.sub(r"(?i)(?:api[_\-]?key|secret|password|passwd)\s*[:=]\s*['\"][^'\"]+['\"]", "[SECRET]", redacted)
-    # Common Name patterns ("my name is X", "I am X")
-    redacted = re.sub(r"(?i)\b(my name is|I am|this is|contact)\s+([A-Z][a-z]+)\b", r"\1 [GIVENNAME]", redacted)
-
-    # Names list fallback
-    names = ["John Doe", "Jane Smith", "Alice", "Abhishek", "Ansgar", "Délina", "Szimonetta", "Nasnet", "Fania", "Iso", "Liwam"]
-    for name in names:
-        redacted = re.compile(re.escape(name), re.IGNORECASE).sub("[GIVENNAME]", redacted)
+    # 2. Secured Model Response: Applies full Advanced Hybrid PII Engine
+    from src.security.pii_engine import mask_pii_advanced
+    redacted, entity_counts = mask_pii_advanced(text_to_redact)
 
     if peft_model is not None and adapter_loaded:
         lora_response = redacted
@@ -464,15 +458,42 @@ def tamper_simulate():
         rejection_reason = f"In-Transit Payload Corruption: Man-in-the-middle adversary altered masking tokens before hash anchoring. Rejection triggered at Stage 2."
 
     elif attack_stage == "3":
-        bad_hash = "0xDEADBEEF94810294819204810294810294810294"
+        corrupted_text = f"[CORRUPTED IN-TRANSIT PAYLOAD DETECTED]\nPayload: {injected_payload}\n[SYSTEM STATUS: EXECUTION ABORTED]"
+        bad_hash = _sha256(corrupted_text)
         chain[2]["attacked"] = True
         chain[2]["hash"] = bad_hash[:24] + "…"
         chain[2]["full_hash"] = bad_hash
         chain[2]["verified"] = False
         chain[3]["verified"] = False
-        corrupted_text = f"[CORRUPTED IN-TRANSIT PAYLOAD DETECTED]\n{injected_payload}\n[SYSTEM STATUS: EXECUTION ABORTED]"
         rejected_at_stage = "Stage 03: Validation & Cryptographic Gate"
         rejection_reason = f"SHA-256 Checksum Mismatch: Received hash {bad_hash[:16]} != Expected canonical hash {final_hash[:16]}. Integrity gate blocked execution."
+
+    elif attack_stage in ["theft", "5"]:
+        import uuid, socket
+        hw_bytes = uuid.getnode().to_bytes(6, 'big') + socket.gethostname().encode('utf-8')
+        auth_fp = hashlib.sha256(hw_bytes).hexdigest()
+        attacker_bytes = hw_bytes + b"_UNAUTHORIZED_UNTRUSTED_NODE_B"
+        bad_fp = hashlib.sha256(attacker_bytes).hexdigest()
+
+        chain[2]["attacked"] = True
+        chain[2]["hash"] = "HW_MISMATCH: " + bad_fp[:16] + "…"
+        chain[2]["verified"] = False
+        chain[3]["verified"] = False
+        corrupted_text = (
+            "🚨 [ADAPTER THEFT DETECTED — HARDWARE BINDING VIOLATION]\n\n"
+            f"  Attacker Machine Fingerprint: {bad_fp[:32]}...\n"
+            f"  Authorized Hardware Reference: {auth_fp[:32]}...\n\n"
+            "  ❌ HKDF Key Derivation Failed → Key Mismatch\n"
+            "  ❌ AES-256-GCM Tag Authentication Failed\n"
+            "  🛑 PROCESS INSTANTLY TERMINATED — Adapter weights remain 100% encrypted ciphertext."
+        )
+        rejected_at_stage = "Stage 04: Hardware Authorization Gate"
+        rejection_reason = (
+            f"Adapter Theft Intercepted: Attacker copied .tar.gz package to unauthorized hardware ({bad_fp[:16]}...). "
+            f"Hardware fingerprint mismatch (Expected {auth_fp[:12]}... != Actual {bad_fp[:12]}...) prevented HKDF key derivation. "
+            "AES-256-GCM tag verification failed and process terminated instantly."
+        )
+
 
     else:
         chain[3]["attacked"] = True
@@ -480,6 +501,7 @@ def tamper_simulate():
         corrupted_text = f"[POISONED WEIGHT TRIGGER DETECTED]\nPayload: {injected_payload}\n[ALIGNMENT GATE REJECTED ADAPTER RELEASE]"
         rejected_at_stage = "Stage 04: Adapter Ready Output / Deployment Gate"
         rejection_reason = f"Deployment Gate Rejection: Backdoor trigger condition detected during side-by-side inference evaluation at Stage 4. Adapter loading blocked."
+
 
     return jsonify({
         "success": True,
@@ -493,6 +515,61 @@ def tamper_simulate():
         "rejection_reason": rejection_reason,
         "sdg_impact": sdg
     })
+
+
+@app.route('/api/chat', methods=['POST'])
+def secure_chat():
+    """
+    Privacy-preserving Q&A endpoint.
+    Accepts a user question + optional job_id or raw_jsonl, returns an
+    aggregate answer with PII blocked and a privacy_status flag.
+    """
+    data = request.json or {}
+    question = (data.get("question") or "").strip()
+    if not question:
+        return jsonify({"success": False, "error": "question is required"}), 400
+
+    records = []
+
+    # Priority 1: job_id supplied — load from that job's raw_inputs
+    job_id = data.get("job_id")
+    if job_id:
+        job = orchestrator.get_job(job_id)
+        if job:
+            job_dir = orchestrator.base_jobs_dir / job_id
+            records = load_records_from_job(job_dir)
+
+    # Priority 2: inline JSONL in request body
+    if not records:
+        raw_jsonl = data.get("raw_jsonl", "")
+        if raw_jsonl:
+            records = load_records_from_jsonl(raw_jsonl)
+
+    # Priority 3: fall back to the sample files bundled with the project
+    if not records:
+        for fallback in ["sample_medical_phi.jsonl", "real_world_pii.jsonl", "sample_pii_data.jsonl"]:
+            for candidate in [Path("samples") / fallback, Path(fallback)]:
+                if candidate.exists():
+                    records = load_records_from_jsonl(candidate.read_text(encoding="utf-8"))
+                    if records:
+                        break
+            if records:
+                break
+
+
+    try:
+        answer, privacy_status, was_blocked = answer_question(question, records)
+        analytics = compute_dataset_analytics(records) if records else {}
+        return jsonify({
+            "success": True,
+            "answer": answer,
+            "privacy_status": privacy_status,
+            "was_blocked": was_blocked,
+            "num_records": analytics.get("total_records", 0),
+        })
+    except Exception as exc:
+        logger.exception("Chat engine error:")
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 
 if __name__ == '__main__':

@@ -66,25 +66,16 @@ MASK_MAP = {
 }
 
 
+from src.security.pii_engine import detect_pii_advanced, mask_pii_advanced
+
 def detect_pii(text: str) -> Dict[str, List[str]]:
-    """Returns dict of detected PII type → list of matched strings."""
-    found: Dict[str, List[str]] = {}
-    for pii_type, pattern in _PII_PATTERNS.items():
-        matches = pattern.findall(text)
-        if matches:
-            found[pii_type] = [m if isinstance(m, str) else m[0] for m in matches]
-    return found
+    """Returns dict of detected PII type → list of matched strings using the Advanced Hybrid PII Engine."""
+    return detect_pii_advanced(text)
 
 
 def mask_pii(text: str) -> Tuple[str, Dict[str, int]]:
-    """Applies masking to all detected PII. Returns (masked_text, counts_per_type)."""
-    counts: Dict[str, int] = {}
-    for pii_type, pattern in _PII_PATTERNS.items():
-        matches = pattern.findall(text)
-        if matches:
-            counts[pii_type] = len(matches)
-            text = pattern.sub(MASK_MAP[pii_type], text)
-    return text, counts
+    """Applies masking to all detected PII using the Advanced Hybrid PII Engine. Returns (masked_text, counts_per_type)."""
+    return mask_pii_advanced(text)
 
 
 # --------------------------------------------------------------------------
