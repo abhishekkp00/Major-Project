@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import shutil
+import hashlib
 import logging
 import threading
 import subprocess
@@ -14,6 +15,39 @@ from src.security import generate_key
 from src.common.config_loader import config
 
 logger = logging.getLogger("secure_lora.orchestrator.service")
+
+
+def _derive_device_salt() -> str:
+    """Derives a deterministic salt from real hardware identifiers.
+    Reads /etc/machine-id (Linux), /proc/cpuinfo, and network MAC address.
+    Falls back to UUID namespace hash if hardware reads fail.
+    This ensures hardware-binding is unique per device without being hardcoded.
+    """
+    sources = []
+    # 1. Linux machine-id (unique per OS install)
+    for mid_path in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
+        try:
+            sources.append(Path(mid_path).read_text().strip())
+            break
+        except OSError:
+            pass
+    # 2. First non-loopback MAC address
+    try:
+        import socket, struct, fcntl
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        info = fcntl.ioctl(s.fileno(), 0x8927, struct.pack("256s", b"eth0"[:15]))
+        sources.append(info[18:24].hex())
+    except Exception:
+        # Fallback: uuid1 embeds a MAC address
+        sources.append(hex(uuid.getnode()))
+    # 3. Hostname
+    try:
+        sources.append(socket.gethostname())
+    except Exception:
+        pass
+    combined = "|".join(sources)
+    return hashlib.sha256(combined.encode()).hexdigest()[:64]
+
 
 
 class JobOrchestrator:
@@ -87,7 +121,7 @@ class JobOrchestrator:
             "stage": "dataset_intake",
             "progress": 0,
             "epochs": epochs,
-            "salt": salt or "demo-integration-salt-abc123xyz",
+            "salt": salt or os.environ.get("P3_DEVICE_SALT") or _derive_device_salt(),
             "loss_history": [],
             "eval_metrics": {},
             "verification_steps": {},

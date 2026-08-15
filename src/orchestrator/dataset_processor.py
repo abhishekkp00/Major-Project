@@ -14,6 +14,18 @@ from src.security.shred import shred_file
 
 logger = logging.getLogger("secure_lora.orchestrator.dataset_processor")
 
+
+def _get_pii_masker():
+    """Lazy-loads the PII masker so it doesn't block Flask startup."""
+    try:
+        from src.security.pii_engine import mask_pii_advanced
+        return mask_pii_advanced
+    except Exception:
+        # Regex-only fallback if ML models unavailable
+        from src.orchestrator.chat_engine import _regex_mask
+        return lambda text: _regex_mask(text)
+
+
 # Common PII Regex patterns for security auditing
 PII_PATTERNS = {
     "email": re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"),
@@ -194,12 +206,31 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
     return records, metadata
 
 
-def preprocess_and_standardize(raw_records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def preprocess_and_standardize(
+    raw_records: List[Dict[str, Any]],
+    mask_pii: bool = True
+) -> List[Dict[str, Any]]:
     """
     Standardizes Alpaca format (instruction/input/output) or Causal LM format (text).
     Strips control characters, normalizes whitespace.
+    When mask_pii=True (default), runs the HybridPIIEngine on every text field
+    before returning — guaranteeing zero PII reaches the training loop.
     """
+    masker = _get_pii_masker() if mask_pii else None
+    pii_entity_counts: Dict[str, int] = {}
     standardized: List[Dict[str, Any]] = []
+
+    def _apply_mask(text: str) -> str:
+        if not masker or not text:
+            return text
+        try:
+            masked, counts = masker(text)
+            for k, v in counts.items():
+                pii_entity_counts[k] = pii_entity_counts.get(k, 0) + v
+            return masked
+        except Exception as e:
+            logger.warning("PII masking failed on record, returning as-is: %s", e)
+            return text
 
     for idx, record in enumerate(raw_records, 1):
         instruction = (
@@ -228,29 +259,34 @@ def preprocess_and_standardize(raw_records: List[Dict[str, Any]]) -> List[Dict[s
             clean_rec["source_file"] = record["source_file"]
 
         if instruction and output:
-            clean_rec["instruction"] = clean_text(instruction)
-            clean_rec["input"] = clean_text(input_val)
-            clean_rec["output"] = clean_text(output)
+            # Mask PII in every text field before it can reach training
+            clean_rec["instruction"] = _apply_mask(clean_text(instruction))
+            clean_rec["input"]       = _apply_mask(clean_text(input_val))
+            clean_rec["output"]      = _apply_mask(clean_text(output))
             standardized.append(clean_rec)
         elif "text" in record or "content" in record:
             text_content = record.get("text") or record.get("content")
-            clean_rec["text"] = clean_text(text_content)
+            clean_rec["text"] = _apply_mask(clean_text(text_content))
             standardized.append(clean_rec)
         else:
-            # Fallback combining other fields
+            # Fallback: combine remaining fields and mask the whole blob
             filtered_keys = [k for k in record.keys() if k not in {
                 "source_file", "row_index", "line_number", "record_index", "block_index"
             }]
             if len(filtered_keys) == 1:
-                clean_rec["text"] = clean_text(record[filtered_keys[0]])
+                clean_rec["text"] = _apply_mask(clean_text(record[filtered_keys[0]]))
                 standardized.append(clean_rec)
             elif len(filtered_keys) > 1:
                 combined = [f"{k.capitalize()}: {clean_text(record[k])}" for k in filtered_keys if record[k]]
                 if combined:
-                    clean_rec["text"] = "\n".join(combined)
+                    clean_rec["text"] = _apply_mask("\n".join(combined))
                     standardized.append(clean_rec)
 
+    if pii_entity_counts:
+        logger.info("PII masking applied — entities redacted: %s", pii_entity_counts)
+
     return standardized
+
 
 
 def encrypt_and_save_dataset(

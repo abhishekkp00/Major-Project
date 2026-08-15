@@ -5,16 +5,18 @@ from typing import List, Dict, Any
 logger = logging.getLogger("secure_lora.phase1.preprocessing")
 
 
+from src.security.pii_engine import deobfuscate_text
+
 def clean_text(text: Any) -> str:
     """
     Cleans text by stripping whitespace, normalizing multiple spaces,
-    and removing control characters.
+    removing control characters, and de-obfuscating hidden PII tokens.
     """
     if text is None:
         return ""
     text_str = str(text)
-    # Remove control characters (except newline and tab)
-    text_str = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text_str)
+    # Deobfuscate unicode, URL encoding, [at]/[dot] patterns
+    text_str = deobfuscate_text(text_str)
     # Normalize multiple spaces and tabs to a single space
     text_str = re.sub(r'[ \t]+', ' ', text_str)
     return text_str.strip()

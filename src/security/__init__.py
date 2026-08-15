@@ -31,6 +31,13 @@ from .shred import (
     shred_file,
     shred_directory,
 )
+from .pii_engine import (
+    HybridPIIEngine,
+    mask_pii_advanced,
+    detect_pii_advanced,
+    deobfuscate_text,
+    validate_luhn,
+)
 
 __all__ = [
     "generate_key",
@@ -56,4 +63,9 @@ __all__ = [
     "verify_signature",
     "shred_file",
     "shred_directory",
+    "HybridPIIEngine",
+    "mask_pii_advanced",
+    "detect_pii_advanced",
+    "deobfuscate_text",
+    "validate_luhn",
 ]
