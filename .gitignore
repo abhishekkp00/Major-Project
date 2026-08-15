@@ -75,6 +75,11 @@ decrypted_outputs/
 encrypted_outputs/
 shred_outputs/
 
+# ── Papers & PDF Documents ───────────────────────────────────────────────────
+*.pdf
+secure_lora_ieee_paper.*
+paper_figures/*.pdf
+
 # ── IDE & OS ──────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
@@ -82,3 +87,4 @@ shred_outputs/
 *.swo
 .DS_Store
 Thumbs.db
+
