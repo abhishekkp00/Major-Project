@@ -4,10 +4,18 @@ function switchTab(btn, id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-' + id).classList.add('active');
+  const targetTab = document.getElementById('tab-' + id);
+  if (targetTab) targetTab.classList.add('active');
+
   if (id === 'transparency') {
     loadJobsForSelect();
     recalculateSdgMetrics();
+  }
+  if (id === 'chat') {
+    const chatMsgContainer = document.getElementById('chat-messages');
+    if (chatMsgContainer && chatMsgContainer.children.length === 1) {
+      initChatTab();
+    }
   }
 }
 
@@ -910,15 +918,5 @@ function renderMarkdown(text) {
     .replace(/\n/g, '<br>');
 }
 
-// Switch tab hook to auto-init chat
-const _origSwitchTab = switchTab;
-function switchTab(btn, id) {
-  _origSwitchTab(btn, id);
-  if (id === 'chat') {
-    // Init if no messages yet (only welcome)
-    if (document.getElementById('chat-messages').children.length === 1) {
-      initChatTab();
-    }
-  }
-}
+
 
