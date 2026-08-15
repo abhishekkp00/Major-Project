@@ -118,13 +118,14 @@ SecureLoRA/
 │   └── deployment_validation/      # Phase 4 gate validation reports
 │
 ├── paper_figures/                  # Generated charts and architecture diagrams
-├── dataset_licenses_and_assets/    # Dataset documentation and licenses
-│
-├── run_paper_evaluation.py         # Runs all evaluation modules end-to-end
+├── samples/                        # Demonstration datasets (PHI, corporate PII, real-world)
+├── scripts/                        # Evaluation, benchmarking, and paper figure generators
+│   └── run_paper_evaluation.py     # Runs all evaluation modules end-to-end
 ├── requirements.txt                # Python dependencies
 ├── .env.example                    # Environment variable template
 └── train_and_evaluate_lora.ipynb   # Interactive Jupyter notebook demo
 ```
+
 
 ---
 
