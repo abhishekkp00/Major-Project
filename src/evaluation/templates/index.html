@@ -464,6 +464,18 @@ Select a dataset preset or type custom record text, then click "Run Interactive 
              TAB 4: SECURE PRIVACY-PRESERVING Q&A CHAT
         ══════════════════════════════════════════════════════════ -->
         <div id="tab-chat" class="tab-content">
+            <!-- Lock Overlay (Displayed until fine-tuning / verification completes) -->
+            <div id="chat-lock-overlay" class="chat-lock-overlay">
+                <div class="chat-lock-card">
+                    <div class="chat-lock-icon">🔒</div>
+                    <div class="chat-lock-title">Interactive Q&A Locked</div>
+                    <div class="chat-lock-desc">
+                        To access the interactive chat demonstration, you must first launch the fine-tuning pipeline on your dataset and verify the deployment package in the <strong>Deployment Gate</strong>.
+                    </div>
+                    <button class="btn btn-primary" onclick="switchTab(document.getElementById('tabOrchestrator'), 'orchestrator')">🚀 Go to Pipeline Tab</button>
+                </div>
+            </div>
+
             <div class="chat-layout">
 
                 <!-- LEFT: Dataset context panel -->

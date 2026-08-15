@@ -1964,3 +1964,53 @@ mark.pii-mark {
     height: 70vh;
   }
 }
+
+/* Chat Lock Overlay */
+#tab-chat {
+  position: relative;
+}
+
+.chat-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 12, 0.94);
+  backdrop-filter: blur(14px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.chat-lock-card {
+  background: #141419;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 14px;
+  padding: 2.5rem;
+  max-width: 520px;
+  text-align: center;
+}
+
+.chat-lock-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.chat-lock-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f87171;
+  margin-bottom: 0.75rem;
+}
+
+.chat-lock-desc {
+  font-size: 0.88rem;
+  color: #a1a1aa;
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+}

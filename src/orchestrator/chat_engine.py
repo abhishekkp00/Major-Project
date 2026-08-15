@@ -92,14 +92,10 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 _INDIVIDUAL_PII_PATTERNS = [
-    re.compile(r"\b(ssn|social security|passport|license|credit card|card number|account number|mrn|medical record)\b", re.I),
-    re.compile(r"\bwhat is\b.{0,40}\b(address|phone|email|password|dob|date of birth|salary|income)\b", re.I),
-    re.compile(r"\b(tell me|give me|show me|reveal|expose|leak|find|lookup|get)\b.{0,30}\b(name|email|phone|address|record)\b.{0,30}\b(of|for)\b.{0,30}\b(patient|person|user|employee|client|individual)\b", re.I),
-    re.compile(r"\bwho is patient\b", re.I),
-    re.compile(r"\bidentity of\b", re.I),
-    re.compile(r"\bpersonal (info|information|details|data) (of|for|about)\b", re.I),
-    re.compile(r"\bcontact (details|info|information) (of|for)\b", re.I),
-    re.compile(r"\bfull name of\b", re.I),
+    re.compile(r"\b(tell me|give me|show me|reveal|expose|leak|find|lookup|get)\b.{0,30}\b(ssn|social security|passport|credit card|card number|password|private key|secret key)\b", re.I),
+    re.compile(r"\b(what is|tell me)\b.{0,30}\b(ssn|social security|passport|credit card|password)\b.{0,30}\b(of|for)\b", re.I),
+    re.compile(r"\b(reveal|expose|leak|show)\b.{0,30}\b(personal info|private data|contact details)\b.{0,30}\b(of|for)\b\s*[A-Z][a-z]+", re.I),
+    re.compile(r"\bidentity of\b\s*[A-Z][a-z]+", re.I),
 ]
 
 _PRIVACY_BLOCK_RESPONSE = (
@@ -240,7 +236,7 @@ def _clean_entity_text(text: str) -> str:
         return str(text)
 
     # 1. Remove instruction preambles
-    text = re.sub(r"^(Redact|Scrub|Mask)\s+(Personally Identifiable Information \(PII\)|PHI|PII|HIPAA|patient|data|identifiers)?\s*(from|in)?\s*(this|the)?\s*(clinical record|email|text|message|record|data)?:\s*", "", text, flags=re.I)
+    text = re.sub(r"^(Redact|Scrub|Mask)\s+(PHI|PII|HIPAA|patient|data|identifiers)\s*(from|in)?\s*(this|the)?\s*(clinical record|email|record|data)?:\s*", "", text, flags=re.I)
     text = re.sub(r"^Patient\s+data:\s*", "", text, flags=re.I)
 
     # 2. Remove [MASKED_...] and [REDACTED_...] placeholder tokens
@@ -253,7 +249,7 @@ def _clean_entity_text(text: str) -> str:
     # 4. Extract domain-specific medical/clinical/corporate terms dynamically
     medical_patterns = [
         r"\b(acute coronary syndrome|covid-19|hypertension|diabetes|asthma|cancer|arrhythmia|pneumonia|lactic acidosis|lisinopril|myocardial infarction|stroke)\b",
-        r"\b(project aurora|wire transfer|quarterly audit|financial report|security incident|system outage|data breach|corporate communication|pii redaction)\b"
+        r"\b(project aurora|wire transfer|quarterly audit|financial report|security incident|system outage|data breach)\b"
     ]
     extracted = []
     for pat in medical_patterns:
@@ -267,7 +263,7 @@ def _clean_entity_text(text: str) -> str:
         return ", ".join(extracted)
 
     # If no specific key terms matched, clean remaining descriptive text
-    cleaned_clause = re.sub(r"\b(Patient|Case|Discharged|MRN|born|admitted on|scheduled at|tested positive for|My name is|email and|SSN is|Secret code is|Contact admin at)\b", "", text, flags=re.I)
+    cleaned_clause = re.sub(r"\b(Patient|Case|Discharged|MRN|born|admitted on|scheduled at|tested positive for)\b", "", text, flags=re.I)
     cleaned_clause = re.sub(r"\s+", " ", cleaned_clause).strip(" ,.:;-")
 
     if cleaned_clause and len(cleaned_clause) > 3:

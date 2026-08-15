@@ -12,10 +12,7 @@ function switchTab(btn, id) {
     recalculateSdgMetrics();
   }
   if (id === 'chat') {
-    const chatMsgContainer = document.getElementById('chat-messages');
-    if (chatMsgContainer && chatMsgContainer.children.length === 1) {
-      initChatTab();
-    }
+    checkChatLockStatus();
   }
 }
 
@@ -726,10 +723,30 @@ let chatCustomJsonl = '';
 let chatDatasetSource = 'Clinical Notes Template';
 let chatIsLoading = false;
 
-// Initialize chat tab when it becomes visible
+// Check whether the fine-tuned model deployment is verified/loaded before unlocking chat
+async function checkChatLockStatus() {
+  const overlay = document.getElementById('chat-lock-overlay');
+  if (!overlay) return;
+
+  try {
+    const res = await fetch('/api/phase4/status');
+    const d = await res.json();
+    if (d && d.loaded) {
+      overlay.style.display = 'none';
+      if (!chatCustomJsonl) {
+        chatLoadTemplateByKey('clinical_notes');
+      }
+    } else {
+      overlay.style.display = 'flex';
+    }
+  } catch (err) {
+    console.warn('Check chat lock status failed:', err);
+    overlay.style.display = 'flex';
+  }
+}
+
 function initChatTab() {
-  // Auto-load the clinical_notes template so chat has data on first open
-  chatLoadTemplateByKey('clinical_notes');
+  checkChatLockStatus();
 }
 
 async function chatLoadTemplateByKey(key) {
