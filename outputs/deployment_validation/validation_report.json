@@ -1,6 +1,6 @@
 {
   "report_type": "Phase 4 Secure Deployment & Inference Validation Report",
-  "generated_at_utc": "2026-08-10T11:18:40.461817+00:00",
+  "generated_at_utc": "2026-08-15T17:08:17.607133+00:00",
   "schema_version": "4.0.0",
   "adapter_metadata": {
     "adapter_id": "lora-adapter-v1",
