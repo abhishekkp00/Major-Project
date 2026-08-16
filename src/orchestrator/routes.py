@@ -823,7 +823,14 @@ def orchestrator_chat():
     else:
         sample_rec = records[0] if records else {}
         if isinstance(sample_rec, dict):
-            raw_sample = sample_rec.get("text") or sample_rec.get("instruction") or sample_rec.get("output") or sample_rec.get("clinical_note") or str(sample_rec)
+            raw_sample = (
+                sample_rec.get("input")
+                or sample_rec.get("text")
+                or sample_rec.get("clinical_note")
+                or sample_rec.get("output")
+                or sample_rec.get("instruction")
+                or str(sample_rec)
+            )
         else:
             raw_sample = str(sample_rec)
 

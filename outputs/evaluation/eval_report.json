@@ -9,11 +9,11 @@
     "num_epochs": 20,
     "total_steps": 20,
     "train_loss": NaN,
-    "val_loss": 2.340728,
-    "perplexity": 10.3888,
-    "training_duration_seconds": 17.19,
+    "val_loss": 2.18486,
+    "perplexity": 8.8894,
+    "training_duration_seconds": 69.8,
     "peak_memory_mb": 0.0,
-    "throughput_samples_per_sec": 2.33,
+    "throughput_samples_per_sec": 0.57,
     "epsilon": null,
     "delta": null,
     "noise_multiplier": null,
@@ -24,5 +24,5 @@
     "learning_rate": 0.0002,
     "status": "completed",
     "pre_training_generation": "12: Name (1.6): Name (1.6): Name (1.1): Name (1.0): Name (1.6): Name (1.7): Name",
-    "post_training_generation": "62% or less, 29% or less, 15% or less, 10% or less, 10% or less."
+    "post_training_generation": "25.5.0. Sensitive Information: Needs to be identified."
 }

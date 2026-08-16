@@ -404,6 +404,13 @@ def _answer_with_model(question: str, records: List[Dict[str, Any]]) -> str:
         if not generated:
             return _answer_from_analytics(question, records)
 
+        # Detect repetitive loops (common with small test models or un-instructed PEFT models)
+        lines = [l.strip() for l in generated.split("\n") if l.strip()]
+        words = generated.split()
+        if (len(lines) >= 2 and len(set(lines)) < len(lines)) or (len(words) > 8 and len(set(words)) / len(words) < 0.45) or "Answer (aggregate statistics" in generated:
+            logger.warning("Repetitive loop detected in model generation. Falling back to clean analytics answer.")
+            return _answer_from_analytics(question, records)
+
         return generated
 
     except Exception as e:
