@@ -63,6 +63,7 @@ def build_manifest(
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "encryption": {
             "algorithm": enc_metadata.get("algorithm"),
+            "kdf_version": enc_metadata.get("kdf_version"),
             "adapter_format": enc_metadata.get("adapter_format"),
             "encrypted_at_utc": enc_metadata.get("timestamp_utc"),
         },
@@ -73,14 +74,20 @@ def build_manifest(
             "  2. Recompute SHA-256 of adapter.enc and compare with adapter.hash.\n"
             "  3. Verify RSA-PSS signature in adapter.sig against adapter.hash using public.pem.\n"
             "  4. Regenerate device fingerprint on the target machine.\n"
-            "  5. Derive AES key from fingerprint + P3_DEVICE_SALT.\n"
-            "  6. Attempt AES-256-GCM decryption; failure means wrong device or tampered file.\n"
-            "  7. Only serve the adapter to inference if all six steps succeed."
+            "  5. Check manifest kdf_version matches a supported version; reject if not.\n"
+            "  6. Derive AES key via HKDF-SHA256(fingerprint, P3_DEVICE_SALT, info=securelora-adapter-v1).\n"
+            "  7. Attempt AES-256-GCM decryption; failure means wrong device, wrong salt, or tampered file.\n"
+            "  8. Only serve the adapter to inference if all seven steps succeed."
         ),
         "security_notes": {
             "plaintext_in_package": False,
             "private_key_in_package": False,
             "salt_in_package": False,
+            "fingerprint_is_hardware_root_of_trust": False,
+            "fingerprint_description": (
+                "Software-derived device identity based on selected machine attributes "
+                "(machine-id, cpu model, disk uuid). Not equivalent to TPM-based attestation."
+            ),
         },
     }
 
