@@ -20,6 +20,8 @@ from .key_derivation import (
     derive_key,
     validate_key_length,
     derive_key_from_env,
+    check_kdf_version,
+    KDF_VERSION,
 )
 from .signature import (
     generate_dev_keypair,
@@ -57,6 +59,8 @@ __all__ = [
     "derive_key",
     "validate_key_length",
     "derive_key_from_env",
+    "check_kdf_version",
+    "KDF_VERSION",
     "generate_dev_keypair",
     "sign_digest",
     "save_signature",

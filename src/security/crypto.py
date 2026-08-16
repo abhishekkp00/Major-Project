@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from src.common.exceptions import CryptoError
 from src.security.shred import shred_file
+from src.security.key_derivation import KDF_VERSION
 
 logger = logging.getLogger("secure_lora.security.crypto")
 
@@ -302,6 +303,7 @@ def encrypt_adapter(
 
     metadata = {
         "algorithm": "AES-256-GCM",
+        "kdf_version": KDF_VERSION,
         "nonce_hex": nonce_hex,
         "adapter_format": adapter_format,
         "plaintext_sha256_ref": plaintext_sha256,
