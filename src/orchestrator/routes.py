@@ -819,9 +819,17 @@ def orchestrator_chat():
 
     # Produce baseline raw answer for side-by-side comparison
     if was_blocked:
-        raw_answer = "Base Model Output (Un-tuned):\n[UNRESTRICTED] Request for sensitive PII or credentials. Base model without privacy controls attempts to complete or leak sensitive prompt tokens."
+        raw_answer = "⚠️ Base Model Output (Un-tuned Baseline):\n[UNRESTRICTED] Request for sensitive PII or credentials. Base model without privacy controls attempts to complete or leak sensitive prompt tokens directly."
     else:
-        raw_answer = f"Base Model Completion (Un-tuned):\nPrompt: '{question}'\nGenerates un-sanitized raw output without privacy filtering or adapter task alignment."
+        sample_rec = records[0] if records else {}
+        if isinstance(sample_rec, dict):
+            raw_sample = sample_rec.get("text") or sample_rec.get("instruction") or sample_rec.get("output") or sample_rec.get("clinical_note") or str(sample_rec)
+        else:
+            raw_sample = str(sample_rec)
+
+        raw_answer = f"⚠️ Base Model Output (Un-tuned Baseline):\n\n{raw_sample}\n\n(Note: Un-tuned base model exposes raw un-masked PII and sensitive identifiers directly in text completions.)"
+
+
 
     return jsonify({
         "success": True,

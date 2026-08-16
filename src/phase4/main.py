@@ -187,6 +187,12 @@ def run_deployment_pipeline(
                         try:
                             base_model, tokenizer = load_base_model_and_tokenizer(base_model_name)
                             peft_model = load_peft_adapter(base_model, decrypted_adapter_dir)
+                            try:
+                                from src.orchestrator.chat_engine import register_model
+                                register_model(peft_model, tokenizer, base_model_name)
+                            except Exception as reg_err:
+                                logger.warning("Could not register model in chat engine: %s", reg_err)
+
                             inference_result = run_side_by_side_inference(
                                 base_model=base_model,
                                 peft_model=peft_model,
