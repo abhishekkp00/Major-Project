@@ -1,0 +1,228 @@
+{
+  "baseline_id": "B6",
+  "baseline_name": "LoRA + Provenance/Signature",
+  "description": "Standard LoRA + Phase 3 RSA-PSS manifest signing & anti-replay package provenance.",
+  "execution_status": "COMPLETED",
+  "not_executed_reason": null,
+  "num_seeds": 3,
+  "utility_summary": {
+    "val_loss": {
+      "mean": 0.5441,
+      "stdev": 0.009,
+      "ci_95_lower": 0.5339,
+      "ci_95_upper": 0.5543,
+      "min_val": 0.5354,
+      "max_val": 0.5534,
+      "n_samples": 3
+    },
+    "perplexity": {
+      "mean": 1.7231,
+      "stdev": 0.0155,
+      "ci_95_lower": 1.7056,
+      "ci_95_upper": 1.7407,
+      "min_val": 1.7081,
+      "max_val": 1.7391,
+      "n_samples": 3
+    },
+    "task_accuracy": {
+      "mean": 0.94,
+      "stdev": 0.0,
+      "ci_95_lower": 0.94,
+      "ci_95_upper": 0.94,
+      "min_val": 0.94,
+      "max_val": 0.94,
+      "n_samples": 3
+    },
+    "f1_score": {
+      "mean": 0.93,
+      "stdev": 0.0,
+      "ci_95_lower": 0.93,
+      "ci_95_upper": 0.93,
+      "min_val": 0.93,
+      "max_val": 0.93,
+      "n_samples": 3
+    }
+  },
+  "privacy_summary": {
+    "dp_enabled": false,
+    "epsilon": null,
+    "delta": null,
+    "clipping_norm": null,
+    "noise_multiplier": null,
+    "pii_precision": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "pii_recall": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "pii_f1": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    }
+  },
+  "security_summary": {
+    "cross_device_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "tamper_rejection_rate": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "signature_rejection_rate": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "replay_rejection_rate": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "malicious_adapter_detection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "unauthorized_deployment_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    }
+  },
+  "overhead_summary": {
+    "training_time_s": {
+      "mean": 9.2443,
+      "stdev": 0.3741,
+      "ci_95_lower": 8.821,
+      "ci_95_upper": 9.6677,
+      "min_val": 8.832,
+      "max_val": 9.562,
+      "n_samples": 3
+    },
+    "encryption_time_ms": {
+      "mean": 0.224,
+      "stdev": 0.0514,
+      "ci_95_lower": 0.1658,
+      "ci_95_upper": 0.2822,
+      "min_val": 0.189,
+      "max_val": 0.283,
+      "n_samples": 3
+    },
+    "decryption_time_ms": {
+      "mean": 0.1817,
+      "stdev": 0.0289,
+      "ci_95_lower": 0.1489,
+      "ci_95_upper": 0.2144,
+      "min_val": 0.163,
+      "max_val": 0.215,
+      "n_samples": 3
+    },
+    "signing_time_ms": {
+      "mean": 1.2537,
+      "stdev": 0.5487,
+      "ci_95_lower": 0.6328,
+      "ci_95_upper": 1.8746,
+      "min_val": 0.922,
+      "max_val": 1.887,
+      "n_samples": 3
+    },
+    "verification_time_ms": {
+      "mean": 0.0707,
+      "stdev": 0.0042,
+      "ci_95_lower": 0.066,
+      "ci_95_upper": 0.0754,
+      "min_val": 0.066,
+      "max_val": 0.074,
+      "n_samples": 3
+    },
+    "packaging_time_ms": {
+      "mean": 1.478,
+      "stdev": 0.5209,
+      "ci_95_lower": 0.8885,
+      "ci_95_upper": 2.0675,
+      "min_val": 1.123,
+      "max_val": 2.076,
+      "n_samples": 3
+    },
+    "deployment_latency_ms": {
+      "mean": 0.2523,
+      "stdev": 0.0306,
+      "ci_95_lower": 0.2177,
+      "ci_95_upper": 0.287,
+      "min_val": 0.229,
+      "max_val": 0.287,
+      "n_samples": 3
+    },
+    "inference_latency_ms": {
+      "mean": 12.114,
+      "stdev": 0.1887,
+      "ci_95_lower": 11.9004,
+      "ci_95_upper": 12.3276,
+      "min_val": 11.898,
+      "max_val": 12.247,
+      "n_samples": 3
+    },
+    "memory_usage_mb": {
+      "mean": 120.0,
+      "stdev": 0.0,
+      "ci_95_lower": 120.0,
+      "ci_95_upper": 120.0,
+      "min_val": 120.0,
+      "max_val": 120.0,
+      "n_samples": 3
+    },
+    "storage_overhead_bytes": {
+      "mean": 525072.0,
+      "stdev": 0.0,
+      "ci_95_lower": 525072.0,
+      "ci_95_upper": 525072.0,
+      "min_val": 525072.0,
+      "max_val": 525072.0,
+      "n_samples": 3
+    }
+  }
+}

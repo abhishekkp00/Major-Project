@@ -40,6 +40,22 @@ from .pii_engine import (
     deobfuscate_text,
     validate_luhn,
 )
+from .device_auth_policy import (
+    DeviceState,
+    BindingPolicy,
+    AuthorizationResult,
+    evaluate_device_authorization,
+    reauthorize_device,
+    collect_classified_features,
+    flatten_classified_features,
+)
+from .provenance import (
+    validate_manifest_schema,
+    compute_canonical_manifest_digest,
+    AntiReplayTracker,
+)
+
+
 
 __all__ = [
     "generate_key",
@@ -72,4 +88,16 @@ __all__ = [
     "detect_pii_advanced",
     "deobfuscate_text",
     "validate_luhn",
+    "DeviceState",
+    "BindingPolicy",
+    "AuthorizationResult",
+    "evaluate_device_authorization",
+    "reauthorize_device",
+    "collect_classified_features",
+    "flatten_classified_features",
+    "validate_manifest_schema",
+    "compute_canonical_manifest_digest",
+    "AntiReplayTracker",
 ]
+
+

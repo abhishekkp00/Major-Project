@@ -5,3 +5,20 @@ rsa_public_key_path: "outputs/protected_adapter/public.pem"
 adapter_id: "lora-adapter-v1"
 model_reference: "JackFram/llama-68m"
 package_version: "3.0.0"
+
+# ── Adaptive Device Binding Policy Configuration ──────────────────────────────
+# Controls strictness and allowable feature changes for adapter deployment.
+#
+# Device States:
+#   1. AUTHORIZED — all policy rules pass, fingerprint matches.
+#   2. REAUTHORIZATION_REQUIRED — semi-stable features changed within policy,
+#      requiring explicit admin re-authorization.
+#   3. UNAUTHORIZED — stable features changed or disallowed changes detected.
+binding_policy:
+  strictness: "high"   # Options: high, medium, low
+  allowed_feature_changes:
+    network_interface: true
+    hostname: false
+    machine_id: false
+    disk_uuid: false
+

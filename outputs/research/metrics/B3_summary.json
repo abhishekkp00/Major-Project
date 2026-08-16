@@ -1,0 +1,228 @@
+{
+  "baseline_id": "B3",
+  "baseline_name": "DP-LoRA",
+  "description": "Phase 2 DP-LoRA fine-tuning using DP-SGD (Opacus per-example gradients and noise).",
+  "execution_status": "COMPLETED",
+  "not_executed_reason": null,
+  "num_seeds": 3,
+  "utility_summary": {
+    "val_loss": {
+      "mean": 0.8082,
+      "stdev": 0.018,
+      "ci_95_lower": 0.7879,
+      "ci_95_upper": 0.8286,
+      "min_val": 0.7908,
+      "max_val": 0.8267,
+      "n_samples": 3
+    },
+    "perplexity": {
+      "mean": 2.2442,
+      "stdev": 0.0404,
+      "ci_95_lower": 2.1984,
+      "ci_95_upper": 2.2899,
+      "min_val": 2.2051,
+      "max_val": 2.2858,
+      "n_samples": 3
+    },
+    "task_accuracy": {
+      "mean": 0.88,
+      "stdev": 0.0,
+      "ci_95_lower": 0.88,
+      "ci_95_upper": 0.88,
+      "min_val": 0.88,
+      "max_val": 0.88,
+      "n_samples": 3
+    },
+    "f1_score": {
+      "mean": 0.87,
+      "stdev": 0.0,
+      "ci_95_lower": 0.87,
+      "ci_95_upper": 0.87,
+      "min_val": 0.87,
+      "max_val": 0.87,
+      "n_samples": 3
+    }
+  },
+  "privacy_summary": {
+    "dp_enabled": true,
+    "epsilon": 2.41,
+    "delta": 1e-05,
+    "clipping_norm": 1.0,
+    "noise_multiplier": 1.2,
+    "pii_precision": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "pii_recall": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    },
+    "pii_f1": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci_95_lower": 1.0,
+      "ci_95_upper": 1.0,
+      "min_val": 1.0,
+      "max_val": 1.0,
+      "n_samples": 3
+    }
+  },
+  "security_summary": {
+    "cross_device_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "tamper_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "signature_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "replay_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "malicious_adapter_detection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "unauthorized_deployment_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    }
+  },
+  "overhead_summary": {
+    "training_time_s": {
+      "mean": 14.5737,
+      "stdev": 0.6238,
+      "ci_95_lower": 13.8678,
+      "ci_95_upper": 15.2795,
+      "min_val": 13.886,
+      "max_val": 15.103,
+      "n_samples": 3
+    },
+    "encryption_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "decryption_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "signing_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "verification_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "packaging_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "deployment_latency_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "inference_latency_ms": {
+      "mean": 12.386,
+      "stdev": 0.0567,
+      "ci_95_lower": 12.3219,
+      "ci_95_upper": 12.4501,
+      "min_val": 12.332,
+      "max_val": 12.445,
+      "n_samples": 3
+    },
+    "memory_usage_mb": {
+      "mean": 155.0,
+      "stdev": 0.0,
+      "ci_95_lower": 155.0,
+      "ci_95_upper": 155.0,
+      "min_val": 155.0,
+      "max_val": 155.0,
+      "n_samples": 3
+    },
+    "storage_overhead_bytes": {
+      "mean": 524288.0,
+      "stdev": 0.0,
+      "ci_95_lower": 524288.0,
+      "ci_95_upper": 524288.0,
+      "min_val": 524288.0,
+      "max_val": 524288.0,
+      "n_samples": 3
+    }
+  }
+}

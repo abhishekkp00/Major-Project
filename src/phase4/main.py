@@ -1,27 +1,50 @@
+"""
+main.py
+=======
+Phase 4 Secure Deployment & Verification Gateway for SecureLoRA.
+
+Implements the strict 9-step verification order:
+  1. Package Completeness Check
+  2. Manifest Schema Validation
+  3. Signature Validation (RSA-2048-PSS over canonical manifest digest)
+  4. Digest Validation (SHA-256 ciphertext match)
+  5. Replay & Version Validation (Monotonic anti-replay state tracking, timestamps, model IDs)
+  6. Device Authorization (Adaptive Device-Bound State Machine)
+  7. Key Derivation (HKDF-SHA256)
+  8. Decryption (AES-256-GCM in volatile RAM context)
+  9. Adapter Load & Inference Validation
+"""
+
 import argparse
-import sys
-import os
+import json
 import logging
+import os
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 from src.phase4.config import Phase4Config
 from src.phase4.package_loader import PackageLoader
-from src.phase4.package_validator import validate_package_integrity
+from src.phase4.package_validator import validate_package_provenance
 from src.phase4.device_auth import verify_device_binding, get_device_bound_key
 from src.phase4.decryptor import DecryptedAdapterContext
 from src.phase4.adapter_loader import load_base_model_and_tokenizer, load_peft_adapter
 from src.phase4.inference_runner import run_side_by_side_inference
 from src.phase4.validation_report import generate_validation_reports
+from src.security import AntiReplayTracker
 from src.common.exceptions import (
     IncompletePackageError,
     InvalidArchiveError,
     IntegrityValidationError,
     SignatureValidationError,
-    DeviceAuthorizationError
+    DeviceAuthorizationError,
+    ManifestSchemaError,
+    ReplayAttackError,
+    PackageExpiredError,
+    ModelMismatchError,
+    AdapterMismatchError,
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -35,25 +58,28 @@ def run_deployment_pipeline(
     salt: str,
     base_model_name: str,
     prompt: str,
-    output_dir: Path
+    output_dir: Path,
+    target_adapter_id: Optional[str] = None,
+    admin_reauth_token: Optional[str] = None,
 ) -> int:
     """
-    Orchestrates the entire Phase 4 verification and secure inference pipeline.
-    Returns 0 on success, non-zero on failure.
+    Executes the strict 9-step deployment verification pipeline.
+    Never decrypts or loads the adapter before authenticity and policy checks succeed.
     """
     logger.info("======================================================================")
-    logger.info("   STARTING PHASE 4: SECURE DEPLOYMENT AND VERIFICATION PIPELINE      ")
+    logger.info("   STARTING PHASE 4: SECURE DEPLOYMENT & PROVENANCE PIPELINE           ")
     logger.info("======================================================================")
 
     steps_status = {
         "Step 1: Package Completeness": "PENDING",
-        "Step 2: Integrity Verification": "PENDING",
-        "Step 3: Signature Verification": "PENDING",
-        "Step 4: Device Authorization": "PENDING",
-        "Step 5: Key Derivation": "PENDING",
-        "Step 6: Decryption & Extraction": "PENDING",
-        "Step 7: PEFT Model Loading": "PENDING",
-        "Step 8: Inference Validation": "PENDING"
+        "Step 2: Manifest Schema Validation": "PENDING",
+        "Step 3: Signature Validation": "PENDING",
+        "Step 4: Digest Validation": "PENDING",
+        "Step 5: Replay & Version Validation": "PENDING",
+        "Step 6: Device Authorization": "PENDING",
+        "Step 7: Key Derivation": "PENDING",
+        "Step 8: Decryption & Extraction": "PENDING",
+        "Step 9: Adapter Load & Inference": "PENDING",
     }
 
     manifest: Dict[str, Any] = {}
@@ -63,7 +89,7 @@ def run_deployment_pipeline(
         "prompt": prompt,
         "base_output": "[N/A - PIPELINE FAILED]",
         "peft_output": "[N/A - PIPELINE FAILED]",
-        "adapter_active": False
+        "adapter_active": False,
     }
 
     try:
@@ -71,94 +97,112 @@ def run_deployment_pipeline(
         load_dotenv()
 
         # ── Step 1: Package Completeness ────────────────────────────────────
-        logger.info("[1/8] Loading and extracting protected package...")
+        logger.info("[1/9] Verifying package completeness...")
         try:
             loader = PackageLoader(package_path, max_bytes=Phase4Config.MAX_PACKAGE_BYTES)
             with loader as extracted_dir:
                 steps_status["Step 1: Package Completeness"] = "PASSED"
-                logger.info("[1/8] PASS — Package completeness verified.")
+                logger.info("[1/9] PASS — Package completeness verified.")
 
-                import json
                 manifest_path = extracted_dir / "package_manifest.json"
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                expected_fp_hash = manifest.get("device_fingerprint_hash_ref", "")
 
-                # ── Step 2 & 3: Integrity and Signature Verification ─────────
-                logger.info("[2-3/8] Verifying SHA-256 integrity and RSA-PSS signature...")
+                # ── Step 2, 3, 4: Schema, Signature & Digest Validation ──────
+                logger.info("[2-4/9] Validating manifest schema, RSA-PSS signature & SHA-256 digest...")
                 try:
-                    fingerprint_hash = validate_package_integrity(extracted_dir)
-                    steps_status["Step 2: Integrity Verification"] = "PASSED"
-                    steps_status["Step 3: Signature Verification"] = "PASSED"
-                    logger.info("[2-3/8] PASS — Integrity and signature verified successfully.")
-                except IntegrityValidationError:
-                    steps_status["Step 2: Integrity Verification"] = "FAILED"
-                    steps_status["Step 3: Signature Verification"] = "SKIPPED"
+                    manifest, ciphertext_digest = validate_package_provenance(extracted_dir)
+                    steps_status["Step 2: Manifest Schema Validation"] = "PASSED"
+                    steps_status["Step 3: Signature Validation"] = "PASSED"
+                    steps_status["Step 4: Digest Validation"] = "PASSED"
+                    logger.info("[2-4/9] PASS — Schema, signature & ciphertext digest verified.")
+                except ManifestSchemaError:
+                    steps_status["Step 2: Manifest Schema Validation"] = "FAILED"
+                    steps_status["Step 3: Signature Validation"] = "SKIPPED"
+                    steps_status["Step 4: Digest Validation"] = "SKIPPED"
                     raise
                 except SignatureValidationError:
-                    steps_status["Step 2: Integrity Verification"] = "PASSED"
-                    steps_status["Step 3: Signature Verification"] = "FAILED"
+                    steps_status["Step 2: Manifest Schema Validation"] = "PASSED"
+                    steps_status["Step 3: Signature Validation"] = "FAILED"
+                    steps_status["Step 4: Digest Validation"] = "SKIPPED"
+                    raise
+                except IntegrityValidationError:
+                    steps_status["Step 2: Manifest Schema Validation"] = "PASSED"
+                    steps_status["Step 3: Signature Validation"] = "PASSED"
+                    steps_status["Step 4: Digest Validation"] = "FAILED"
                     raise
 
-                # ── Step 4: Device Authorization ────────────────────────────
-                logger.info("[4/8] Performing device authorization check...")
+                # ── Step 5: Replay & Version Validation ───────────────────────
+                logger.info("[5/9] Validating anti-replay status, timestamps, and model IDs...")
                 try:
-                    verify_device_binding(expected_fp_hash)
-                    steps_status["Step 4: Device Authorization"] = "PASSED"
-                    logger.info("[4/8] PASS — Host machine matches target fingerprint.")
+                    tracker = AntiReplayTracker()
+                    tracker.check_and_update(
+                        manifest=manifest,
+                        target_base_model_id=base_model_name,
+                        target_adapter_id=target_adapter_id,
+                    )
+                    steps_status["Step 5: Replay & Version Validation"] = "PASSED"
+                    logger.info("[5/9] PASS — Package is fresh, un-replayed, and model-matched.")
+                except (ReplayAttackError, PackageExpiredError, ModelMismatchError, AdapterMismatchError) as e:
+                    steps_status["Step 5: Replay & Version Validation"] = "FAILED"
+                    raise
+
+                # ── Step 6: Device Authorization ────────────────────────────
+                logger.info("[6/9] Evaluating policy-driven device authorization...")
+                try:
+                    expected_fp_hash = manifest.get("device_fingerprint_hash_ref", "")
+                    expected_features = manifest.get("deployment_policy", {}).get("expected_features")
+                    auth_res = verify_device_binding(
+                        expected_fingerprint_hash=expected_fp_hash,
+                        expected_features=expected_features,
+                        admin_reauth_token=admin_reauth_token,
+                    )
+                    steps_status["Step 6: Device Authorization"] = "PASSED"
+                    logger.info("[6/9] PASS — Host machine authorized (state=%s).", auth_res.state.value)
                 except DeviceAuthorizationError:
-                    steps_status["Step 4: Device Authorization"] = "FAILED"
+                    steps_status["Step 6: Device Authorization"] = "FAILED"
                     raise
 
-                # ── Step 5: Key Derivation ──────────────────────────────────
-                logger.info("[5/8] Deriving device-bound decryption key...")
+                # ── Step 7: Key Derivation ──────────────────────────────────
+                logger.info("[7/9] Deriving decryption key via HKDF-SHA256...")
                 try:
-                    kdf_ver = manifest.get("encryption", {}).get("kdf_version")
+                    kdf_ver = manifest.get("kdf_version") or manifest.get("encryption", {}).get("kdf_version")
                     key = get_device_bound_key(salt, kdf_version=kdf_ver)
-                    steps_status["Step 5: Key Derivation"] = "PASSED"
-                    logger.info("[5/8] PASS — AES-256 key derived via HKDF-SHA256 in-memory.")
+                    steps_status["Step 7: Key Derivation"] = "PASSED"
+                    logger.info("[7/9] PASS — Key derived transiently in volatile memory.")
                 except Exception as e:
-                    steps_status["Step 5: Key Derivation"] = "FAILED"
+                    steps_status["Step 7: Key Derivation"] = "FAILED"
                     raise ValueError(f"Key derivation failed: {e}") from e
 
-                # ── Step 6: Decryption & Extraction ────────────────────────
-                logger.info("[6/8] Decrypting adapter archive in secure context...")
+                # ── Step 8: Decryption & Extraction ────────────────────────
+                logger.info("[8/9] Decrypting adapter archive via AES-256-GCM...")
                 try:
                     enc_path = extracted_dir / "adapter.enc"
                     decryptor = DecryptedAdapterContext(enc_path, key)
                     with decryptor as decrypted_adapter_dir:
-                        steps_status["Step 6: Decryption & Extraction"] = "PASSED"
-                        logger.info("[6/8] PASS — Adapter decrypted and extracted to temp folder.")
+                        steps_status["Step 8: Decryption & Extraction"] = "PASSED"
+                        logger.info("[8/9] PASS — Adapter decrypted to temporary context.")
 
-                        # ── Step 7: PEFT Model Loading ────────────────────────
-                        logger.info("[7/8] Loading base model and binding PEFT adapter...")
+                        # ── Step 9: Adapter Load & Inference ──────────────────
+                        logger.info("[9/9] Loading PEFT adapter and executing inference test...")
                         try:
                             base_model, tokenizer = load_base_model_and_tokenizer(base_model_name)
                             peft_model = load_peft_adapter(base_model, decrypted_adapter_dir)
-                            steps_status["Step 7: PEFT Model Loading"] = "PASSED"
-                            logger.info("[7/8] PASS — Model and PEFT adapter loaded in memory.")
-                        except Exception as e:
-                            steps_status["Step 7: PEFT Model Loading"] = "FAILED"
-                            raise
-
-                        # ── Step 8: Inference Validation ──────────────────────
-                        logger.info("[8/8] Running comparative inference test...")
-                        try:
                             inference_result = run_side_by_side_inference(
                                 base_model=base_model,
                                 peft_model=peft_model,
                                 tokenizer=tokenizer,
-                                prompt=prompt
+                                prompt=prompt,
                             )
-                            steps_status["Step 8: Inference Validation"] = "PASSED"
+                            steps_status["Step 9: Adapter Load & Inference"] = "PASSED"
                             verification_success = True
-                            logger.info("[8/8] PASS — Inference completed and compared.")
+                            logger.info("[9/9] PASS — Inference completed.")
                         except Exception as e:
-                            steps_status["Step 8: Inference Validation"] = "FAILED"
+                            steps_status["Step 9: Adapter Load & Inference"] = "FAILED"
                             raise
 
                 except Exception:
-                    if steps_status["Step 6: Decryption & Extraction"] == "PENDING":
-                        steps_status["Step 6: Decryption & Extraction"] = "FAILED"
+                    if steps_status["Step 8: Decryption & Extraction"] == "PENDING":
+                        steps_status["Step 8: Decryption & Extraction"] = "FAILED"
                     raise
 
         except (IncompletePackageError, InvalidArchiveError):
@@ -179,69 +223,33 @@ def run_deployment_pipeline(
             fingerprint_hash=fingerprint_hash or "UNKNOWN",
             steps_status=steps_status,
             verification_success=verification_success,
-            inference_result=inference_result
+            inference_result=inference_result,
         )
-        logger.info("Reports saved to: %s", output_dir)
+        logger.info("Validation report generated → %s", md_report)
     except Exception as e:
-        logger.error("Failed to generate validation reports: %s", e)
+        logger.warning("Failed to generate validation report: %s", e)
 
-    if verification_success:
-        logger.info("======================================================================")
-        logger.info("   PHASE 4 PIPELINE COMPLETED SUCCESSFULLY - DEPLOYMENT AUTHORIZED     ")
-        logger.info("======================================================================")
-        return 0
-    else:
-        logger.info("======================================================================")
-        logger.info("   PHASE 4 PIPELINE FAILED - DEPLOYMENT REJECTED                      ")
-        logger.info("======================================================================")
-        return 1
+    return 0 if verification_success else 1
 
 
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m phase4",
-        description="Phase 4: Secure Deployment, Verification, and Inference Validation"
-    )
-    parser.add_argument(
-        "-p", "--package",
-        default=str(Phase4Config.PACKAGE_PATH),
-        help="Path to the protected adapter package directory or tar.gz archive."
-    )
-    parser.add_argument(
-        "-s", "--salt",
-        default=os.environ.get("P3_DEVICE_SALT", ""),
-        help="Secret salt for device-bound key derivation. (Reads P3_DEVICE_SALT by default)"
-    )
-    parser.add_argument(
-        "-m", "--base-model",
-        default=Phase4Config.DEFAULT_BASE_MODEL,
-        help="Base model to load (default: JackFram/llama-68m)."
-    )
-    parser.add_argument(
-        "--prompt",
-        default="Explain the concept of device-bound security in machine learning.",
-        help="Prompt to run for inference comparison."
-    )
-    parser.add_argument(
-        "-o", "--output-dir",
-        default=str(Phase4Config.DEPLOYMENT_OUTPUT_DIR),
-        help="Directory to save the validation reports."
-    )
+def main():
+    parser = argparse.ArgumentParser(description="SecureLoRA Phase 4 Verification Gateway")
+    parser.add_argument("--package", type=str, required=True, help="Path to package directory or tar.gz")
+    parser.add_argument("--salt", type=str, required=True, help="Deployment secret salt")
+    parser.add_argument("--model", type=str, default=Phase4Config.BASE_MODEL_NAME, help="Base model ID")
+    parser.add_argument("--prompt", type=str, default="What are the symptoms of diabetes?", help="Test prompt")
+    parser.add_argument("--output-dir", type=str, default="outputs/reports", help="Output directory")
 
-    args = parser.parse_args(argv)
-
-    if not args.salt:
-        logger.error("Missing secret device salt. Pass --salt or set the P3_DEVICE_SALT environment variable.")
-        return 1
-
-    return run_deployment_pipeline(
+    args = parser.parse_args()
+    rc = run_deployment_pipeline(
         package_path=Path(args.package),
         salt=args.salt,
-        base_model_name=args.base_model,
+        base_model_name=args.model,
         prompt=args.prompt,
-        output_dir=Path(args.output_dir)
+        output_dir=Path(args.output_dir),
     )
+    sys.exit(rc)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -1,0 +1,92 @@
+[
+  {
+    "scenario_id": "modified_manifest",
+    "scenario_name": "Modified package_manifest.json (tampered model_id/sequence)",
+    "detection_gate": "Step 3: Signature Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.976,
+    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+  },
+  {
+    "scenario_id": "modified_adapter",
+    "scenario_name": "Modified ciphertext (tampered adapter.enc byte)",
+    "detection_gate": "Step 4: Digest Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.55,
+    "error_details": "Integrity check FAILED. Stored hash: 39b5f335b609\u2026 | Computed hash: 416c3033342f\u2026 The encrypted adapter has been tampered with or replaced."
+  },
+  {
+    "scenario_id": "copied_valid_package",
+    "scenario_name": "Copied valid package re-executed (duplicate package_id)",
+    "detection_gate": "Step 5: Replay / Version Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.854,
+    "error_details": "Replay attack detected! Package ID 'f721221b-5ceb-43fe-9e1d-08dc738bf792' has already been deployed."
+  },
+  {
+    "scenario_id": "old_package_replay",
+    "scenario_name": "Stale package replay (sequence_number <= last_seen)",
+    "detection_gate": "Step 5: Replay / Version Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.976,
+    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+  },
+  {
+    "scenario_id": "wrong_model_id",
+    "scenario_name": "Wrong base model ID target mismatch",
+    "detection_gate": "Step 5: Replay / Version Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.649,
+    "error_details": "Package model ID 'distilbert-base-uncased' does not match target model ID 'gpt-2-xl'."
+  },
+  {
+    "scenario_id": "wrong_adapter_id",
+    "scenario_name": "Wrong adapter ID target mismatch",
+    "detection_gate": "Step 5: Replay / Version Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.626,
+    "error_details": "Package adapter ID 'medical-lora-v1' does not match target adapter ID 'unauthorized-adapter-xyz'."
+  },
+  {
+    "scenario_id": "expired_package",
+    "scenario_name": "Expired package (creation_time + TTL passed)",
+    "detection_gate": "Step 5: Replay / Version Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.812,
+    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+  },
+  {
+    "scenario_id": "invalid_signature",
+    "scenario_name": "Corrupted RSA-2048-PSS signature (adapter.sig)",
+    "detection_gate": "Step 3: Signature Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 0.695,
+    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+  },
+  {
+    "scenario_id": "malicious_package_attacker_key",
+    "scenario_name": "Malicious package signed with attacker private key",
+    "detection_gate": "Step 3: Signature Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 124.112,
+    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+  },
+  {
+    "scenario_id": "valid_package_unauthorized_device",
+    "scenario_name": "Valid package executed on unauthorized device",
+    "detection_gate": "Step 6: Device Authorization",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 2.386,
+    "error_details": "Device authorization check FAILED. Device authorization FAILED. Expected fingerprint hash 'deadbeefdead\u2026' does not match local fingerprint hash '111122223333\u2026'."
+  }
+]

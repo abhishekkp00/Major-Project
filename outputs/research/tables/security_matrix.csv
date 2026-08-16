@@ -1,0 +1,10 @@
+Baseline ID,Baseline Name,Cross-Device Rejection,Tamper Rejection,Signature Rejection,Replay Rejection,Malicious Adapter Detection,Unauthorized Deployment Rejection
+B0,Base Model,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+B1,Standard LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+B2,PII-Protected LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+B3,DP-LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+B4,LoRA + Encryption,0.00%,100.00%,0.00%,0.00%,0.00%,0.00%
+B5,LoRA + Device Binding,100.00%,100.00%,0.00%,0.00%,0.00%,100.00%
+B6,LoRA + Provenance/Signature,0.00%,100.00%,100.00%,100.00%,0.00%,0.00%
+B7,Full SecureLoRA,100.00%,100.00%,100.00%,100.00%,0.00%,100.00%
+B8,Full SecureLoRA + Security Screening,100.00%,100.00%,100.00%,100.00%,100.00%,100.00%

@@ -1,0 +1,10 @@
+Baseline ID,Baseline Name,Training (s),Encryption (ms),Decryption (ms),Signing (ms),Verification (ms),Packaging (ms),Deployment (ms),Inference (ms),Memory (MB),Storage (bytes)
+B0,Base Model,0.00,0.00,0.00,0.00,0.00,0.00,0.00,12.28,120.0,524288
+B1,Standard LoRA,9.24,0.00,0.00,0.00,0.00,0.00,0.00,12.11,120.0,524288
+B2,PII-Protected LoRA,9.24,0.00,0.00,0.00,0.00,0.00,0.00,12.11,120.0,524288
+B3,DP-LoRA,14.57,0.00,0.00,0.00,0.00,0.00,0.00,12.39,155.0,524288
+B4,LoRA + Encryption,9.24,1.60,0.38,0.00,0.00,1.60,0.38,12.11,120.0,524560
+B5,LoRA + Device Binding,9.24,0.20,0.18,0.00,0.00,0.20,0.18,12.11,120.0,524560
+B6,LoRA + Provenance/Signature,9.24,0.22,0.18,1.25,0.07,1.48,0.25,12.11,120.0,525072
+B7,Full SecureLoRA,14.57,0.27,0.20,1.20,0.09,1.47,0.30,12.39,155.0,525072
+B8,Full SecureLoRA + Security Screening,14.57,1.57,0.32,1.90,0.11,18.43,0.43,12.39,155.0,525072

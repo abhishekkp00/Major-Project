@@ -207,6 +207,39 @@ class ConfigLoader:
     def package_version(self) -> str:
         return self.security.get("package_version", "3.0.0")
 
+    @property
+    def binding_policy(self) -> dict:
+        """
+        Returns binding_policy dictionary from security.yaml with env-var overrides.
+        Env-vars:
+            BINDING_STRICTNESS: "high", "medium", "low"
+            BINDING_ALLOW_NETWORK: "1"/"0" or "true"/"false"
+            BINDING_ALLOW_HOSTNAME: "1"/"0" or "true"/"false"
+        """
+        policy = self.security.get("binding_policy", {}).copy()
+        if not policy:
+            policy = {
+                "strictness": "high",
+                "allowed_feature_changes": {
+                    "network_interface": True,
+                    "hostname": False,
+                    "machine_id": False,
+                    "disk_uuid": False,
+                },
+            }
+
+        strictness = os.environ.get("BINDING_STRICTNESS")
+        if strictness:
+            policy["strictness"] = strictness.strip().lower()
+
+        allowed = policy.setdefault("allowed_feature_changes", {})
+        if "BINDING_ALLOW_NETWORK" in os.environ:
+            allowed["network_interface"] = os.environ["BINDING_ALLOW_NETWORK"].strip().lower() in ("1", "true", "yes")
+        if "BINDING_ALLOW_HOSTNAME" in os.environ:
+            allowed["hostname"] = os.environ["BINDING_ALLOW_HOSTNAME"].strip().lower() in ("1", "true", "yes")
+
+        return policy
+
     # ── Deployment configs ────────────────────────────────────────────────────
     @property
     def package_path(self) -> Path:

@@ -67,6 +67,23 @@ def run_security_orchestration(
     adapter_size_before = get_directory_size(adapter_input_dir)
     outcomes["adapter_size_before_encryption_bytes"] = adapter_size_before
 
+    # Pre-packaging Adapter Security Screening Gate
+    try:
+        from src.evaluation.adapter_security import screen_adapter_and_enforce_policy
+        screening_result = screen_adapter_and_enforce_policy(
+            adapter_dir=adapter_input_dir,
+            adapter_id=job_id,
+            force=False,
+        )
+        outcomes["security_screening_risk_score"] = screening_result.adapter_risk_score
+        outcomes["security_screening_risk_level"] = screening_result.risk_level
+        outcomes["security_screening"] = "pass"
+    except Exception as e:
+        logger.warning("[%s] Security screening warning: %s", job_id, e)
+        outcomes["security_screening"] = "warning"
+        outcomes["security_screening_risk_level"] = "HIGH"
+
+
     # ────────────────────────────────────────────────────────────────
     # STATUS: deriving_device_binding
     # ────────────────────────────────────────────────────────────────
@@ -137,8 +154,10 @@ def run_security_orchestration(
         fingerprint_hash=fp_hash,
         package_version="1.0.0",
         enc_metadata=enc_meta,
-        public_key_src=pub_key_path
+        public_key_src=pub_key_path,
+        private_key_src=priv_key_path,
     )
+
     
     package_archive_path = export_package_archive(protected_output_dir)
     package_size = package_archive_path.stat().st_size

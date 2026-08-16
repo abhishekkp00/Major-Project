@@ -1,0 +1,85 @@
+{
+  "baseline_id": "B0",
+  "baseline_name": "Base Model",
+  "seed": 44,
+  "execution_status": "COMPLETED",
+  "not_executed_reason": null,
+  "utility": {
+    "val_loss": 1.8593,
+    "perplexity": 6.4192,
+    "task_accuracy": 0.72,
+    "f1_score": 0.7
+  },
+  "privacy": {
+    "dp_enabled": false,
+    "epsilon": null,
+    "delta": null,
+    "clipping_norm": null,
+    "noise_multiplier": null,
+    "pii_precision": 1.0,
+    "pii_recall": 1.0,
+    "pii_f1": 1.0
+  },
+  "security": {
+    "cross_device_rejection_rate": 0.0,
+    "tamper_rejection_rate": 0.0,
+    "signature_rejection_rate": 0.0,
+    "replay_rejection_rate": 0.0,
+    "malicious_adapter_detection_rate": 0.0,
+    "unauthorized_deployment_rejection_rate": 0.0
+  },
+  "overhead": {
+    "training_time_s": 0.0,
+    "encryption_time_ms": 0.0,
+    "decryption_time_ms": 0.0,
+    "signing_time_ms": 0.0,
+    "verification_time_ms": 0.0,
+    "packaging_time_ms": 0.0,
+    "deployment_latency_ms": 0.0,
+    "inference_latency_ms": 12.467,
+    "memory_usage_mb": 120.0,
+    "storage_overhead_bytes": 524288
+  },
+  "metadata": {
+    "experiment_id": "B0_seed_44",
+    "git_commit_sha": "dd0179ab5919b129d7beb95f63e1dceed8ba4064",
+    "timestamp_utc": "2026-08-16T08:25:26.655307+00:00",
+    "seed": 44,
+    "model_identifier": "distilbert-base-uncased",
+    "dataset_identifier": "sample_medical_phi.jsonl",
+    "dataset_split": "test",
+    "python_version": "3.12.3",
+    "os_info": "Linux 7.0.0-28-generic",
+    "hardware": {
+      "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "architecture": "64bit",
+      "python_implementation": "CPython",
+      "python_version": "3.12.3",
+      "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+      "ram_total_gb": 15.35,
+      "cuda_available": false
+    },
+    "package_versions": {
+      "torch": "2.12.1+cpu",
+      "transformers": "5.12.1",
+      "opacus": "1.5.2",
+      "cryptography": "49.0.0",
+      "numpy": "1.26.4",
+      "spacy": "NOT_INSTALLED",
+      "presidio_analyzer": "NOT_INSTALLED",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1"
+    },
+    "configuration_snapshot": {
+      "name": "Base Model",
+      "description": "Un-finetuned base language model without security or privacy additions.",
+      "pii": false,
+      "dp": false,
+      "enc": false,
+      "binding": false,
+      "sig": false,
+      "screen": false
+    }
+  }
+}

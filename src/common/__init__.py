@@ -6,6 +6,7 @@ from .exceptions import (
     DeviceFingerprintError,
     PackageError,
     VerificationError,
+    AdapterSecurityGateError,
 )
 
 __all__ = [
@@ -17,4 +18,6 @@ __all__ = [
     "DeviceFingerprintError",
     "PackageError",
     "VerificationError",
+    "AdapterSecurityGateError",
 ]
+

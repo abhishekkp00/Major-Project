@@ -1,27 +1,78 @@
-import logging
-from typing import Optional
+"""
+device_auth.py
+==============
+Phase 4 deployment gateway device authorization & key derivation.
 
-from src.security import get_fingerprint_hash, derive_key
+Uses the policy-driven Adaptive Device-Bound Adapter Authorization engine
+to evaluate authorization state (AUTHORIZED, REAUTHORIZATION_REQUIRED, UNAUTHORIZED)
+before deriving the HKDF-SHA256 decryption key.
+"""
+
+import logging
+from typing import Dict, Optional, Any
+
+from src.security import (
+    get_fingerprint_hash,
+    derive_key,
+    evaluate_device_authorization,
+    reauthorize_device,
+    DeviceState,
+    AuthorizationResult,
+    BindingPolicy,
+)
 from src.security.key_derivation import check_kdf_version, KDF_VERSION
 from src.common.exceptions import DeviceAuthorizationError
 
 logger = logging.getLogger("secure_lora.phase4.device_auth")
 
 
-def verify_device_binding(expected_fingerprint_hash: str, mock_fingerprint: Optional[str] = None) -> None:
+def verify_device_binding(
+    expected_fingerprint_hash: str,
+    mock_fingerprint: Optional[str] = None,
+    expected_features: Optional[Dict[str, str]] = None,
+    policy: Optional[BindingPolicy] = None,
+    admin_reauth_token: Optional[str] = None,
+) -> AuthorizationResult:
     """
-    Compares the expected fingerprint hash from the package manifest with the local device fingerprint.
+    Evaluates device binding using policy-driven state machine.
+
+    Raises DeviceAuthorizationError if state is UNAUTHORIZED or
+    REAUTHORIZATION_REQUIRED without valid admin token.
     """
     local_hash = mock_fingerprint or get_fingerprint_hash()
 
-    logger.info("Verifying device binding. Expected: %s... | Local: %s...",
+    logger.info("Verifying device authorization. Expected: %s… | Local: %s…",
                 expected_fingerprint_hash[:12], local_hash[:12])
 
-    if expected_fingerprint_hash != local_hash:
+    result = evaluate_device_authorization(
+        expected_fingerprint_hash=expected_fingerprint_hash,
+        expected_features=expected_features,
+        current_fingerprint_hash=mock_fingerprint,
+        policy=policy,
+    )
+
+
+
+    if result.state == DeviceState.REAUTHORIZATION_REQUIRED:
+        if admin_reauth_token:
+            logger.info("Attempting admin reauthorization...")
+            result = reauthorize_device(result, admin_reauth_token)
+        else:
+            raise DeviceAuthorizationError(
+                f"Device authorization FAILED: {result.reason_for_rejection}. "
+                "Provide P3_ADMIN_REAUTH_TOKEN to approve."
+            )
+
+    if result.state == DeviceState.UNAUTHORIZED:
         raise DeviceAuthorizationError(
-            "Device authorization check FAILED. This machine is not authorized to deploy this adapter."
+            f"Device authorization check FAILED. {result.reason_for_rejection}"
         )
-    logger.info("Device authorization PASSED. This machine matches the package target fingerprint.")
+
+    logger.info(
+        "Device authorization PASSED (state=%s, stability=%s, time=%.2fms).",
+        result.state.value, result.fingerprint_stability, result.fingerprint_generation_time_ms
+    )
+    return result
 
 
 def get_device_bound_key(
@@ -32,34 +83,13 @@ def get_device_bound_key(
     """
     Derives the device-bound 32-byte AES key using HKDF-SHA256 over the
     local fingerprint and configured salt.
-
-    Parameters
-    ----------
-    salt : str
-        Deployment-specific secret.  Must not be empty.
-    mock_fingerprint : str, optional
-        Override the local fingerprint hash (for testing only).
-    kdf_version : str, optional
-        KDF version string read from the package manifest.  When provided,
-        it is validated against the supported versions before key derivation.
-        If the version is unsupported the function raises CryptoError.
-
-    Raises
-    ------
-    ValueError
-        If salt is empty.
-    CryptoError
-        If the kdf_version in the manifest is unsupported.
     """
     if not salt:
         raise ValueError("Device salt must not be empty.")
 
-    # Validate KDF version from package manifest before deriving the key.
-    # This prevents silent key mismatches against future KDF changes.
     if kdf_version is not None:
         check_kdf_version(kdf_version)
     else:
-        # If caller did not supply a version we still log the version we will use.
         logger.debug("No kdf_version supplied by caller; using local default: %s", KDF_VERSION)
 
     local_hash = mock_fingerprint or get_fingerprint_hash()

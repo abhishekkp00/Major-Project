@@ -1,0 +1,148 @@
+{
+    "policy": {
+        "strictness": "high",
+        "allowed_feature_changes": {
+            "network_interface": true,
+            "hostname": false,
+            "machine_id": false,
+            "disk_uuid": false
+        }
+    },
+    "experiments": [
+        {
+            "id": 1,
+            "scenario": "Same device across reboot",
+            "authorized": true,
+            "state": "AUTHORIZED",
+            "stability": "STABLE",
+            "security_impact": "Zero security impact; expected operational behavior",
+            "recovery": "N/A (Automatic Authorization)",
+            "changes": [],
+            "reason": null
+        },
+        {
+            "id": 2,
+            "scenario": "Same device across network changes",
+            "authorized": false,
+            "state": "REAUTHORIZATION_REQUIRED",
+            "stability": "SEMI_STABLE_CHANGED",
+            "security_impact": "Low; network interface swap allowed pending re-authorization",
+            "recovery": "Admin Token Approved \u2192 AUTHORIZED",
+            "changes": [
+                "network_interface"
+            ],
+            "reason": "Semi-stable feature(s) changed: ['network_interface']. Allowed by policy, but requires explicit admin re-authorization."
+        },
+        {
+            "id": 3,
+            "scenario": "Same device after hostname change",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "SEMI_STABLE_CHANGED",
+            "security_impact": "Medium; unapproved hostname mutation blocked by high-strictness policy",
+            "recovery": "Re-package adapter or update policy",
+            "changes": [
+                "hostname"
+            ],
+            "reason": "Policy rejected change in semi-stable feature(s): ['hostname']."
+        },
+        {
+            "id": 4,
+            "scenario": "Disk replacement",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "SEMI_STABLE_CHANGED",
+            "security_impact": "High; storage volume swap detected and blocked",
+            "recovery": "Re-package on new disk baseline",
+            "changes": [
+                "disk_uuid"
+            ],
+            "reason": "Policy rejected change in semi-stable feature(s): ['disk_uuid']."
+        },
+        {
+            "id": 5,
+            "scenario": "Machine-id replacement",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "UNSTABLE_STABLE_CHANGED",
+            "security_impact": "Critical; OS installation identity replaced (Sensitive Event)",
+            "recovery": "Rejected; full re-registration required",
+            "changes": [
+                "machine_id"
+            ],
+            "reason": "Sensitive event detected: stable identity feature(s) changed: ['machine_id']. Possible OS identity regeneration, CPU swap, or VM migration."
+        },
+        {
+            "id": 6,
+            "scenario": "VM clone",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "UNSTABLE_STABLE_CHANGED",
+            "security_impact": "Critical; image cloning onto foreign CPU host rejected",
+            "recovery": "Rejected; target node authorization failed",
+            "changes": [
+                "cpu_model",
+                "hostname",
+                "network_interface"
+            ],
+            "reason": "Sensitive event detected: stable identity feature(s) changed: ['cpu_model']. Possible OS identity regeneration, CPU swap, or VM migration."
+        },
+        {
+            "id": 7,
+            "scenario": "Container execution",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "UNSTABLE_STABLE_CHANGED",
+            "security_impact": "High; isolated unmapped container runtime rejected",
+            "recovery": "Mount host /etc/machine-id volume into container",
+            "changes": [
+                "machine_id",
+                "disk_uuid",
+                "hostname",
+                "network_interface"
+            ],
+            "reason": "Sensitive event detected: stable identity feature(s) changed: ['machine_id']. Possible OS identity regeneration, CPU swap, or VM migration."
+        },
+        {
+            "id": 8,
+            "scenario": "Simulated foreign hardware",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "UNSTABLE_STABLE_CHANGED",
+            "security_impact": "Critical; total hardware mismatch (adapter theft attempt)",
+            "recovery": "Blocked (AES-GCM Auth Tag Failure)",
+            "changes": [
+                "machine_id",
+                "cpu_model",
+                "disk_uuid",
+                "hostname",
+                "network_interface"
+            ],
+            "reason": "Sensitive event detected: stable identity feature(s) changed: ['machine_id', 'cpu_model']. Possible OS identity regeneration, CPU swap, or VM migration."
+        },
+        {
+            "id": 9,
+            "scenario": "Spoofed fingerprint values",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "UNSTABLE_STABLE_CHANGED",
+            "security_impact": "High; spoofed identifier strings fail hash check & key derivation",
+            "recovery": "Deployment Salt & Fingerprint Match Required",
+            "changes": [
+                "machine_id"
+            ],
+            "reason": "Sensitive event detected: stable identity feature(s) changed: ['machine_id']. Possible OS identity regeneration, CPU swap, or VM migration."
+        },
+        {
+            "id": 10,
+            "scenario": "Missing identifiers",
+            "authorized": false,
+            "state": "UNAUTHORIZED",
+            "stability": "MISSING_IDENTIFIERS",
+            "security_impact": "High; environment lacking all entropy sources rejected",
+            "recovery": "Restore OS access to /etc/machine-id and /proc/cpuinfo",
+            "changes": [],
+            "reason": "All hardware and OS identifiers are UNAVAILABLE."
+        }
+    ]
+}

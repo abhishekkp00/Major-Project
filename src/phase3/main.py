@@ -49,6 +49,24 @@ def cmd_protect(args: argparse.Namespace) -> int:
         logger.error("Config validation failed: %s", exc)
         return 1
 
+    # Step 1.5 — Pre-packaging Adapter Security Screening
+    force_mode = getattr(args, "force", False)
+    try:
+        from src.evaluation.adapter_security import screen_adapter_and_enforce_policy
+        screen_res = screen_adapter_and_enforce_policy(
+            adapter_dir=cfg.ADAPTER_INPUT_DIR,
+            adapter_id=cfg.ADAPTER_ID,
+            force=force_mode,
+        )
+        logger.info("Pre-packaging security screening PASSED (risk_score=%.4f, level=%s).",
+                    screen_res.adapter_risk_score, screen_res.risk_level)
+    except Exception as exc:
+        if not force_mode:
+            logger.error("PRE-PACKAGING SECURITY SCREENING REJECTED ADAPTER: %s", exc)
+            return 1
+        logger.warning("PRE-PACKAGING SECURITY SCREENING BYPASSED VIA --force MODE: %s", exc)
+
+
     # Step 2 — fingerprint
     fp_hash = get_fingerprint_hash()
 
@@ -75,10 +93,7 @@ def cmd_protect(args: argparse.Namespace) -> int:
         logger.info("Dev RSA keypair not found — generating new pair…")
         generate_dev_keypair(priv_path, pub_path, key_size=cfg.RSA_KEY_BITS)
 
-    signature = sign_digest(digest, priv_path)
-    save_signature(signature, cfg.sig_path())
-
-    # Step 7 — package
+    # Step 6 & 7 — package and sign canonical manifest digest
     manifest = build_package(
         package_dir=cfg.PROTECTED_OUTPUT_DIR,
         adapter_id=cfg.ADAPTER_ID,
@@ -87,7 +102,9 @@ def cmd_protect(args: argparse.Namespace) -> int:
         package_version=cfg.PACKAGE_VERSION,
         enc_metadata=enc_meta,
         public_key_src=pub_path,
+        private_key_src=priv_path,
     )
+
 
     # Optional tar export
     if args.archive:
@@ -205,6 +222,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Also export the package as a .tar.gz archive.",
     )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Research mode: bypass pre-packaging adapter security screening if high-risk.",
+    )
+
 
     v = sub.add_parser("verify", help="Verify package and decrypt on authorised device.")
     v.add_argument(

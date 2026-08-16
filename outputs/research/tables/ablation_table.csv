@@ -1,0 +1,8 @@
+Component / Step,Baseline ID,Accuracy Delta,Perplexity Delta,DP Epsilon,PII F1,Security Score,Deployment Latency (ms)
+LoRA (Baseline),B1,+0.0000,+0.0000,N/A,1.0000,0.0000,0.00
+LoRA + PII,B2,+0.0000,+0.0000,N/A,0.9620,0.0000,0.00
+LoRA + DP,B3,-0.0600,+0.5211,2.41,1.0000,0.0000,0.00
+LoRA + Encryption,B4,+0.0000,+0.0000,N/A,1.0000,0.1667,0.38
+LoRA + Device Binding,B5,+0.0000,+0.0000,N/A,1.0000,0.5000,0.18
+LoRA + Provenance,B6,+0.0000,+0.0000,N/A,1.0000,0.5000,0.25
+Full SecureLoRA,B7,-0.0600,+0.5211,2.41,0.9620,0.8333,0.30

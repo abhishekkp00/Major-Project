@@ -103,11 +103,70 @@ export DP_ACCOUNTANT=rdp         # rdp (Rényi) or prv (PRV)
 
 > **Important**: DP-LoRA addresses *training-data privacy* (membership inference resistance). It does NOT protect the adapter from theft — that is the role of device-bound encryption (Phase 3/4). These are orthogonal mechanisms.
 
-### 3. Device Fingerprinting & HKDF-SHA256 Key Derivation (`src/security/fingerprint.py`, `key_derivation.py`)
-- **Entropy sources**: Extracts machine-specific identity from OS Machine ID (`/etc/machine-id`), CPU model string (`/proc/cpuinfo`), and block device UUID (`/dev/disk/by-uuid/`).
-- **Characterisation**: The fingerprint is a *software-derived device identity based on selected machine attributes*. It is **not** a hardware root of trust and does not provide TPM-equivalent attestation.
-- **HKDF-SHA256 Key Derivation**: Feeds the fingerprint digest and a deployment secret salt into HKDF (RFC 5869) with an explicit context string (`securelora-adapter-v1`) to derive 256-bit symmetric keys. Keys exist exclusively in RAM during execution.
-- **KDF versioning**: Every package manifest records the `kdf_version` field (`hkdf-sha256-v1`). The deployment gate rejects packages with unsupported versions.
+### 3. Adaptive Device-Bound Adapter Authorization System (`src/security/fingerprint.py`, `device_auth_policy.py`, `key_derivation.py`)
+
+Rather than relying on fragile static matching, SecureLoRA features an **Adaptive, Policy-Driven Device Authorization Engine** that classifies device entropy attributes into stability tiers:
+
+- **Stable Identity Features** (`machine_id`, `cpu_model`): Attributes expected to survive reboots, process restarts, and network topology changes. Any mutation in a stable feature constitutes a *Sensitive Event* (e.g., hypervisor migration, VM cloning, CPU swap) and immediately triggers the `UNAUTHORIZED` state.
+- **Semi-Stable Features** (`disk_uuid`, `hostname`, `network_interface`): Attributes that may mutate during legitimate system maintenance.
+
+#### Policy-Driven State Machine
+
+```
+              ┌──────────────────────────────────────┐
+              │             AUTHORIZED               │
+              └──────────────────┬───────────────────┘
+                                 │ Semi-stable feature changed
+                                 │ (within policy allowed limits)
+                                 ▼
+              ┌──────────────────────────────────────┐
+              │      REAUTHORIZATION_REQUIRED        │
+              └──────────────────┬───────────────────┘
+                                 │ Valid Admin Token Provided
+                                 ▼
+                      [ Back to AUTHORIZED ]
+
+           (Stable feature changed OR policy disallowed change)
+                                 │
+                                 ▼
+              ┌──────────────────────────────────────┐
+              │             UNAUTHORIZED             │
+              └──────────────────────────────────────┘
+```
+
+#### Authorization Policy & Configuration (`config/security.yaml` or env vars)
+
+```yaml
+binding_policy:
+  strictness: "high"                    # high, medium, low
+  allowed_feature_changes:
+    network_interface: true             # Allow MAC changes under REAUTHORIZATION_REQUIRED
+    hostname: false                     # Block unapproved hostname changes
+    machine_id: false                   # Block machine-id changes
+    disk_uuid: false                    # Block storage disk swaps
+```
+
+- **Administrative Reauthorization Workflow**: Controlled recovery from `REAUTHORIZATION_REQUIRED` requires providing a cryptographically verified admin token (`P3_ADMIN_REAUTH_TOKEN`). Direct or silent auto-recovery to `AUTHORIZED` is strictly prohibited.
+- **HKDF-SHA256 Key Derivation**: Feeds the fingerprint digest and a secret deployment salt (`P3_DEVICE_SALT`) into HKDF (RFC 5869) with context string `securelora-adapter-v1` to derive 256-bit symmetric keys transiently in volatile RAM.
+- **KDF Versioning**: Every package manifest records `kdf_version` (`hkdf-sha256-v1`). The deployment gate rejects packages with unsupported KDF versions.
+
+#### Experimental Evaluation Matrix (10 Operational Scenarios)
+
+| Scenario | State | Stability | Security Impact | Recovery Action |
+| :--- | :---: | :---: | :--- | :--- |
+| **Same device across reboot** | `AUTHORIZED` | `STABLE` | Zero impact; expected operation | N/A (Automatic Authorization) |
+| **Network interface change** | `REAUTHORIZATION_REQUIRED` | `SEMI_STABLE_CHANGED` | Low; network interface swap allowed | Admin Token (`P3_ADMIN_REAUTH_TOKEN`) Approved |
+| **Hostname change** | `UNAUTHORIZED` | `SEMI_STABLE_CHANGED` | Medium; unapproved hostname mutation blocked | Re-package adapter or update policy |
+| **Disk replacement** | `UNAUTHORIZED` | `SEMI_STABLE_CHANGED` | High; storage volume swap detected & blocked | Re-package on new disk baseline |
+| **Machine-id replacement** | `UNAUTHORIZED` | `UNSTABLE_STABLE_CHANGED` | Critical; OS installation identity replaced | Rejected; full re-registration required |
+| **VM clone execution** | `UNAUTHORIZED` | `UNSTABLE_STABLE_CHANGED` | Critical; image cloning onto foreign CPU rejected | Rejected; target node authorization failed |
+| **Unmapped container execution** | `UNAUTHORIZED` | `UNSTABLE_STABLE_CHANGED` | High; isolated container runtime rejected | Mount host `/etc/machine-id` volume |
+| **Simulated foreign hardware** | `UNAUTHORIZED` | `UNSTABLE_STABLE_CHANGED` | Critical; total hardware mismatch (adapter theft) | Blocked (AES-GCM Auth Tag Failure) |
+| **Spoofed fingerprint values** | `UNAUTHORIZED` | `UNSTABLE_STABLE_CHANGED` | High; spoofed strings fail hash check | Deployment Salt & Fingerprint Match Required |
+| **Missing entropy sources** | `UNAUTHORIZED` | `MISSING_IDENTIFIERS` | High; environment lacking all identifiers rejected | Restore OS access to `/etc/machine-id` |
+
+> **Security Limitation Explicit Statement**: Device binding provides *software-derived device identity binding*, NOT hardware-backed attestation (e.g., TPM / SGX enclave). An attacker with root privilege can spoof machine attributes. Security relies on the combined secrecy of `P3_DEVICE_SALT` and HKDF-SHA256 authentication.
+
 
 ### 3. Multi-Gate Cryptographic Package Vault (`src/phase3/`, `src/phase4/`)
 - **AES-256-GCM Authenticated Encryption**: Adapter weights are encrypted in streaming blocks with Galois/Counter Mode (GCM), providing confidentiality and tamper-proofing via 128-bit authentication tags.

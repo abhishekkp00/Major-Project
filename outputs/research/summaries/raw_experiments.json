@@ -1,0 +1,72 @@
+[
+  {
+    "component_name": "LoRA (Baseline)",
+    "baseline_id": "B1",
+    "utility_delta_accuracy": 0.0,
+    "perplexity_delta": 0.0,
+    "epsilon": null,
+    "pii_f1": 1.0,
+    "security_score": 0.0,
+    "overhead_latency_ms": 0.0
+  },
+  {
+    "component_name": "LoRA + PII",
+    "baseline_id": "B2",
+    "utility_delta_accuracy": 0.0,
+    "perplexity_delta": 0.0,
+    "epsilon": null,
+    "pii_f1": 0.962,
+    "security_score": 0.0,
+    "overhead_latency_ms": 0.0
+  },
+  {
+    "component_name": "LoRA + DP",
+    "baseline_id": "B3",
+    "utility_delta_accuracy": -0.06,
+    "perplexity_delta": 0.5211,
+    "epsilon": 2.41,
+    "pii_f1": 1.0,
+    "security_score": 0.0,
+    "overhead_latency_ms": 0.0
+  },
+  {
+    "component_name": "LoRA + Encryption",
+    "baseline_id": "B4",
+    "utility_delta_accuracy": 0.0,
+    "perplexity_delta": 0.0,
+    "epsilon": null,
+    "pii_f1": 1.0,
+    "security_score": 0.1667,
+    "overhead_latency_ms": 0.3843
+  },
+  {
+    "component_name": "LoRA + Device Binding",
+    "baseline_id": "B5",
+    "utility_delta_accuracy": 0.0,
+    "perplexity_delta": 0.0,
+    "epsilon": null,
+    "pii_f1": 1.0,
+    "security_score": 0.5,
+    "overhead_latency_ms": 0.1783
+  },
+  {
+    "component_name": "LoRA + Provenance",
+    "baseline_id": "B6",
+    "utility_delta_accuracy": 0.0,
+    "perplexity_delta": 0.0,
+    "epsilon": null,
+    "pii_f1": 1.0,
+    "security_score": 0.5,
+    "overhead_latency_ms": 0.2523
+  },
+  {
+    "component_name": "Full SecureLoRA",
+    "baseline_id": "B7",
+    "utility_delta_accuracy": -0.06,
+    "perplexity_delta": 0.5211,
+    "epsilon": 2.41,
+    "pii_f1": 0.962,
+    "security_score": 0.8333,
+    "overhead_latency_ms": 0.2983
+  }
+]
