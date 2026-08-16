@@ -1,0 +1,732 @@
+{
+  "summary": {
+    "total_test_samples": 150,
+    "combined_false_negatives_count": 0,
+    "combined_false_positives_count": 0,
+    "structural_layer_false_negatives_count": 90
+  },
+  "false_negatives_investigation": [],
+  "false_positives_investigation": [],
+  "structural_failure_breakdown": [
+    {
+      "sample_id": "test_basic_suspicious_0",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_1",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_2",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_3",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_4",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_5",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_6",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_7",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_8",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_9",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6398,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_0",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_1",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_2",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_3",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_4",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_5",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_6",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_7",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_8",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_9",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4293,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_0",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_1",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_2",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_3",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_4",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_5",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_6",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_7",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_8",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_9",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.1018,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_0",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_1",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_2",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_3",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_4",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_5",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_6",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_7",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_8",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_9",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6391,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_0",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_1",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_2",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_3",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_4",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_5",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_6",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_7",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_8",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_9",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4035,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_0",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_1",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_2",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_3",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_4",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_5",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_6",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_7",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_8",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_9",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0825,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_0",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_1",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_2",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_3",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_4",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_5",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_6",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_7",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_8",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_basic_suspicious_9",
+      "category": "BASIC_SUSPICIOUS",
+      "evasion_level": 0,
+      "max_layer_zscore": 2.6396,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_0",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_1",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_2",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_3",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_4",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_5",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_6",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_7",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_8",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl1_9",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 1,
+      "max_layer_zscore": 2.4225,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_0",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_1",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_2",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_3",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_4",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_5",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_6",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_7",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_8",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    },
+    {
+      "sample_id": "test_adaptive_lvl3_9",
+      "category": "ADAPTIVE_SUSPICIOUS",
+      "evasion_level": 3,
+      "max_layer_zscore": 1.0514,
+      "similarity_to_trusted": 1.0,
+      "reason": "Parameter updates constrained to fall within standard normal Gaussian bounds (Z < 1.3, Similarity > 0.97)."
+    }
+  ]
+}

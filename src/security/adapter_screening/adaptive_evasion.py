@@ -16,7 +16,7 @@ Adapter Categories:
 Evasion Levels:
   - LEVEL 0: Unconstrained structural anomaly (Z >= 15.0, low similarity).
   - LEVEL 1: Lightly constrained structural anomaly (Z ~ 4.0, similarity ~ 0.80).
-  - LEVEL 2: Moderately constrained structural anomaly (Z ~ 2.5, similarity ~ 0.92).
+  - LEVEL 2: Moderately constrained structural anomaly (Z ~ 2.2, similarity ~ 0.92).
   - LEVEL 3: Strongly constrained adaptive anomaly (Z < 1.4, similarity > 0.96).
 
 SAFE RESEARCH NOTICE:
@@ -42,8 +42,9 @@ logger = logging.getLogger("secure_lora.security.adapter_screening.adaptive_evas
 class StructuralDistanceMetrics:
     norm_distance: float
     distribution_distance: float
-    layer_distance: float
+    sparsity_distance: float
     outlier_distance: float
+    layer_distance: float
     overall_structural_distance: float
 
     def to_dict(self) -> Dict[str, float]:
@@ -65,6 +66,7 @@ class AdaptiveAdapterSample:
 def compute_structural_distance(
     candidate_weights: Dict[str, np.ndarray],
     trusted_weights: Dict[str, np.ndarray],
+    near_zero_threshold: float = 1e-6,
 ) -> StructuralDistanceMetrics:
     """Computes detailed feature-level structural distance between candidate and trusted weights."""
     common_keys = [k for k in candidate_weights if k in trusted_weights]
@@ -72,8 +74,9 @@ def compute_structural_distance(
         return StructuralDistanceMetrics(
             norm_distance=1.0,
             distribution_distance=1.0,
-            layer_distance=1.0,
+            sparsity_distance=1.0,
             outlier_distance=1.0,
+            layer_distance=1.0,
             overall_structural_distance=1.0,
         )
 
@@ -93,7 +96,12 @@ def compute_structural_distance(
     std_shift = float(abs(np.std(cand_vec) - np.std(trus_vec)))
     dist_dist = mean_shift + std_shift
 
-    # 3. Layer distance (mean 1 - cosine similarity per layer)
+    # 3. Sparsity distance
+    cand_sparsity = float(np.mean(np.abs(cand_vec) < near_zero_threshold))
+    trus_sparsity = float(np.mean(np.abs(trus_vec) < near_zero_threshold))
+    sparsity_dist = float(abs(cand_sparsity - trus_sparsity))
+
+    # 4. Layer distance (mean 1 - cosine similarity per layer)
     layer_cos_sims = []
     for k in common_keys:
         c_k = candidate_weights[k].flatten()
@@ -105,21 +113,28 @@ def compute_structural_distance(
             layer_cos_sims.append(cos_s)
     layer_dist = float(1.0 - np.mean(layer_cos_sims)) if layer_cos_sims else 0.0
 
-    # 4. Outlier distance (Z-score difference of max layer norm)
+    # 5. Outlier distance (Z-score difference of max layer norm)
     c_layer_norms = [float(np.linalg.norm(v)) for v in cand_flats]
     t_layer_norms = [float(np.linalg.norm(v)) for v in trus_flats]
     max_c_z = float((max(c_layer_norms) - np.mean(c_layer_norms)) / (np.std(c_layer_norms) + 1e-8))
     max_t_z = float((max(t_layer_norms) - np.mean(t_layer_norms)) / (np.std(t_layer_norms) + 1e-8))
     outlier_dist = float(abs(max_c_z - max_t_z))
 
-    # 5. Composite structural distance
-    overall = float(0.30 * norm_dist + 0.20 * dist_dist + 0.35 * layer_dist + 0.15 * min(1.0, outlier_dist / 5.0))
+    # 6. Composite structural distance
+    overall = float(
+        0.25 * norm_dist
+        + 0.15 * dist_dist
+        + 0.10 * sparsity_dist
+        + 0.35 * layer_dist
+        + 0.15 * min(1.0, outlier_dist / 5.0)
+    )
 
     return StructuralDistanceMetrics(
         norm_distance=round(norm_dist, 4),
         distribution_distance=round(dist_dist, 4),
-        layer_distance=round(layer_dist, 4),
+        sparsity_distance=round(sparsity_dist, 4),
         outlier_distance=round(outlier_dist, 4),
+        layer_distance=round(layer_dist, 4),
         overall_structural_distance=round(overall, 4),
     )
 
@@ -154,123 +169,142 @@ class AdaptiveAdapterFactory:
         self,
         trusted_weights: Dict[str, np.ndarray],
         evasion_level: int = 1,
+        max_iterations: int = 100,
+        max_perturbation: float = 0.05,
+        target_zscore: float = 1.3,
         seed: int = 44,
     ) -> Dict[str, np.ndarray]:
         """
-        Levels 1, 2, 3: Constrains structural perturbations to remain close to trusted weights.
+        Bounded Optimization / Projection for Adaptive Structural Evasion.
 
-        Level 1 (Light Constraint): Z ~ 4.0, layer multiplier ~ 3.5x
-        Level 2 (Moderate Constraint): Z ~ 2.2, layer multiplier ~ 1.8x, distributed noise
-        Level 3 (Strong Constraint): Z < 1.3, cosine sim > 0.97, subtle rank-1 perturbation
+        Levels 1, 2, 3: Constrains structural perturbations to remain close to trusted weights.
+        Level 1: Light Constraint (Z ~ 4.0)
+        Level 2: Moderate Constraint (Z ~ 2.2)
+        Level 3: Strong Constraint (Z < 1.3, Cosine Sim > 0.97) via rank-1 projection
         """
         rng = np.random.RandomState(seed)
         weights = {k: v.copy() for k, v in trusted_weights.items()}
 
         if evasion_level == 1:
-            # Mild layer multiplier (Z ~ 4.0)
             if "layer_1.lora_A.weight" in weights:
                 weights["layer_1.lora_A.weight"] = weights["layer_1.lora_A.weight"] * 3.5
         elif evasion_level == 2:
-            # Subtle perturbation spread across layers (Z ~ 2.2)
             for k in weights:
                 weights[k] += rng.normal(0.0, 0.003, weights[k].shape).astype(np.float32)
             if "layer_1.lora_A.weight" in weights:
                 weights["layer_1.lora_A.weight"] = weights["layer_1.lora_A.weight"] * 1.6
         elif evasion_level == 3:
-            # High-precision orthogonal rank-1 perturbation (Z < 1.3, Similarity > 0.97)
-            for k in weights:
-                if "lora_A" in k:
-                    u = rng.normal(0.0, 0.0005, (weights[k].shape[0], 1)).astype(np.float32)
-                    v = rng.normal(0.0, 0.0005, (1, weights[k].shape[1])).astype(np.float32)
-                    weights[k] += u @ v
+            # Iterative projection to satisfy norm constraint and target_zscore
+            for iter_idx in range(max_iterations):
+                temp_weights = {k: v.copy() for k, v in trusted_weights.items()}
+                for k in temp_weights:
+                    if "lora_A" in k:
+                        u = rng.normal(0.0, max_perturbation * 0.01, (temp_weights[k].shape[0], 1)).astype(np.float32)
+                        v = rng.normal(0.0, max_perturbation * 0.01, (1, temp_weights[k].shape[1])).astype(np.float32)
+                        temp_weights[k] += u @ v
+
+                # Check max layer zscore
+                analyzer = StructuralAnalyzer()
+                ev = analyzer.analyze(temp_weights, trusted_weights=trusted_weights)
+                if ev.max_layer_zscore <= target_zscore:
+                    weights = temp_weights
+                    break
+                else:
+                    max_perturbation *= 0.8
         else:
             raise ValueError(f"Invalid evasion level: {evasion_level}")
 
         return weights
 
-    def build_benchmark_suite(self, num_samples_per_cat: int = 10, seed: int = 42) -> List[AdaptiveAdapterSample]:
-        """Constructs a complete synthetic evaluation suite across Clean, Basic, and Levels 0-3 Adaptive samples."""
+    def build_benchmark_suite(
+        self,
+        num_samples_per_cat: int = 10,
+        seed: int = 42,
+        split: str = "train",
+    ) -> List[AdaptiveAdapterSample]:
+        """Constructs a complete synthetic evaluation suite with explicit train/val/test split metadata."""
         trusted = self.generate_clean_adapter(seed=seed)
         samples: List[AdaptiveAdapterSample] = []
+        split_offset = 1000 if split == "train" else (2000 if split == "val" else 3000)
 
         # 1. Clean Samples (Ground Truth: Clean / False)
         for i in range(num_samples_per_cat):
-            s_seed = seed + 100 + i
+            s_seed = seed + split_offset + 100 + i
             w = {k: v + np.random.RandomState(s_seed).normal(0.0, 0.0002, v.shape).astype(np.float32) for k, v in trusted.items()}
             dist = compute_structural_distance(w, trusted)
             samples.append(AdaptiveAdapterSample(
-                sample_id=f"clean_{i}",
+                sample_id=f"{split}_clean_{i}",
                 category="CLEAN",
                 evasion_level=0,
                 weights=w,
                 force_trigger_activation=False,
                 ground_truth_anomalous=False,
                 structural_distance=dist,
-                metadata={"seed": s_seed, "description": "Clean benign LoRA adapter"},
+                metadata={"seed": s_seed, "split": split, "description": "Clean benign LoRA adapter"},
             ))
 
         # 2. Basic Suspicious Samples (Level 0, Ground Truth: Anomalous / True)
         for i in range(num_samples_per_cat):
-            s_seed = seed + 200 + i
+            s_seed = seed + split_offset + 200 + i
             w = self.generate_basic_suspicious_adapter(trusted, seed=s_seed)
             dist = compute_structural_distance(w, trusted)
             samples.append(AdaptiveAdapterSample(
-                sample_id=f"basic_suspicious_{i}",
+                sample_id=f"{split}_basic_suspicious_{i}",
                 category="BASIC_SUSPICIOUS",
                 evasion_level=0,
                 weights=w,
                 force_trigger_activation=True,
                 ground_truth_anomalous=True,
                 structural_distance=dist,
-                metadata={"seed": s_seed, "description": "Unconstrained structural outlier + trigger behavior"},
+                metadata={"seed": s_seed, "split": split, "description": "Unconstrained structural outlier + trigger behavior"},
             ))
 
         # 3. Adaptive Suspicious Samples - Level 1 (Ground Truth: Anomalous / True)
         for i in range(num_samples_per_cat):
-            s_seed = seed + 300 + i
+            s_seed = seed + split_offset + 300 + i
             w = self.generate_adaptive_suspicious_adapter(trusted, evasion_level=1, seed=s_seed)
             dist = compute_structural_distance(w, trusted)
             samples.append(AdaptiveAdapterSample(
-                sample_id=f"adaptive_lvl1_{i}",
+                sample_id=f"{split}_adaptive_lvl1_{i}",
                 category="ADAPTIVE_SUSPICIOUS",
                 evasion_level=1,
                 weights=w,
                 force_trigger_activation=True,
                 ground_truth_anomalous=True,
                 structural_distance=dist,
-                metadata={"seed": s_seed, "description": "Level 1 lightly constrained adaptive adapter"},
+                metadata={"seed": s_seed, "split": split, "description": "Level 1 lightly constrained adaptive adapter"},
             ))
 
         # 4. Adaptive Suspicious Samples - Level 2 (Ground Truth: Anomalous / True)
         for i in range(num_samples_per_cat):
-            s_seed = seed + 400 + i
+            s_seed = seed + split_offset + 400 + i
             w = self.generate_adaptive_suspicious_adapter(trusted, evasion_level=2, seed=s_seed)
             dist = compute_structural_distance(w, trusted)
             samples.append(AdaptiveAdapterSample(
-                sample_id=f"adaptive_lvl2_{i}",
+                sample_id=f"{split}_adaptive_lvl2_{i}",
                 category="ADAPTIVE_SUSPICIOUS",
                 evasion_level=2,
                 weights=w,
                 force_trigger_activation=True,
                 ground_truth_anomalous=True,
                 structural_distance=dist,
-                metadata={"seed": s_seed, "description": "Level 2 moderately constrained adaptive adapter"},
+                metadata={"seed": s_seed, "split": split, "description": "Level 2 moderately constrained adaptive adapter"},
             ))
 
         # 5. Adaptive Suspicious Samples - Level 3 (Ground Truth: Anomalous / True)
         for i in range(num_samples_per_cat):
-            s_seed = seed + 500 + i
+            s_seed = seed + split_offset + 500 + i
             w = self.generate_adaptive_suspicious_adapter(trusted, evasion_level=3, seed=s_seed)
             dist = compute_structural_distance(w, trusted)
             samples.append(AdaptiveAdapterSample(
-                sample_id=f"adaptive_lvl3_{i}",
+                sample_id=f"{split}_adaptive_lvl3_{i}",
                 category="ADAPTIVE_SUSPICIOUS",
                 evasion_level=3,
                 weights=w,
                 force_trigger_activation=True,
                 ground_truth_anomalous=True,
                 structural_distance=dist,
-                metadata={"seed": s_seed, "description": "Level 3 strongly constrained adaptive adapter"},
+                metadata={"seed": s_seed, "split": split, "description": "Level 3 strongly constrained adaptive adapter"},
             ))
 
         return samples
