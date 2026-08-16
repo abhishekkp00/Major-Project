@@ -135,3 +135,42 @@ class AggregatedBaselineResult:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+
+VALID_STATUSES = {"EXECUTED", "FAILED", "NOT_EXECUTED"}
+
+
+@dataclass
+class UnifiedExperimentResult:
+    """
+    Standardized Experiment Result Schema for SecureLoRA (STEP 9).
+    
+    Status MUST be strictly one of: EXECUTED, FAILED, NOT_EXECUTED.
+    Metrics MUST be separated into raw, aggregated, and reported.
+    """
+    experiment_id: str
+    experiment_name: str
+    dataset: str
+    dataset_version: str
+    model: str
+    adapter: str
+    configuration: Dict[str, Any]
+    seed: int
+    sample_count: int
+    status: str
+    metrics: Dict[str, Dict[str, Any]]
+    runtime: Dict[str, Any]
+    timestamp: str
+
+    def __post_init__(self):
+        if self.status not in VALID_STATUSES:
+            raise ValueError(f"Invalid status '{self.status}'. Must be one of {VALID_STATUSES}")
+        if not isinstance(self.metrics, dict):
+            raise TypeError("metrics must be a dict containing 'raw', 'aggregated', and 'reported'")
+        for req_key in ["raw", "aggregated", "reported"]:
+            if req_key not in self.metrics:
+                raise ValueError(f"metrics must contain top-level key '{req_key}'")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
