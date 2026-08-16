@@ -19,7 +19,9 @@
 **SecureLoRA** is an end-to-end, zero-leakage security framework designed for privacy-preserving Low-Rank Adaptation (LoRA) fine-tuning and hardware-bound deployment of Large Language Models (LLMs). It mitigates two fundamental vulnerabilities in enterprise machine learning pipelines:
 
 1. **Unprotected Adapter Theft & Illegal Relocation** — Standard PEFT/LoRA weight artifacts (`adapter_model.safetensors`) are plaintext files susceptible to exfiltration and unauthorized execution on foreign nodes. SecureLoRA cryptographically binds adapter weights to the authorized target machine's software-derived device identity using HKDF-SHA256 key derivation.
-2. **Personal Identifiable Information (PII) Leakage** — Raw training datasets in healthcare (PHI), finance, or enterprise support contain sensitive entities (SSNs, medical record numbers, API keys, credentials) that LLMs risk memorizing. SecureLoRA enforces an in-transit hybrid redaction engine combining SpaCy Transformer Named Entity Recognition (NER) with RFC/ISO regex pattern matching prior to model ingestion.
+2. **Personal Identifiable Information (PII) Leakage** — Raw training datasets in healthcare (PHI), finance, or enterprise support contain sensitive entities (SSNs, medical record numbers, API keys, credentials) that LLMs risk memorizing. SecureLoRA enforces a hybrid redaction engine (SpaCy Transformer NER + RFC/ISO regex) as a *first-line control*, and optionally reinforces it with Differentially Private SGD (DP-SGD via Opacus) to provide rigorous membership inference resistance.
+
+> **Claim accuracy**: DP-LoRA is an established research direction (Li et al. 2021, Yu et al. 2021). Our research contribution is the *measured interaction* of training-data privacy (DP-SGD), device-bound adapter protection (HKDF + AES-GCM), and deployment security (RSA-PSS) within a single unified pipeline. DP addresses training-data privacy. Device binding addresses adapter theft. These are orthogonal threat surfaces.
 
 ---
 
@@ -27,18 +29,36 @@
 
 The system operates across a **four-phase zero-trust lifecycle**:
 
+Mode A — Standard LoRA (default):
+
 ```
-Phase 1: Hybrid PII Audit    Phase 2: LoRA Fine-Tuning    Phase 3: Hardware Packaging   Phase 4: Gate Validation
-─────────────────────────    ─────────────────────────    ───────────────────────────   ─────────────────────────
-Raw User Input / Dataset     Redacted Dataset JSONL       Trained LoRA Weights          Encrypted .tar.gz Package
-            │                            │                            │                             │
-            ▼                            ▼                            ▼                             ▼
-SpaCy NER + ISO Regex        PEFT / HuggingFace Trainer   Derive Target HW Fingerprint  1. Package Completeness Check
-Mask SSN, Phone, Email,      Train on Frozen Base Model   HKDF-SHA256 Key Derivation    2. SHA-256 Digest Verification
-Secret Keys, Credit Cards    Save Ephemeral Weights       AES-256-GCM Encryption        3. RSA-2048-PSS Signature Check
-            │                            │                RSA-2048-PSS Signature        4. HW Fingerprint Matching
-            ▼                            ▼                            │                 5. In-Memory Decryption & Load
-Encrypted JSONL Payload      Encrypted Adapter Output     Signed .tar.gz Package        6. Side-by-Side Inference
+Phase 1: Hybrid PII Audit    Phase 2A: LoRA Fine-Tuning    Phase 3: Secure Packaging    Phase 4: Gate Validation
+─────────────────────────    ──────────────────────────    ─────────────────────────    ─────────────────────────
+Raw Dataset                  Redacted Dataset JSONL         Trained LoRA Weights         Encrypted .tar.gz Package
+     │                               │                              │                              │
+     ▼                               ▼                              ▼                              ▼
+SpaCy NER + ISO Regex         HuggingFace Trainer             HKDF-SHA256 Key               1. Completeness Check
+Mask SSN, Phone, Email,       LoRA on Frozen Base Model       AES-256-GCM Encrypt           2. SHA-256 Integrity
+Secret Keys, Credit Cards     Save Adapter Weights            RSA-2048-PSS Sign             3. RSA-PSS Signature
+     │                               │                              │                       4. Fingerprint Match
+     ▼                               ▼                              ▼                       5. HKDF Key Derivation
+Encrypted JSONL Payload        Adapter Weights                Signed Package                6. AES-GCM Decrypt & Load
+```
+
+Mode B — DP-LoRA (optional, `DP_ENABLED=1`):
+
+```
+Phase 1: Hybrid PII Audit    Phase 2B: DP-LoRA               Phase 3/4: (same as Mode A)
+─────────────────────────    ────────────────────────────
+Raw Dataset                  Redacted Dataset JSONL
+     │                               │
+     ▼                               ▼
+SpaCy NER + ISO Regex         LoRA on Frozen Base Model
+[First-line PII control]      Per-Example Gradient Clip (C)
+                              + Gaussian Noise (σ = noise_multiplier)
+                              Privacy Budget: (ε, δ)-DP
+                              Accountant: Rényi DP / PRV
+                              ε computed post-hoc by accountant
 ```
 
 ### Core Cryptographic Guarantee
@@ -55,7 +75,35 @@ Decryption keys are **never stored on disk or embedded in environment configs**.
 - **Entity Coverage**: Automatically redacts Names (`NAME_PHRASE`), Social Security Numbers (`SSN`), Email Addresses (`EMAIL`), Phone Numbers (`PHONE`), IP Addresses (`IP_ADDRESS`), Credit Card Numbers (`CREDIT_CARD`), and Secret API Keys (`API_KEY`).
 - **Canonical Anchoring**: Calculates SHA-256 digests before and after redaction to anchor record lineage into immutable integrity traces.
 
-### 2. Device Fingerprinting & HKDF-SHA256 Key Derivation (`src/security/fingerprint.py`, `key_derivation.py`)
+### 2. Differentially Private LoRA Fine-Tuning (`src/phase2/dp_trainer.py`, `train_lora.py`)
+
+SecureLoRA supports two training modes with identical dataset, seed, model, split, and evaluation so results are scientifically comparable:
+
+**Mode A — Standard LoRA** (default): HuggingFace Trainer, no privacy mechanism.
+
+**Mode B — DP-LoRA** (`DP_ENABLED=1`): Opacus 1.5.x PrivacyEngine wraps only the trainable LoRA parameters (frozen base model parameters are never touched by the DP mechanism).
+
+| DP component | Implementation | Reference |
+|---|---|---|
+| Per-example gradients | `opacus.GradSampleModule` | Goodfellow 2015 |
+| Gradient clipping | $\tilde{g}_i = g_i \cdot \min(1, C/\|g_i\|_2)$ | Abadi et al. 2016 |
+| Gaussian noise | $\mathcal{N}(0, \sigma^2 C^2 I)$ per step | Abadi et al. 2016 |
+| Privacy accountant | Rényi DP (rdp) or PRV/f-DP (prv) | Gopi et al. 2021 |
+| ε computation | `privacy_engine.get_epsilon(delta)` — real accountant, never hardcoded | Mironov 2017 |
+
+**Configuration** (env-vars or `config/training.yaml`):
+
+```bash
+export DP_ENABLED=1              # activate DP-LoRA
+export DP_TARGET_EPSILON=8.0     # target ε (actual ε from accountant may differ)
+export DP_TARGET_DELTA=1e-5      # failure probability δ
+export DP_MAX_GRAD_NORM=1.0      # per-example clipping norm C
+export DP_ACCOUNTANT=rdp         # rdp (Rényi) or prv (PRV)
+```
+
+> **Important**: DP-LoRA addresses *training-data privacy* (membership inference resistance). It does NOT protect the adapter from theft — that is the role of device-bound encryption (Phase 3/4). These are orthogonal mechanisms.
+
+### 3. Device Fingerprinting & HKDF-SHA256 Key Derivation (`src/security/fingerprint.py`, `key_derivation.py`)
 - **Entropy sources**: Extracts machine-specific identity from OS Machine ID (`/etc/machine-id`), CPU model string (`/proc/cpuinfo`), and block device UUID (`/dev/disk/by-uuid/`).
 - **Characterisation**: The fingerprint is a *software-derived device identity based on selected machine attributes*. It is **not** a hardware root of trust and does not provide TPM-equivalent attestation.
 - **HKDF-SHA256 Key Derivation**: Feeds the fingerprint digest and a deployment secret salt into HKDF (RFC 5869) with an explicit context string (`securelora-adapter-v1`) to derive 256-bit symmetric keys. Keys exist exclusively in RAM during execution.
