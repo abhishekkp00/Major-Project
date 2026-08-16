@@ -94,6 +94,57 @@ class ConfigLoader:
     def target_modules(self) -> list:
         return self.training.get("target_modules", ["q_proj", "v_proj", "k_proj", "o_proj"])
 
+    # ── Differential Privacy configs ──────────────────────────────────────────
+    # Env-var: DP_ENABLED=1 / DP_ENABLED=0  (overrides training.yaml)
+    @property
+    def dp_enabled(self) -> bool:
+        env = os.environ.get("DP_ENABLED")
+        if env is not None:
+            return env.strip().lower() in ("1", "true", "yes")
+        return bool(self.training.get("privacy", {}).get("enabled", False))
+
+    @property
+    def dp_target_epsilon(self) -> float:
+        return float(os.environ.get(
+            "DP_TARGET_EPSILON",
+            self.training.get("privacy", {}).get("target_epsilon", 8.0)
+        ))
+
+    @property
+    def dp_target_delta(self) -> float:
+        return float(os.environ.get(
+            "DP_TARGET_DELTA",
+            self.training.get("privacy", {}).get("target_delta", 1e-5)
+        ))
+
+    @property
+    def dp_max_grad_norm(self) -> float:
+        return float(os.environ.get(
+            "DP_MAX_GRAD_NORM",
+            self.training.get("privacy", {}).get("max_grad_norm", 1.0)
+        ))
+
+    @property
+    def dp_noise_multiplier(self):
+        """Returns float if set, else None (auto-compute from target_epsilon)."""
+        env = os.environ.get("DP_NOISE_MULTIPLIER")
+        if env is not None:
+            return float(env)
+        nm = self.training.get("privacy", {}).get("noise_multiplier", None)
+        return float(nm) if nm is not None else None
+
+    @property
+    def dp_accountant(self) -> str:
+        return os.environ.get(
+            "DP_ACCOUNTANT",
+            self.training.get("privacy", {}).get("accountant", "rdp")
+        )
+
+    @property
+    def dp_training_mode(self) -> str:
+        """Returns 'dp-lora' if DP enabled, 'lora' otherwise."""
+        return "dp-lora" if self.dp_enabled else "lora"
+
     @property
     def dataset_input_dir(self) -> Path:
         return Path(os.environ.get("SECURE_LORA_INPUT_DIR", "real_data_inputs"))

@@ -11,3 +11,31 @@ target_modules:
   - "v_proj"
   - "k_proj"
   - "o_proj"
+
+# ── Differential Privacy Configuration ────────────────────────────────────────
+# Set privacy.enabled: true to activate DP-LoRA (Mode B).
+# When false, standard LoRA training runs without any privacy mechanism (Mode A).
+#
+# DP mechanism: per-example gradient clipping + Gaussian noise injection via
+# Opacus PrivacyEngine (Abadi et al. 2016 / Gopi et al. 2021 PRV accountant).
+#
+# IMPORTANT: DP-LoRA addresses training-data privacy (membership inference).
+# It does NOT protect the adapter from theft — that is the role of
+# device-bound encryption (Phase 3/4). These are orthogonal threat surfaces.
+#
+# target_epsilon:  desired privacy budget ε. The actual ε achieved is computed
+#                  by the accountant and may differ from the target.
+# target_delta:    failure probability δ. Recommended: 1/N where N = dataset size.
+# max_grad_norm:   per-example gradient clipping norm C.
+# noise_multiplier:override the noise multiplier σ directly (mutually exclusive
+#                  with target_epsilon — if set, epsilon is computed post-hoc).
+#                  Leave blank to auto-compute σ from target_epsilon.
+# accountant:      "rdp" (Rényi DP) or "prv" (PRV/f-DP). rdp is default.
+privacy:
+  enabled: false
+  target_epsilon: 8.0
+  target_delta: 1.0e-5
+  max_grad_norm: 1.0
+  noise_multiplier: null   # set to override auto-computation
+  accountant: "rdp"
+
