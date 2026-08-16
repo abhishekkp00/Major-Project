@@ -1,7 +1,7 @@
 {
   "adapters": {
     "job_test_security_123": {
-      "last_sequence": 12,
+      "last_sequence": 13,
       "processed_packages": [
         "aa7107b2-1a3f-42b5-ba3a-21f095b47c75",
         "58317050-db0e-4c63-940c-1e0b01a71c98",
@@ -14,9 +14,10 @@
         "6e84acac-53c8-42d9-adbd-6f5276a10360",
         "89b51ac4-afa4-40a0-adf4-9300b55bd344",
         "1744a415-2565-4edc-b089-001b6691a631",
-        "863607fd-9ef1-43d1-b2d8-127255c73db8"
+        "863607fd-9ef1-43d1-b2d8-127255c73db8",
+        "0e43e7bc-d8c6-4ad2-a0be-d886946dd304"
       ],
-      "last_deployed_utc": "2026-08-16T10:29:12.465117+00:00"
+      "last_deployed_utc": "2026-08-16T10:49:55.543096+00:00"
     },
     "lora-adapter-v1": {
       "last_sequence": 10,

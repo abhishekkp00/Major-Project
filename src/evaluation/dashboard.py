@@ -24,6 +24,7 @@ from src.orchestrator.service import orchestrator
 from src.orchestrator.transparency import build_transparency_trace
 from src.orchestrator.dataset_processor import validate_dataset_file, preprocess_and_standardize
 from src.orchestrator.chat_engine import answer_question, load_records_from_job, load_records_from_jsonl, compute_dataset_analytics
+from src.evaluation.research_api import research_api_bp
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +37,7 @@ app = Flask(
     static_folder=str(BASE_DIR / "static")
 )
 app.register_blueprint(orchestrator_bp)
+app.register_blueprint(research_api_bp)
 
 # Global cache for lazy model loading
 base_model = None
