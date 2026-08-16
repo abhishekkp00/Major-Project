@@ -1,92 +1,92 @@
 [
   {
     "scenario_id": "modified_manifest",
-    "scenario_name": "Modified package_manifest.json (tampered model_id/sequence)",
-    "detection_gate": "Step 3: Signature Validation",
+    "scenario_name": "1. Modified Manifest (Tampered base_model_id in package_manifest.json)",
+    "detection_gate": "Step 3: Signature Verification",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.976,
+    "rejection_latency_ms": 1.179,
     "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
   },
   {
-    "scenario_id": "modified_adapter",
-    "scenario_name": "Modified ciphertext (tampered adapter.enc byte)",
-    "detection_gate": "Step 4: Digest Validation",
+    "scenario_id": "modified_ciphertext",
+    "scenario_name": "2. Modified Ciphertext (Bit-flip in adapter.enc bytes)",
+    "detection_gate": "Step 4: Digest Verification",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.55,
-    "error_details": "Integrity check FAILED. Stored hash: 39b5f335b609\u2026 | Computed hash: 416c3033342f\u2026 The encrypted adapter has been tampered with or replaced."
+    "rejection_latency_ms": 0.579,
+    "error_details": "Integrity check FAILED. Stored hash: e9c3e5386eb1\u2026 | Computed hash: 68d3968b7556\u2026 The encrypted adapter has been tampered with or replaced."
   },
   {
-    "scenario_id": "copied_valid_package",
-    "scenario_name": "Copied valid package re-executed (duplicate package_id)",
-    "detection_gate": "Step 5: Replay / Version Validation",
+    "scenario_id": "modified_signature",
+    "scenario_name": "3. Modified Signature (Corrupted adapter.sig signature bytes)",
+    "detection_gate": "Step 3: Signature Verification",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.854,
-    "error_details": "Replay attack detected! Package ID 'f721221b-5ceb-43fe-9e1d-08dc738bf792' has already been deployed."
+    "rejection_latency_ms": 1.169,
+    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
   },
   {
     "scenario_id": "old_package_replay",
-    "scenario_name": "Stale package replay (sequence_number <= last_seen)",
+    "scenario_name": "4. Old Package Replay (Stale monotonic sequence number <= last_seen)",
     "detection_gate": "Step 5: Replay / Version Validation",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.976,
+    "rejection_latency_ms": 1.56,
     "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
-  },
-  {
-    "scenario_id": "wrong_model_id",
-    "scenario_name": "Wrong base model ID target mismatch",
-    "detection_gate": "Step 5: Replay / Version Validation",
-    "rejected": true,
-    "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.649,
-    "error_details": "Package model ID 'distilbert-base-uncased' does not match target model ID 'gpt-2-xl'."
-  },
-  {
-    "scenario_id": "wrong_adapter_id",
-    "scenario_name": "Wrong adapter ID target mismatch",
-    "detection_gate": "Step 5: Replay / Version Validation",
-    "rejected": true,
-    "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.626,
-    "error_details": "Package adapter ID 'medical-lora-v1' does not match target adapter ID 'unauthorized-adapter-xyz'."
   },
   {
     "scenario_id": "expired_package",
-    "scenario_name": "Expired package (creation_time + TTL passed)",
+    "scenario_name": "5. Expired Package (expiration_timestamp passed)",
     "detection_gate": "Step 5: Replay / Version Validation",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.812,
+    "rejection_latency_ms": 2.226,
     "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
   },
   {
-    "scenario_id": "invalid_signature",
-    "scenario_name": "Corrupted RSA-2048-PSS signature (adapter.sig)",
-    "detection_gate": "Step 3: Signature Validation",
+    "scenario_id": "wrong_adapter_id",
+    "scenario_name": "6. Wrong Adapter ID (Mismatch with target adapter ID)",
+    "detection_gate": "Step 5: Replay / Version Validation",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 0.695,
-    "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
+    "rejection_latency_ms": 1.39,
+    "error_details": "Package adapter ID 'medical-lora-v1' does not match target adapter ID 'unauthorized-adapter-xyz'."
   },
   {
-    "scenario_id": "malicious_package_attacker_key",
-    "scenario_name": "Malicious package signed with attacker private key",
-    "detection_gate": "Step 3: Signature Validation",
+    "scenario_id": "wrong_model_id",
+    "scenario_name": "7. Wrong Base Model ID (Mismatch with target model ID)",
+    "detection_gate": "Step 5: Replay / Version Validation",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 124.112,
+    "rejection_latency_ms": 1.184,
+    "error_details": "Package model ID 'distilbert-base-uncased' does not match target model ID 'gpt-2-xl'."
+  },
+  {
+    "scenario_id": "wrong_package_version",
+    "scenario_name": "8. Wrong Package Version (Unsupported schema or KDF version)",
+    "detection_gate": "Step 2: Manifest Schema Validation",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 1.128,
+    "error_details": "Unsupported KDF version: unsupported-kdf-v99"
+  },
+  {
+    "scenario_id": "attacker_created_package",
+    "scenario_name": "9. Attacker-Created Package (Package signed by untrusted attacker RSA key)",
+    "detection_gate": "Step 3: Signature Verification",
+    "rejected": true,
+    "outcome": "BLOCKED_AND_REJECTED",
+    "rejection_latency_ms": 98.187,
     "error_details": "Signature verification FAILED. The adapter may have been tampered with, or the wrong public key was used."
   },
   {
-    "scenario_id": "valid_package_unauthorized_device",
-    "scenario_name": "Valid package executed on unauthorized device",
+    "scenario_id": "valid_package_on_unauthorized_device",
+    "scenario_name": "10. Valid Package on Unauthorized Device (Hardware fingerprint mismatch)",
     "detection_gate": "Step 6: Device Authorization",
     "rejected": true,
     "outcome": "BLOCKED_AND_REJECTED",
-    "rejection_latency_ms": 2.386,
+    "rejection_latency_ms": 2.924,
     "error_details": "Device authorization check FAILED. Device authorization FAILED. Expected fingerprint hash 'deadbeefdead\u2026' does not match local fingerprint hash '111122223333\u2026'."
   }
 ]
