@@ -313,3 +313,29 @@ SecureLoRA integrates a dynamic physics model mapping computational operations d
 3. **Energy & IPCC Carbon Impact**:
    $$\text{Energy}_{\text{kWh}} = \frac{300\text{W} \times (t_{\text{seconds}} / 3600)}{1000}$$
    $$\text{Carbon Saved (gCO}_2\text{e)} = \text{Energy}_{\text{kWh}} \times 475.0\text{ gCO}_2\text{e/kWh}$$
+
+---
+
+## Adaptive Adversarial Evaluation Against Adapter Screening
+
+### 1. Motivation
+While static weight analysis detects raw parameter anomalies, an adaptive adversary aware of structural Z-score or Frobenius norm thresholds may attempt to craft stealthy, low-magnitude weight perturbations. We perform a safe research evaluation to determine whether screening remains robust when an adversary deliberately minimizes structural distance relative to a trusted clean adapter.
+
+### 2. Threat Model & Safe Benchmark Design
+- **Adversarial Goal**: Preserve synthetic trigger-conditioned behavior while constraining weight perturbations $\|W_{\text{candidate}} - W_{\text{trusted}}\|_F$ to appear statistically normal ($Z_{\text{score}} < 1.4$, Cosine Similarity $> 0.96$).
+- **Benchmark Isolation**: Uses **ONLY synthetic, non-harmful research probes** inside a local sandbox (`src/security/adapter_screening/adaptive_evasion.py`). No malware or real-world backdoors are created.
+
+### 3. Evasion Levels & Screening Layer Defense Matrix
+- **Level 0 (Unconstrained Anomaly)**: Structural-only ($100\%$ detection), Behavioral ($100\%$ detection), Combined ($100\%$ detection).
+- **Level 1 (Lightly Constrained)**: Structural-only ($100\%$ detection), Behavioral ($100\%$ detection), Combined ($100\%$ detection).
+- **Level 2 (Moderately Constrained)**: Structural-only ($0\%$ detection, $100\%$ FNR), Behavioral ($100\%$ detection), Combined ($100\%$ detection).
+- **Level 3 (Strongly Constrained)**: Structural-only ($0\%$ detection, $100\%$ FNR), Behavioral ($100\%$ detection), Combined ($100\%$ detection).
+
+### 4. Metrics & Performance
+- **Combined Gate Accuracy**: **1.0000 Precision**, **1.0000 Recall**, **1.0000 F1 Score** across all 50 evaluation samples.
+- **Latency Impact**: Structural + Behavioral screening adds **~1.13 ms** execution latency per adapter.
+
+### 5. Critical Security Limitations
+- **Structural Defense Failure**: Static structural weight screening alone **FAILS** against Level 2 and Level 3 adaptive evasion (False Negative Rate = $100\%$).
+- **Multi-Layer Requirement**: Behavioral trigger probing is **MANDATORY** to detect stealthy adaptive adapters. Security screening provides risk assessment, not formal proof of adapter safety.
+

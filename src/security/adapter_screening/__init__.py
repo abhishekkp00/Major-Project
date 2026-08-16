@@ -31,6 +31,13 @@ from src.security.adapter_screening.screening_pipeline import (
     pre_packaging_screening_gate,
 )
 
+from src.security.adapter_screening.adaptive_evasion import (
+    AdaptiveAdapterFactory,
+    AdaptiveAdapterSample,
+    StructuralDistanceMetrics,
+    compute_structural_distance,
+)
+
 __all__ = [
     "StructuralAnalyzer",
     "StructuralEvidence",
@@ -45,4 +52,8 @@ __all__ = [
     "ScreeningReport",
     "SecurityScreeningError",
     "pre_packaging_screening_gate",
+    "AdaptiveAdapterFactory",
+    "AdaptiveAdapterSample",
+    "StructuralDistanceMetrics",
+    "compute_structural_distance",
 ]
