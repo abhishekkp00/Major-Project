@@ -18,7 +18,7 @@
 
 **SecureLoRA** is an end-to-end, zero-leakage security framework designed for privacy-preserving Low-Rank Adaptation (LoRA) fine-tuning and hardware-bound deployment of Large Language Models (LLMs). It mitigates two fundamental vulnerabilities in enterprise machine learning pipelines:
 
-1. **Unprotected Adapter Theft & Illegal Relocation** — Standard PEFT/LoRA weight artifacts (`adapter_model.safetensors`) are plaintext files susceptible to exfiltration and unauthorized execution on foreign nodes. SecureLoRA cryptographically binds adapter weights to the authorized target machine's unique hardware fingerprint using ephemeral HKDF key derivation.
+1. **Unprotected Adapter Theft & Illegal Relocation** — Standard PEFT/LoRA weight artifacts (`adapter_model.safetensors`) are plaintext files susceptible to exfiltration and unauthorized execution on foreign nodes. SecureLoRA cryptographically binds adapter weights to the authorized target machine's software-derived device identity using HKDF-SHA256 key derivation.
 2. **Personal Identifiable Information (PII) Leakage** — Raw training datasets in healthcare (PHI), finance, or enterprise support contain sensitive entities (SSNs, medical record numbers, API keys, credentials) that LLMs risk memorizing. SecureLoRA enforces an in-transit hybrid redaction engine combining SpaCy Transformer Named Entity Recognition (NER) with RFC/ISO regex pattern matching prior to model ingestion.
 
 ---
@@ -42,7 +42,9 @@ Encrypted JSONL Payload      Encrypted Adapter Output     Signed .tar.gz Package
 ```
 
 ### Core Cryptographic Guarantee
-Decryption keys are **never stored on disk or embedded in environment configs**. Decryption keys are derived transiently in volatile RAM at boot time from the executing machine's immutable hardware identifiers (`/etc/machine-id`, MAC address, hostname). If an encrypted adapter package is exfiltrated to an unauthorized node, HKDF key derivation produces a mismatched key, causing AES-256-GCM authentication tag failure and **instant termination before model weight extraction**.
+Decryption keys are **never stored on disk or embedded in environment configs**. Keys are derived transiently in volatile RAM from the executing machine's software-derived device identity (OS machine-id, CPU model, disk UUID) using HKDF-SHA256 (RFC 5869). If an encrypted adapter package is exfiltrated to an unauthorized node, HKDF key derivation produces a mismatched key, causing AES-256-GCM authentication tag failure and **instant termination before model weight extraction**.
+
+> **Security scope**: The device fingerprint is a *software-derived identity*, not a hardware root of trust. An attacker with root access to the authorised machine can reproduce all three entropy sources. The deployment salt (`P3_DEVICE_SALT`) is the only true secret material. VM cloning or OS migration to equivalent hardware breaks binding by changing `/etc/machine-id`.
 
 ---
 
@@ -53,9 +55,11 @@ Decryption keys are **never stored on disk or embedded in environment configs**.
 - **Entity Coverage**: Automatically redacts Names (`NAME_PHRASE`), Social Security Numbers (`SSN`), Email Addresses (`EMAIL`), Phone Numbers (`PHONE`), IP Addresses (`IP_ADDRESS`), Credit Card Numbers (`CREDIT_CARD`), and Secret API Keys (`API_KEY`).
 - **Canonical Anchoring**: Calculates SHA-256 digests before and after redaction to anchor record lineage into immutable integrity traces.
 
-### 2. Ephemeral Hardware Fingerprinting & Key Derivation (`src/security/fingerprint.py`, `key_derivation.py`)
-- **Hardware Tuple**: Extracts machine-specific entropy from OS Machine ID (`/etc/machine-id`), network interface MAC addresses, and node hostnames.
-- **HKDF-SHA256 Key Derivation**: Feeds the hardware fingerprint and a dynamic cryptographic salt into HKDF (RFC 5869) to derive 256-bit symmetric keys. Keys exist exclusively in ephemeral RAM during execution.
+### 2. Device Fingerprinting & HKDF-SHA256 Key Derivation (`src/security/fingerprint.py`, `key_derivation.py`)
+- **Entropy sources**: Extracts machine-specific identity from OS Machine ID (`/etc/machine-id`), CPU model string (`/proc/cpuinfo`), and block device UUID (`/dev/disk/by-uuid/`).
+- **Characterisation**: The fingerprint is a *software-derived device identity based on selected machine attributes*. It is **not** a hardware root of trust and does not provide TPM-equivalent attestation.
+- **HKDF-SHA256 Key Derivation**: Feeds the fingerprint digest and a deployment secret salt into HKDF (RFC 5869) with an explicit context string (`securelora-adapter-v1`) to derive 256-bit symmetric keys. Keys exist exclusively in RAM during execution.
+- **KDF versioning**: Every package manifest records the `kdf_version` field (`hkdf-sha256-v1`). The deployment gate rejects packages with unsupported versions.
 
 ### 3. Multi-Gate Cryptographic Package Vault (`src/phase3/`, `src/phase4/`)
 - **AES-256-GCM Authenticated Encryption**: Adapter weights are encrypted in streaming blocks with Galois/Counter Mode (GCM), providing confidentiality and tamper-proofing via 128-bit authentication tags.
@@ -168,11 +172,11 @@ SecureLoRA/
 
 | Threat Vector | Attack Mechanism | SecureLoRA Defence | Security Outcome |
 | :--- | :--- | :--- | :--- |
-| **Adapter Theft** | Adversary copies `.tar.gz` package to foreign machine | HKDF key derived on foreign machine produces invalid 256-bit AES key | **GCM Auth Tag Failure**: Instant termination before weight extraction |
+| **Adapter Theft** | Adversary copies `.tar.gz` package to foreign machine | HKDF key derived on foreign machine produces invalid 256-bit AES key | **GCM Auth Tag Failure**: Instant termination before weight extraction. *Caveat: VM cloning or root access to the authorised machine can reproduce the fingerprint.* |
 | **In-Transit Corruption** | MITM adversary alters encrypted payload bits during network transit | AES-256-GCM authentication tag validation | **Tamper Detected**: Integrity gate blocks execution |
 | **Package Tampering** | Adversary modifies package manifest or signature | RSA-2048-PSS digital signature verification | **Signature Mismatch**: Gate 3 rejects deployment package |
-| **PII Memorization** | LLM memorizes SSNs, emails, or phone numbers from training data | Phase 1 Hybrid SpaCy NER + ISO Regex Masking | **Zero Leakage**: Model trains exclusively on `[REDACTED_*]` tokens |
-| **Cold-Boot Memory Extraction** | Adversary inspects disk for residual plaintext adapter weights | In-RAM decryption + 3-pass DoD 5220.22-M file shredding | **Zero Disk Residue**: Plaintext weights exist only in volatile RAM |
+| **PII Memorization** | LLM memorizes SSNs, emails, or phone numbers from training data | Phase 1 Hybrid SpaCy NER + ISO Regex Masking | **Reduced leakage risk**: Model trains on `[REDACTED_*]` tokens. Masking accuracy is not 100%. |
+| **Cold-Boot Memory Extraction** | Adversary inspects disk for residual plaintext adapter weights | AES-GCM decryption to temp dir + 3-pass file shredding on context exit | **Minimised disk residue**: Plaintext exists in a temporary directory during PEFT loading; shredded immediately after. Swap, CoW filesystems, or suspend may retain fragments. |
 
 ---
 
