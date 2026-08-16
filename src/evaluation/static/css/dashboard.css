@@ -2014,3 +2014,233 @@ mark.pii-mark {
   line-height: 1.6;
   margin-bottom: 1.75rem;
 }
+
+/* ══════════════════════════════════════════════════════════
+   PIPELINE LIFECYCLE COMPONENTS (Step 2)
+   Uses ONLY existing CSS custom properties — no theme change.
+   ══════════════════════════════════════════════════════════ */
+
+/* ── KPI Bar ─────────────────────────────────────────────── */
+.plc-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.plc-kpi-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color 0.2s ease;
+}
+
+.plc-kpi-card:hover {
+  border-color: var(--card-border-hover);
+}
+
+.plc-kpi-label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.plc-kpi-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plc-kpi-val.kpi-pass   { color: var(--emerald); }
+.plc-kpi-val.kpi-fail   { color: var(--rose); }
+.plc-kpi-val.kpi-run    { color: var(--amber); }
+.plc-kpi-val.kpi-na     { color: var(--text-muted); }
+
+/* ── Stage Timeline ──────────────────────────────────────── */
+.plc-stage-timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+.plc-stage-item {
+  background: rgba(10, 10, 14, 0.6);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.plc-stage-item:hover {
+  border-color: var(--card-border-hover);
+  background: rgba(18, 18, 24, 0.9);
+  transform: translateY(-1px);
+}
+
+.plc-stage-item.plc-active-stage {
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.06);
+}
+
+.plc-stage-num {
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+
+.plc-stage-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin-bottom: 0.45rem;
+}
+
+.plc-stage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+/* Status colors for badge */
+.plc-badge-passed  { color: var(--emerald); background: var(--emerald-bg); border-color: var(--emerald-border); }
+.plc-badge-running { color: var(--amber);   background: var(--amber-bg);   border-color: var(--amber-border); }
+.plc-badge-failed  { color: var(--rose);    background: var(--rose-bg);    border-color: var(--rose-border); }
+.plc-badge-pending { color: var(--text-muted); background: rgba(255,255,255,0.03); border-color: var(--card-border); }
+.plc-badge-skipped { color: #64748b;        background: rgba(100,116,139,0.08); border-color: rgba(100,116,139,0.2); }
+
+/* Running pulse animation */
+.plc-stage-item.plc-status-running::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(245,158,11,0.04) 50%, transparent 100%);
+  animation: plc-sweep 1.8s ease-in-out infinite;
+}
+@keyframes plc-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ── Stage Detail Drawer ─────────────────────────────────── */
+.plc-stage-drawer {
+  margin-top: 1rem;
+  border: 1px solid var(--card-border-hover);
+  border-radius: 10px;
+  background: rgba(12, 12, 16, 0.95);
+  overflow: hidden;
+  animation: plc-drawer-in 0.18s ease;
+}
+
+@keyframes plc-drawer-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.plc-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--card-border);
+  background: rgba(8,8,12,0.7);
+}
+
+.plc-drawer-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.plc-drawer-purpose {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 0.25rem;
+  max-width: 640px;
+}
+
+.plc-drawer-close {
+  background: none;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.plc-drawer-close:hover { border-color: var(--rose-border); color: var(--rose); }
+
+.plc-drawer-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.plc-drawer-col {
+  padding: 1rem 1.25rem;
+}
+
+.plc-drawer-col:first-child {
+  border-right: 1px solid var(--card-border);
+}
+
+.plc-drawer-sig {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  background: rgba(10,10,14,0.5);
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  padding: 0.65rem 0.85rem;
+}
+
+.plc-drawer-result {
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--text-primary);
+  padding: 0.45rem 0.65rem;
+  background: rgba(10,10,14,0.5);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+}
+
+/* NA result styling */
+.plc-drawer-result.result-na { color: var(--text-muted); }
+.plc-drawer-result.result-pass { color: var(--emerald); border-color: var(--emerald-border); }
+.plc-drawer-result.result-fail { color: var(--rose); border-color: var(--rose-border); }
+
+@media (max-width: 900px) {
+  .plc-stage-timeline { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .plc-drawer-body { grid-template-columns: 1fr; }
+  .plc-drawer-col:first-child { border-right: none; border-bottom: 1px solid var(--card-border); }
+}

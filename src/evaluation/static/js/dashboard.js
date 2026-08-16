@@ -936,4 +936,234 @@ function renderMarkdown(text) {
 }
 
 
+// ══════════════════════════════════════════════════════════════════════════
+// STEP 2: PIPELINE LIFECYCLE PANEL
+// KPI Bar + 10-Stage Clickable Timeline + Detail Drawer
+// All values from /api/orchestrator/jobs/<id>/pipeline-summary
+// Never fabricates: null/undefined → "N/A", not "0"
+// ══════════════════════════════════════════════════════════════════════════
 
+let plcCurrentJobId = null;
+let plcPollTimer = null;
+let plcSelectedStageId = null;
+let plcLastData = null;
+
+// ── Format helpers ───────────────────────────────────────────────────────
+
+function plcFmt(val) {
+  if (val === null || val === undefined) return 'N/A';
+  if (typeof val === 'boolean') return val ? 'YES' : 'NO';
+  if (typeof val === 'number') {
+    if (Number.isInteger(val)) return val.toLocaleString();
+    return val.toFixed(4);
+  }
+  return String(val);
+}
+
+function plcStatusClass(status) {
+  if (!status) return 'plc-badge-pending';
+  const s = status.toUpperCase();
+  if (s === 'PASSED')  return 'plc-badge-passed';
+  if (s === 'RUNNING') return 'plc-badge-running';
+  if (s === 'FAILED')  return 'plc-badge-failed';
+  if (s === 'SKIPPED') return 'plc-badge-skipped';
+  return 'plc-badge-pending';
+}
+
+function plcKpiClass(val) {
+  if (!val || val === 'N/A' || val === 'PENDING') return 'kpi-na';
+  const v = String(val).toUpperCase();
+  if (v === 'PASSED' || v === 'COMPLETED' || v === 'LOADED' || v === 'PACKAGED') return 'kpi-pass';
+  if (v === 'FAILED') return 'kpi-fail';
+  if (v === 'RUNNING' || v === 'TRAINING' || v === 'INGESTING') return 'kpi-run';
+  return '';
+}
+
+// ── KPI Bar renderer ────────────────────────────────────────────────────
+
+function renderKpiBar(kpi) {
+  const fields = [
+    { id: 'kpi-v-dataset', val: kpi.dataset || kpi.records != null ? (kpi.dataset || '—') + (kpi.records != null ? ' (' + kpi.records + ' rec)' : '') : null },
+    { id: 'kpi-v-pii',     val: kpi.pii_detected },
+    { id: 'kpi-v-mode',    val: kpi.training_mode },
+    { id: 'kpi-v-epsilon', val: kpi.dp_epsilon != null ? '≤ ' + plcFmt(kpi.dp_epsilon) : null },
+    { id: 'kpi-v-adapter', val: kpi.adapter_status },
+    { id: 'kpi-v-package', val: kpi.package_status },
+    { id: 'kpi-v-device',  val: kpi.device_status },
+    { id: 'kpi-v-deploy',  val: kpi.deployment_status },
+  ];
+  fields.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (!el) return;
+    const display = (f.val !== null && f.val !== undefined) ? String(f.val) : 'N/A';
+    el.textContent = display;
+    el.className = 'plc-kpi-val ' + plcKpiClass(display);
+  });
+}
+
+// ── Stage Timeline renderer ─────────────────────────────────────────────
+
+function renderStageTimeline(stages) {
+  const container = document.getElementById('plc-stage-timeline');
+  if (!container) return;
+  container.innerHTML = '';
+  stages.forEach((stage, idx) => {
+    const div = document.createElement('div');
+    div.className = 'plc-stage-item plc-status-' + (stage.status || 'pending').toLowerCase() +
+                    (plcSelectedStageId === stage.id ? ' plc-active-stage' : '');
+    div.dataset.stageId = stage.id;
+    div.innerHTML = `
+      <div class="plc-stage-num">STAGE ${String(idx + 1).padStart(2, '0')}</div>
+      <div class="plc-stage-name">${escHtml(stage.name)}</div>
+      <div class="plc-stage-badge ${plcStatusClass(stage.status)}">${stage.status || 'PENDING'}</div>
+    `;
+    div.addEventListener('click', () => openStageDrawer(stage, div));
+    container.appendChild(div);
+  });
+}
+
+// ── Stage Drawer ────────────────────────────────────────────────────────
+
+function openStageDrawer(stage, clickedEl) {
+  // Toggle off if same stage re-clicked
+  if (plcSelectedStageId === stage.id) {
+    closePipelineDrawer();
+    return;
+  }
+  plcSelectedStageId = stage.id;
+
+  // Highlight active tile
+  document.querySelectorAll('.plc-stage-item').forEach(el => el.classList.remove('plc-active-stage'));
+  if (clickedEl) clickedEl.classList.add('plc-active-stage');
+
+  // Populate drawer header
+  document.getElementById('plc-drawer-name').textContent = stage.name;
+  document.getElementById('plc-drawer-purpose').textContent = stage.purpose || '';
+
+  // Populate metrics grid
+  const metricsGrid = document.getElementById('plc-drawer-metrics');
+  metricsGrid.innerHTML = '';
+
+  const metrics = stage.metrics || {};
+  const entries = Object.entries(metrics);
+
+  if (entries.length === 0) {
+    metricsGrid.innerHTML = '<div class="info-row"><span class="info-label" style="color:var(--text-muted)">No metrics available yet</span></div>';
+  } else {
+    entries.forEach(([key, val]) => {
+      if (val === null || val === undefined) {
+        // Show NA, not 0
+        val = null;
+      }
+      const row = document.createElement('div');
+      row.className = 'info-row';
+      const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const display = val === null ? '<span style="color:var(--text-muted)">N/A</span>' :
+                      (typeof val === 'object' ? JSON.stringify(val) : escHtml(String(val)));
+      row.innerHTML = `<span class="info-label">${label}</span><span class="info-value mono">${display}</span>`;
+      metricsGrid.appendChild(row);
+    });
+  }
+
+  // Security significance
+  document.getElementById('plc-drawer-sig').textContent = stage.security_significance || '';
+
+  // Result
+  const resultEl = document.getElementById('plc-drawer-result');
+  const result = stage.result || 'N/A';
+  resultEl.textContent = result;
+  resultEl.className = 'plc-drawer-result' +
+    (result === 'N/A' ? ' result-na' :
+     (stage.status === 'PASSED' ? ' result-pass' :
+      (stage.status === 'FAILED' ? ' result-fail' : '')));
+
+  // PII stage: show "View Redaction Trace" button
+  const traceWrap = document.getElementById('plc-drawer-trace-btn-wrap');
+  if (traceWrap) {
+    traceWrap.style.display = stage.id === 'pii_audit' ? 'block' : 'none';
+  }
+
+  document.getElementById('plc-stage-drawer').style.display = 'block';
+}
+
+function closePipelineDrawer() {
+  plcSelectedStageId = null;
+  document.querySelectorAll('.plc-stage-item').forEach(el => el.classList.remove('plc-active-stage'));
+  const drawer = document.getElementById('plc-stage-drawer');
+  if (drawer) drawer.style.display = 'none';
+}
+
+// ── Main fetch + render ─────────────────────────────────────────────────
+
+async function fetchPipelineSummary(jobId) {
+  try {
+    const r = await fetch('/api/orchestrator/jobs/' + jobId + '/pipeline-summary');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.success) return;
+
+    plcLastData = d;
+
+    // Show panel
+    document.getElementById('pipeline-lifecycle-panel').style.display = 'block';
+
+    // Render KPI bar
+    if (d.kpi) renderKpiBar(d.kpi);
+
+    // Render stage timeline
+    if (d.stages) {
+      renderStageTimeline(d.stages);
+
+      // If a stage was already open, re-render the drawer with fresh data
+      if (plcSelectedStageId) {
+        const freshStage = d.stages.find(s => s.id === plcSelectedStageId);
+        if (freshStage) {
+          const activeEl = document.querySelector('.plc-stage-item.plc-active-stage');
+          openStageDrawer(freshStage, activeEl);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Pipeline summary fetch failed:', e);
+  }
+}
+
+// ── Integration: called after job starts & from SSE ────────────────────
+
+function startPipelinePolling(jobId) {
+  plcCurrentJobId = jobId;
+  plcSelectedStageId = null;
+  closePipelineDrawer();
+  if (plcPollTimer) clearInterval(plcPollTimer);
+  fetchPipelineSummary(jobId);
+  plcPollTimer = setInterval(() => {
+    if (plcCurrentJobId) fetchPipelineSummary(plcCurrentJobId);
+  }, 2500);
+}
+
+function stopPipelinePolling() {
+  if (plcPollTimer) { clearInterval(plcPollTimer); plcPollTimer = null; }
+}
+
+// ── Patch pollJobStatus to also drive the lifecycle panel ───────────────
+// We wrap the existing SSE handler non-destructively.
+const _origPollJobStatus = pollJobStatus;
+pollJobStatus = function() {
+  _origPollJobStatus.apply(this, arguments);
+  // After SSE starts, also start pipeline polling on the same job
+  if (activeJobId) startPipelinePolling(activeJobId);
+};
+
+// ── On page load: check for the most recent completed job and show panel ──
+(async function initPipelinePanel() {
+  try {
+    const r = await fetch('/api/orchestrator/jobs');
+    const d = await r.json();
+    const jobs = (d.jobs || []).filter(j => j.status === 'COMPLETED' || j.status === 'FAILED');
+    if (jobs.length > 0) {
+      const latest = jobs[0];
+      await fetchPipelineSummary(latest.job_id);
+      plcCurrentJobId = latest.job_id;
+    }
+  } catch (e) { /* silent — panel stays hidden */ }
+})();

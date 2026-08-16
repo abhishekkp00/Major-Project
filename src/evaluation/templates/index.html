@@ -122,8 +122,11 @@
                     <div class="card-header"><div class="card-title">Deployable Artifacts</div></div>
                     <div class="info-grid" id="artifacts-list-grid"></div>
                 </div>
-            </div>
+        </div><!-- end panel-left -->
 
+            <!-- ════════════════════════════════════════════════════════
+                 PIPELINE LIFECYCLE MONITOR — right panel (existing)
+            ════════════════════════════════════════════════════════ -->
             <div class="panel-right">
                 <div class="card">
                     <div class="card-header">
@@ -150,7 +153,96 @@
                     <div class="console" id="orchestrator-console-log">[System] Awaiting new secured job submission.</div>
                 </div>
             </div>
-        </div>
+        </div><!-- end tab-orchestrator col-row -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             PIPELINE LIFECYCLE PANEL — KPI + Stage Timeline (Step 2)
+             Rendered inside tab-orchestrator via JS; positioned below the cols.
+        ══════════════════════════════════════════════════════════════════ -->
+        <div id="pipeline-lifecycle-panel" style="display:none">
+
+            <!-- KPI Bar -->
+            <div class="plc-kpi-bar" id="plc-kpi-bar">
+                <div class="plc-kpi-card" id="kpi-dataset">
+                    <span class="plc-kpi-label">Dataset</span>
+                    <span class="plc-kpi-val" id="kpi-v-dataset">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-pii">
+                    <span class="plc-kpi-label">PII Detected</span>
+                    <span class="plc-kpi-val" id="kpi-v-pii">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-mode">
+                    <span class="plc-kpi-label">Training Mode</span>
+                    <span class="plc-kpi-val" id="kpi-v-mode">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-epsilon">
+                    <span class="plc-kpi-label">DP ε</span>
+                    <span class="plc-kpi-val" id="kpi-v-epsilon">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-adapter">
+                    <span class="plc-kpi-label">Adapter</span>
+                    <span class="plc-kpi-val" id="kpi-v-adapter">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-package">
+                    <span class="plc-kpi-label">Package</span>
+                    <span class="plc-kpi-val" id="kpi-v-package">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-device">
+                    <span class="plc-kpi-label">Device Auth</span>
+                    <span class="plc-kpi-val" id="kpi-v-device">—</span>
+                </div>
+                <div class="plc-kpi-card" id="kpi-deploy">
+                    <span class="plc-kpi-label">Deployment</span>
+                    <span class="plc-kpi-val" id="kpi-v-deploy">—</span>
+                </div>
+            </div>
+
+            <!-- 10-Stage Lifecycle Timeline -->
+            <div class="card" style="margin-top:1rem">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        SecureLoRA Lifecycle — 10-Stage Security Pipeline
+                    </div>
+                    <span style="font-size:.72rem;color:var(--text-muted)">Click a stage to inspect metrics &amp; security details</span>
+                </div>
+
+                <div class="plc-stage-timeline" id="plc-stage-timeline">
+                    <!-- Stages rendered by JS -->
+                </div>
+
+                <!-- Stage Detail Drawer -->
+                <div id="plc-stage-drawer" class="plc-stage-drawer" style="display:none">
+                    <div class="plc-drawer-header">
+                        <div>
+                            <div class="plc-drawer-name" id="plc-drawer-name">—</div>
+                            <div class="plc-drawer-purpose" id="plc-drawer-purpose">—</div>
+                        </div>
+                        <button class="plc-drawer-close" onclick="closePipelineDrawer()" title="Close">✕</button>
+                    </div>
+                    <div class="plc-drawer-body">
+                        <div class="plc-drawer-col">
+                            <div class="section-label" style="margin-bottom:.5rem">Metrics</div>
+                            <div class="info-grid" id="plc-drawer-metrics"></div>
+                        </div>
+                        <div class="plc-drawer-col">
+                            <div class="section-label" style="margin-bottom:.5rem">Security Significance</div>
+                            <div class="plc-drawer-sig" id="plc-drawer-sig"></div>
+                            <div class="section-label" style="margin:.75rem 0 .5rem">Result</div>
+                            <div class="plc-drawer-result" id="plc-drawer-result"></div>
+                            <div id="plc-drawer-trace-btn-wrap" style="display:none;margin-top:.75rem">
+                                <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem;font-size:.8rem"
+                                    onclick="switchTab(document.getElementById('tabTransparency'),'transparency')">
+                                    View Redaction Trace →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- end pipeline-lifecycle-panel -->
+
+        </div><!-- end tab-orchestrator -->
 
         <!-- ══════════════════════════════════════════════════════════
              TAB 2: TRANSPARENCY TRACE & INTERACTIVE SECURITY SIMULATOR

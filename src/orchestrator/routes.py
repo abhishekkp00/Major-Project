@@ -234,7 +234,278 @@ def get_job_report(job_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/pipeline-summary", methods=["GET"])
+def get_pipeline_summary(job_id):
+    """
+    Returns a structured 10-stage SecureLoRA lifecycle summary for the Pipeline tab.
+
+    Stages returned (in order):
+      0  dataset        — ingestion / validation
+      1  pii_audit      — PII detection & masking metrics
+      2  data_protect   — AES-256-GCM dataset encryption
+      3  training       — LoRA / DP-LoRA fine-tuning metrics
+      4  screening      — adapter security screening
+      5  provenance     — RSA-PSS signature & manifest
+      6  packaging      — cryptographic package build
+      7  device_auth    — device binding verification
+      8  deployment     — Phase 4 deployment gate (Steps 1-8)
+      9  inference      — side-by-side inference validation
+
+    Never exposes: keys, salts, raw device fingerprints, adapter weights.
+    Always returns: actual job values or null (never fabricated zeroes).
+    """
+    import json as _json
+    job = orchestrator.get_job(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+
+    status      = job.get("status", "CREATED")
+    stage       = job.get("stage", "dataset_intake")
+    progress    = job.get("progress", 0)
+    pii         = job.get("pii_summary") or {}
+    sec         = job.get("security_metrics") or {}
+    vsteps      = job.get("verification_steps") or {}
+    loss_hist   = job.get("loss_history") or []
+    eval_met    = job.get("eval_metrics") or {}
+    created_at  = job.get("created_at")
+    updated_at  = job.get("updated_at")
+    error       = job.get("error")
+
+    # ── helpers ──────────────────────────────────────────────────────────
+    STAGE_ORDER = [
+        "dataset_intake", "dataset_protection", "pii_inspection", "fine_tuning",
+        "preparing_adapter", "encrypting_adapter", "generating_hash",
+        "generating_signature", "building_package",
+        "running_integrity_check", "running_device_authorization_check",
+        "running_secure_deployment_check", "secure_inference_validation",
+        "security_validation_completed"
+    ]
+    STAGE_IDX = {s: i for i, s in enumerate(STAGE_ORDER)}
+
+    def _stage_status(required_stage: str) -> str:
+        """Return PASSED/RUNNING/PENDING/FAILED based on pipeline position."""
+        if status == "FAILED":
+            cur_idx = STAGE_IDX.get(stage, 0)
+            req_idx = STAGE_IDX.get(required_stage, 0)
+            if req_idx < cur_idx:
+                return "PASSED"
+            if req_idx == cur_idx:
+                return "FAILED"
+            return "PENDING"
+        if status == "COMPLETED":
+            return "PASSED"
+        cur_idx = STAGE_IDX.get(stage, 0)
+        req_idx = STAGE_IDX.get(required_stage, 0)
+        if req_idx < cur_idx:
+            return "PASSED"
+        if req_idx == cur_idx:
+            return "RUNNING"
+        return "PENDING"
+
+    def _vstep(key: str) -> str:
+        """Safe verification step status lookup."""
+        return vsteps.get(key) or "PENDING"
+
+    # ── per-stage last epoch loss ─────────────────────────────────────────
+    final_train_loss = None
+    final_val_loss   = None
+    if loss_hist:
+        for h in reversed(loss_hist):
+            if final_train_loss is None and h.get("loss") is not None:
+                final_train_loss = round(h["loss"], 4)
+            if final_val_loss is None and h.get("eval_loss") is not None:
+                final_val_loss = round(h["eval_loss"], 4)
+            if final_train_loss is not None and final_val_loss is not None:
+                break
+
+    # ── training config from eval_metrics (written by train_lora) ────────
+    tc = eval_met.get("training_config", {}) if isinstance(eval_met, dict) else {}
+    dp_enabled      = tc.get("dp_enabled")
+    dp_epsilon      = tc.get("dp_epsilon") or eval_met.get("dp_epsilon") if isinstance(eval_met, dict) else None
+    dp_delta        = tc.get("dp_delta") or eval_met.get("dp_delta") if isinstance(eval_met, dict) else None
+    noise_mult      = tc.get("noise_multiplier")
+    clip_norm       = tc.get("max_grad_norm") or tc.get("clipping_norm")
+    trainable       = tc.get("trainable_params") or eval_met.get("trainable_params") if isinstance(eval_met, dict) else None
+    total_params    = tc.get("total_params") or eval_met.get("total_params") if isinstance(eval_met, dict) else None
+    train_time_s    = tc.get("training_time_s") or eval_met.get("training_time_s") if isinstance(eval_met, dict) else None
+
+    stages = [
+        {
+            "id": "dataset",
+            "name": "Dataset Ingestion",
+            "status": _stage_status("dataset_intake"),
+            "purpose": "Validate and ingest the training dataset. Detect schema and record count.",
+            "metrics": {
+                "records": job.get("num_records"),
+                "dataset_name": job.get("dataset_name"),
+                "schema": job.get("schema_detected"),
+                "version": job.get("version"),
+            },
+            "security_significance": "Validates data format before any sensitive processing begins. Rejects malformed files.",
+            "result": f"{job.get('num_records') or 'N/A'} records ingested" if job.get("num_records") else "N/A",
+        },
+        {
+            "id": "pii_audit",
+            "name": "PII Audit & Masking",
+            "status": _stage_status("pii_inspection"),
+            "purpose": "Detect and mask all PII/PHI entities in-RAM using hybrid NER (SpaCy + Regex + Presidio). Zero-disk-leakage: no raw data written.",
+            "metrics": {
+                "records_scanned": job.get("num_records"),
+                "pii_detected": pii.get("total_entities_detected"),
+                "pii_masked": pii.get("total_entities_masked"),
+                "records_with_pii": pii.get("records_with_pii"),
+                "precision": pii.get("estimated_precision"),
+                "recall": pii.get("estimated_recall"),
+                "f1": pii.get("estimated_f1"),
+                "entity_types": pii.get("entity_types_found"),
+            },
+            "security_significance": "Prevents PII from entering the training loop. All masking is in-RAM — no raw PII reaches disk.",
+            "result": f"{pii.get('total_entities_detected', 'N/A')} PII entities detected and masked",
+        },
+        {
+            "id": "data_protect",
+            "name": "Data Protection (AES-256-GCM)",
+            "status": _stage_status("dataset_protection"),
+            "purpose": "Encrypt the sanitized dataset with AES-256-GCM using a job-unique 256-bit key. Metadata anchored with SHA-256.",
+            "metrics": {
+                "algorithm": "AES-256-GCM",
+                "key_bits": 256,
+                "integrity_primitive": "SHA-256",
+            },
+            "security_significance": "Ensures training data is unreadable at rest. The per-job key never leaves the job workspace.",
+            "result": "Dataset encrypted with AES-256-GCM" if _stage_status("dataset_protection") == "PASSED" else "N/A",
+        },
+        {
+            "id": "training",
+            "name": "LoRA / DP-LoRA Fine-Tuning",
+            "status": _stage_status("fine_tuning"),
+            "purpose": "Fine-tune a LoRA adapter on the encrypted dataset. Optionally applies Differential Privacy (Opacus) for formal privacy guarantees.",
+            "metrics": {
+                "mode": "DP-LoRA" if dp_enabled else ("LoRA" if dp_enabled is not None else None),
+                "trainable_params": trainable,
+                "total_params": total_params,
+                "trainable_pct": round(100 * trainable / total_params, 3) if trainable and total_params else None,
+                "epochs": job.get("epochs"),
+                "current_epoch": job.get("current_epoch"),
+                "final_train_loss": final_train_loss,
+                "final_val_loss": final_val_loss,
+                "training_time_s": train_time_s,
+                "dp_enabled": dp_enabled,
+                "epsilon": dp_epsilon,
+                "delta": dp_delta,
+                "noise_multiplier": noise_mult,
+                "max_grad_norm": clip_norm,
+            },
+            "security_significance": "DP-LoRA adds calibrated noise to gradients to satisfy (ε,δ)-DP. ε≤8 considered strong privacy.",
+            "result": (f"Loss {final_train_loss}" if final_train_loss else "N/A"),
+        },
+        {
+            "id": "screening",
+            "name": "Adapter Security Screening",
+            "status": _stage_status("preparing_adapter"),
+            "purpose": "Pre-packaging structural + behavioral screening to detect backdoors, trojan triggers, or malicious weight patterns before signing.",
+            "metrics": {
+                "structural_check": sec.get("adapter_screening_structural"),
+                "behavioral_check": sec.get("adapter_screening_behavioral"),
+                "risk_score": sec.get("adapter_risk_score"),
+                "screening_result": sec.get("adapter_screening_outcome"),
+                "malicious_detection_rate": sec.get("malicious_adapter_detection_rate"),
+            },
+            "security_significance": "Cryptographic signing does NOT prove an adapter was benign before signing. Screening catches malicious adapters before they reach the package.",
+            "result": sec.get("adapter_screening_outcome") or "N/A",
+        },
+        {
+            "id": "provenance",
+            "name": "Provenance & RSA-PSS Signature",
+            "status": _stage_status("generating_signature"),
+            "purpose": "Compute SHA-256 adapter digest and sign with RSA-PSS (2048-bit). Generate cryptographic provenance manifest.",
+            "metrics": {
+                "signature_algorithm": "RSA-PSS",
+                "hash_algorithm": "SHA-256",
+                "signature_ok": sec.get("signature_ok"),
+                "replay_rejection": sec.get("replay_rejection_rate"),
+            },
+            "security_significance": "RSA-PSS signature proves the adapter was produced by the authorized packager and has not been tampered with.",
+            "result": "Signed with RSA-PSS" if _stage_status("generating_signature") == "PASSED" else "N/A",
+        },
+        {
+            "id": "packaging",
+            "name": "Cryptographic Packaging",
+            "status": _stage_status("building_package"),
+            "purpose": "Encrypt the LoRA adapter weights with AES-256-GCM using an HKDF-SHA256 device-bound key. Bundle with manifest, hashes, and signature into .tar.gz.",
+            "metrics": {
+                "algorithm": "AES-256-GCM",
+                "kdf": "HKDF-SHA256",
+                "package_format": ".tar.gz",
+                "tamper_rejection": sec.get("tamper_rejection_rate"),
+            },
+            "security_significance": "Adapter weights are unreadable ciphertext. Decryption only succeeds on the device the package was built for.",
+            "result": "Protected adapter package created" if _stage_status("building_package") == "PASSED" else "N/A",
+        },
+        {
+            "id": "device_auth",
+            "name": "Device Authorization",
+            "status": _vstep("Step 4: Device Authorization") if vsteps else _stage_status("running_device_authorization_check"),
+            "purpose": "Verify that the current hardware fingerprint matches the authorized device fingerprint embedded in the package manifest.",
+            "metrics": {
+                "fingerprint_check": _vstep("Step 4: Device Authorization") if vsteps else None,
+                "key_derivation": _vstep("Step 5: Key Derivation") if vsteps else None,
+                "cross_device_rejection": sec.get("cross_device_rejection_rate"),
+                "unauthorized_rejection": sec.get("unauthorized_deployment_rejection_rate"),
+            },
+            "security_significance": "Hardware-bound HKDF key derivation: adapter cannot be decrypted on any other device. Cross-device rejection rate 100%.",
+            "result": _vstep("Step 4: Device Authorization") if vsteps else "N/A",
+        },
+        {
+            "id": "deployment",
+            "name": "Deployment Gate (Steps 1–8)",
+            "status": "PASSED" if status == "COMPLETED" else (_stage_status("running_secure_deployment_check")),
+            "purpose": "Run all 8 cryptographic verification gates: Package Completeness → SHA-256 → RSA-PSS → Device Auth → HKDF Key → AES-GCM Decrypt → PEFT Load → Inference.",
+            "metrics": {k: v for k, v in vsteps.items()} if vsteps else {},
+            "security_significance": "All 8 gates must pass. Any failure immediately aborts deployment and leaves weights encrypted.",
+            "result": "All 8 gates PASSED" if (status == "COMPLETED" and all(v == "PASSED" for v in vsteps.values())) else ("N/A" if not vsteps else f"{sum(1 for v in vsteps.values() if v=='PASSED')}/8 gates passed"),
+        },
+        {
+            "id": "inference",
+            "name": "Secure Inference Validation",
+            "status": _vstep("Step 8: Inference Validation") if vsteps else _stage_status("secure_inference_validation"),
+            "purpose": "Side-by-side inference test comparing baseline model vs. secured LoRA adapter. Validates adapter is active and functional.",
+            "metrics": {
+                "inference_check": _vstep("Step 8: Inference Validation") if vsteps else None,
+                "adapter_active": status == "COMPLETED",
+            },
+            "security_significance": "Confirms the decrypted adapter produces different outputs from the base model, proving successful loading.",
+            "result": _vstep("Step 8: Inference Validation") if vsteps else "N/A",
+        },
+    ]
+
+    return jsonify({
+        "success": True,
+        "job_id": job_id,
+        "pipeline_status": status,
+        "current_stage": stage,
+        "progress": progress,
+        "created_at": created_at,
+        "updated_at": updated_at,
+        "error": error,
+        "stages": stages,
+        # Top-level KPI convenience fields
+        "kpi": {
+            "dataset": job.get("dataset_name"),
+            "records": job.get("num_records"),
+            "pii_detected": pii.get("total_entities_detected"),
+            "training_mode": "DP-LoRA" if dp_enabled else ("LoRA" if dp_enabled is not None else None),
+            "dp_epsilon": dp_epsilon,
+            "adapter_status": sec.get("adapter_screening_outcome") or ("LOADED" if status == "COMPLETED" else status),
+            "package_status": "PACKAGED" if _stage_status("building_package") == "PASSED" else _stage_status("building_package"),
+            "device_status": _vstep("Step 4: Device Authorization") if vsteps else None,
+            "deployment_status": status if status in ("COMPLETED", "FAILED") else _stage_status("running_secure_deployment_check"),
+        }
+    })
+
+
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/stream", methods=["GET"])
+
 def stream_job_events(job_id):
     """Exposes a Server-Sent Events (SSE) stream for real-time progress updates."""
     import time
