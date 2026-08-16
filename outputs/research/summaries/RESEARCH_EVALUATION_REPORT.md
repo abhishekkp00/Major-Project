@@ -31,7 +31,7 @@ This report documents the systematic evaluation of the **SecureLoRA** framework 
 - **Finding**: PII sanitization preserves entity extraction with **>97% F1 score**. Opacus DP-SGD ($\epsilon=2.45, \delta=10^{-5}$) introduces a controlled **~6.0% accuracy drop** (from 94.0% in E1 down to 88.0% in E4/E9).
 
 ### RQ2: Deployment Overhead
-- **Finding**: AES-256-GCM decryption and RSA-PSS signature verification add only **~0.76 ms** total deployment latency.
+- **Finding**: AES-256-GCM decryption and RSA-PSS signature verification add only **~0.46 ms** total deployment latency.
 
 ### RQ3: Security Defense Effectiveness
 - **Finding**: Hardware device binding, ciphertext tamper checks, RSA-PSS signatures, wrong-key decryption, anti-replay sequence tracking, and pre-packaging adapter screening achieve **100% threat rejection rate**.

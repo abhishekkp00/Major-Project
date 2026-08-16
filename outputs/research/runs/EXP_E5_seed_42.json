@@ -32,14 +32,14 @@
     "unauthorized_deployment_rejection_rate": 0.0
   },
   "overhead": {
-    "training_time_s": 1.899,
-    "encryption_time_ms": 9.563,
-    "decryption_time_ms": 1.048,
+    "training_time_s": 9.299,
+    "encryption_time_ms": 0.981,
+    "decryption_time_ms": 1.005,
     "signing_time_ms": 0.0,
     "verification_time_ms": 0.0,
-    "packaging_time_ms": 9.563,
-    "deployment_latency_ms": 1.048,
-    "deployment_time_ms": 1.048,
+    "packaging_time_ms": 0.981,
+    "deployment_latency_ms": 1.005,
+    "deployment_time_ms": 1.005,
     "inference_latency_ms": 12.353,
     "memory_usage_mb": 125.0,
     "peak_memory_mb": 125.0,
@@ -47,9 +47,9 @@
     "package_size_bytes": 524560
   },
   "metadata": {
-    "experiment_id": "EXP_E5_seed_42_1786872258",
-    "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-    "timestamp_utc": "2026-08-16T09:24:18.746497+00:00",
+    "experiment_id": "EXP_E5_seed_42_1786873758",
+    "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+    "timestamp_utc": "2026-08-16T09:49:18.023037+00:00",
     "seed": 42,
     "model_identifier": "JackFram/llama-68m",
     "dataset_identifier": "sample_pii_data.jsonl",

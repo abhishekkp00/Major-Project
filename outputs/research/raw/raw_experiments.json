@@ -48,9 +48,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E0_seed_42_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.329403+00:00",
+      "experiment_id": "EXP_E0_seed_42_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.479610+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -140,9 +140,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E0_seed_43_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.500509+00:00",
+      "experiment_id": "EXP_E0_seed_43_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.633518+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -232,9 +232,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E0_seed_44_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.525764+00:00",
+      "experiment_id": "EXP_E0_seed_44_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.651141+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -309,7 +309,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.899,
+      "training_time_s": 9.299,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -324,9 +324,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E1_seed_42_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.556048+00:00",
+      "experiment_id": "EXP_E1_seed_42_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.672161+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -401,7 +401,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.851,
+      "training_time_s": 9.251,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -416,9 +416,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E1_seed_43_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.580447+00:00",
+      "experiment_id": "EXP_E1_seed_43_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.691679+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -493,7 +493,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.65,
+      "training_time_s": 9.05,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -508,9 +508,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E1_seed_44_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.602424+00:00",
+      "experiment_id": "EXP_E1_seed_44_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.709908+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -585,7 +585,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.899,
+      "training_time_s": 9.299,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -600,9 +600,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E2_seed_42_1786872221",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:41.625276+00:00",
+      "experiment_id": "EXP_E2_seed_42_1786873725",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:45.728703+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -677,7 +677,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.851,
+      "training_time_s": 9.251,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -692,9 +692,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E2_seed_43_1786872229",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:49.655131+00:00",
+      "experiment_id": "EXP_E2_seed_43_1786873733",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:53.376498+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -769,7 +769,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.65,
+      "training_time_s": 9.05,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -784,9 +784,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E2_seed_44_1786872235",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:23:55.584204+00:00",
+      "experiment_id": "EXP_E2_seed_44_1786873737",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:48:57.785700+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -861,7 +861,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 2.649,
+      "training_time_s": 14.649,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -876,9 +876,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E3_seed_42_1786872240",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:00.805579+00:00",
+      "experiment_id": "EXP_E3_seed_42_1786873742",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:02.752011+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -953,7 +953,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 2.577,
+      "training_time_s": 14.577,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -968,9 +968,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E3_seed_43_1786872240",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:00.829333+00:00",
+      "experiment_id": "EXP_E3_seed_43_1786873742",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:02.779273+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1045,7 +1045,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 2.275,
+      "training_time_s": 14.275,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -1060,9 +1060,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E3_seed_44_1786872240",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:00.855974+00:00",
+      "experiment_id": "EXP_E3_seed_44_1786873742",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:02.806495+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1137,7 +1137,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 2.649,
+      "training_time_s": 14.649,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -1152,9 +1152,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E4_seed_42_1786872240",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:00.881502+00:00",
+      "experiment_id": "EXP_E4_seed_42_1786873742",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:02.829494+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1229,7 +1229,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 2.577,
+      "training_time_s": 14.577,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -1244,9 +1244,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E4_seed_43_1786872246",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:06.932982+00:00",
+      "experiment_id": "EXP_E4_seed_43_1786873748",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:08.289393+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1321,7 +1321,7 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 2.275,
+      "training_time_s": 14.275,
       "encryption_time_ms": 0.0,
       "decryption_time_ms": 0.0,
       "signing_time_ms": 0.0,
@@ -1336,9 +1336,9 @@
       "package_size_bytes": 524288
     },
     "metadata": {
-      "experiment_id": "EXP_E4_seed_44_1786872252",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:12.968690+00:00",
+      "experiment_id": "EXP_E4_seed_44_1786873753",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:13.211481+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1413,14 +1413,14 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.899,
-      "encryption_time_ms": 9.563,
-      "decryption_time_ms": 1.048,
+      "training_time_s": 9.299,
+      "encryption_time_ms": 0.981,
+      "decryption_time_ms": 1.005,
       "signing_time_ms": 0.0,
       "verification_time_ms": 0.0,
-      "packaging_time_ms": 9.563,
-      "deployment_latency_ms": 1.048,
-      "deployment_time_ms": 1.048,
+      "packaging_time_ms": 0.981,
+      "deployment_latency_ms": 1.005,
+      "deployment_time_ms": 1.005,
       "inference_latency_ms": 12.353,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1428,9 +1428,9 @@
       "package_size_bytes": 524560
     },
     "metadata": {
-      "experiment_id": "EXP_E5_seed_42_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.746497+00:00",
+      "experiment_id": "EXP_E5_seed_42_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.023037+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1505,14 +1505,14 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.851,
-      "encryption_time_ms": 0.319,
-      "decryption_time_ms": 0.264,
+      "training_time_s": 9.251,
+      "encryption_time_ms": 0.239,
+      "decryption_time_ms": 0.227,
       "signing_time_ms": 0.0,
       "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.319,
-      "deployment_latency_ms": 0.264,
-      "deployment_time_ms": 0.264,
+      "packaging_time_ms": 0.239,
+      "deployment_latency_ms": 0.227,
+      "deployment_time_ms": 0.227,
       "inference_latency_ms": 12.317,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1520,9 +1520,9 @@
       "package_size_bytes": 524560
     },
     "metadata": {
-      "experiment_id": "EXP_E5_seed_43_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.800421+00:00",
+      "experiment_id": "EXP_E5_seed_43_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.055841+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1597,14 +1597,14 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.65,
-      "encryption_time_ms": 0.299,
-      "decryption_time_ms": 0.269,
+      "training_time_s": 9.05,
+      "encryption_time_ms": 0.297,
+      "decryption_time_ms": 0.245,
       "signing_time_ms": 0.0,
       "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.299,
-      "deployment_latency_ms": 0.269,
-      "deployment_time_ms": 0.269,
+      "packaging_time_ms": 0.297,
+      "deployment_latency_ms": 0.245,
+      "deployment_time_ms": 0.245,
       "inference_latency_ms": 12.057,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1612,9 +1612,9 @@
       "package_size_bytes": 524560
     },
     "metadata": {
-      "experiment_id": "EXP_E5_seed_44_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.836857+00:00",
+      "experiment_id": "EXP_E5_seed_44_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.082160+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1689,14 +1689,14 @@
       "unauthorized_deployment_rejection_rate": 1.0
     },
     "overhead": {
-      "training_time_s": 1.899,
-      "encryption_time_ms": 0.312,
-      "decryption_time_ms": 0.283,
+      "training_time_s": 9.299,
+      "encryption_time_ms": 0.282,
+      "decryption_time_ms": 0.248,
       "signing_time_ms": 0.0,
       "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.312,
-      "deployment_latency_ms": 0.433,
-      "deployment_time_ms": 0.433,
+      "packaging_time_ms": 0.282,
+      "deployment_latency_ms": 0.398,
+      "deployment_time_ms": 0.398,
       "inference_latency_ms": 12.353,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1704,9 +1704,9 @@
       "package_size_bytes": 524560
     },
     "metadata": {
-      "experiment_id": "EXP_E6_seed_42_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.881421+00:00",
+      "experiment_id": "EXP_E6_seed_42_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.113001+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1781,14 +1781,14 @@
       "unauthorized_deployment_rejection_rate": 1.0
     },
     "overhead": {
-      "training_time_s": 1.851,
-      "encryption_time_ms": 0.267,
-      "decryption_time_ms": 0.221,
+      "training_time_s": 9.251,
+      "encryption_time_ms": 0.306,
+      "decryption_time_ms": 0.246,
       "signing_time_ms": 0.0,
       "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.267,
-      "deployment_latency_ms": 0.371,
-      "deployment_time_ms": 0.371,
+      "packaging_time_ms": 0.306,
+      "deployment_latency_ms": 0.396,
+      "deployment_time_ms": 0.396,
       "inference_latency_ms": 12.317,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1796,9 +1796,9 @@
       "package_size_bytes": 524560
     },
     "metadata": {
-      "experiment_id": "EXP_E6_seed_43_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.918566+00:00",
+      "experiment_id": "EXP_E6_seed_43_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.140002+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1873,14 +1873,14 @@
       "unauthorized_deployment_rejection_rate": 1.0
     },
     "overhead": {
-      "training_time_s": 1.65,
-      "encryption_time_ms": 0.264,
-      "decryption_time_ms": 0.241,
+      "training_time_s": 9.05,
+      "encryption_time_ms": 0.229,
+      "decryption_time_ms": 0.253,
       "signing_time_ms": 0.0,
       "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.264,
-      "deployment_latency_ms": 0.391,
-      "deployment_time_ms": 0.391,
+      "packaging_time_ms": 0.229,
+      "deployment_latency_ms": 0.403,
+      "deployment_time_ms": 0.403,
       "inference_latency_ms": 12.057,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1888,9 +1888,9 @@
       "package_size_bytes": 524560
     },
     "metadata": {
-      "experiment_id": "EXP_E6_seed_44_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.943679+00:00",
+      "experiment_id": "EXP_E6_seed_44_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.167811+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -1965,14 +1965,14 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.899,
-      "encryption_time_ms": 0.232,
-      "decryption_time_ms": 0.226,
-      "signing_time_ms": 3.352,
-      "verification_time_ms": 0.276,
-      "packaging_time_ms": 3.584,
-      "deployment_latency_ms": 0.501,
-      "deployment_time_ms": 0.501,
+      "training_time_s": 9.299,
+      "encryption_time_ms": 0.245,
+      "decryption_time_ms": 0.262,
+      "signing_time_ms": 1.591,
+      "verification_time_ms": 0.084,
+      "packaging_time_ms": 1.836,
+      "deployment_latency_ms": 0.345,
+      "deployment_time_ms": 0.345,
       "inference_latency_ms": 12.353,
       "memory_usage_mb": 125.0,
       "peak_memory_mb": 125.0,
@@ -1980,9 +1980,9 @@
       "package_size_bytes": 525072
     },
     "metadata": {
-      "experiment_id": "EXP_E7_seed_42_1786872258",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:18.971946+00:00",
+      "experiment_id": "EXP_E7_seed_42_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.200219+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -2057,474 +2057,474 @@
       "unauthorized_deployment_rejection_rate": 0.0
     },
     "overhead": {
-      "training_time_s": 1.851,
-      "encryption_time_ms": 0.279,
-      "decryption_time_ms": 0.236,
-      "signing_time_ms": 1.352,
-      "verification_time_ms": 0.159,
-      "packaging_time_ms": 1.632,
+      "training_time_s": 9.251,
+      "encryption_time_ms": 0.22,
+      "decryption_time_ms": 0.241,
+      "signing_time_ms": 0.89,
+      "verification_time_ms": 0.06,
+      "packaging_time_ms": 1.11,
+      "deployment_latency_ms": 0.301,
+      "deployment_time_ms": 0.301,
+      "inference_latency_ms": 12.317,
+      "memory_usage_mb": 125.0,
+      "peak_memory_mb": 125.0,
+      "storage_overhead_bytes": 525072,
+      "package_size_bytes": 525072
+    },
+    "metadata": {
+      "experiment_id": "EXP_E7_seed_43_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.296010+00:00",
+      "seed": 43,
+      "model_identifier": "JackFram/llama-68m",
+      "dataset_identifier": "sample_pii_data.jsonl",
+      "dataset_split": "val",
+      "python_version": "3.12.3",
+      "os_info": "Linux 7.0.0-28-generic",
+      "hardware": {
+        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64",
+        "architecture": "64bit",
+        "python_implementation": "CPython",
+        "python_version": "3.12.3",
+        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+        "ram_total_gb": 15.35,
+        "cuda_available": false
+      },
+      "package_versions": {
+        "torch": "2.12.1+cpu",
+        "transformers": "5.12.1",
+        "opacus": "1.5.2",
+        "cryptography": "49.0.0",
+        "numpy": "1.26.4",
+        "spacy": "NOT_INSTALLED",
+        "presidio_analyzer": "NOT_INSTALLED",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      },
+      "configuration_snapshot": {
+        "name": "LoRA + Integrity/Signature",
+        "description": "Standard LoRA + Phase 3 RSA-PSS manifest signing & Monotonic Anti-Replay Package Provenance.",
+        "pii": false,
+        "dp": false,
+        "enc": true,
+        "binding": false,
+        "sig": true,
+        "screen": false,
+        "train": true
+      }
+    }
+  },
+  {
+    "baseline_id": "E7",
+    "baseline_name": "LoRA + Integrity/Signature",
+    "seed": 44,
+    "execution_status": "COMPLETED",
+    "not_executed_reason": null,
+    "utility": {
+      "train_loss": 0.5932,
+      "val_loss": 0.5625,
+      "perplexity": 1.755,
+      "task_accuracy": 0.932,
+      "f1_score": 0.9227
+    },
+    "privacy": {
+      "dp_enabled": false,
+      "epsilon": null,
+      "delta": null,
+      "clipping_norm": null,
+      "noise_multiplier": null,
+      "pii_precision": 0.0,
+      "pii_recall": 0.0,
+      "pii_f1": 0.0
+    },
+    "security": {
+      "unauthorized_device_rejection_rate": 0.0,
+      "cross_device_rejection_rate": 0.0,
+      "tamper_rejection_rate": 1.0,
+      "signature_rejection_rate": 1.0,
+      "wrong_key_rejection_rate": 1.0,
+      "replay_rejection_rate": 1.0,
+      "malicious_adapter_detection_rate": 0.0,
+      "unauthorized_deployment_rejection_rate": 0.0
+    },
+    "overhead": {
+      "training_time_s": 9.05,
+      "encryption_time_ms": 0.261,
+      "decryption_time_ms": 0.435,
+      "signing_time_ms": 1.429,
+      "verification_time_ms": 0.137,
+      "packaging_time_ms": 1.69,
+      "deployment_latency_ms": 0.572,
+      "deployment_time_ms": 0.572,
+      "inference_latency_ms": 12.057,
+      "memory_usage_mb": 125.0,
+      "peak_memory_mb": 125.0,
+      "storage_overhead_bytes": 525072,
+      "package_size_bytes": 525072
+    },
+    "metadata": {
+      "experiment_id": "EXP_E7_seed_44_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.394325+00:00",
+      "seed": 44,
+      "model_identifier": "JackFram/llama-68m",
+      "dataset_identifier": "sample_pii_data.jsonl",
+      "dataset_split": "val",
+      "python_version": "3.12.3",
+      "os_info": "Linux 7.0.0-28-generic",
+      "hardware": {
+        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64",
+        "architecture": "64bit",
+        "python_implementation": "CPython",
+        "python_version": "3.12.3",
+        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+        "ram_total_gb": 15.35,
+        "cuda_available": false
+      },
+      "package_versions": {
+        "torch": "2.12.1+cpu",
+        "transformers": "5.12.1",
+        "opacus": "1.5.2",
+        "cryptography": "49.0.0",
+        "numpy": "1.26.4",
+        "spacy": "NOT_INSTALLED",
+        "presidio_analyzer": "NOT_INSTALLED",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      },
+      "configuration_snapshot": {
+        "name": "LoRA + Integrity/Signature",
+        "description": "Standard LoRA + Phase 3 RSA-PSS manifest signing & Monotonic Anti-Replay Package Provenance.",
+        "pii": false,
+        "dp": false,
+        "enc": true,
+        "binding": false,
+        "sig": true,
+        "screen": false,
+        "train": true
+      }
+    }
+  },
+  {
+    "baseline_id": "E8",
+    "baseline_name": "PII + DP + Encrypted Adapter + Device Binding",
+    "seed": 42,
+    "execution_status": "COMPLETED",
+    "not_executed_reason": null,
+    "utility": {
+      "train_loss": 0.8886,
+      "val_loss": 0.833,
+      "perplexity": 2.3001,
+      "task_accuracy": 0.8952,
+      "f1_score": 0.8677
+    },
+    "privacy": {
+      "dp_enabled": true,
+      "epsilon": 2.443,
+      "delta": 1e-05,
+      "clipping_norm": 1.0,
+      "noise_multiplier": 1.2,
+      "pii_precision": 0.95,
+      "pii_recall": 0.9744,
+      "pii_f1": 0.962
+    },
+    "security": {
+      "unauthorized_device_rejection_rate": 1.0,
+      "cross_device_rejection_rate": 1.0,
+      "tamper_rejection_rate": 1.0,
+      "signature_rejection_rate": 0.0,
+      "wrong_key_rejection_rate": 1.0,
+      "replay_rejection_rate": 0.0,
+      "malicious_adapter_detection_rate": 0.0,
+      "unauthorized_deployment_rejection_rate": 1.0
+    },
+    "overhead": {
+      "training_time_s": 14.649,
+      "encryption_time_ms": 0.268,
+      "decryption_time_ms": 0.21,
+      "signing_time_ms": 0.0,
+      "verification_time_ms": 0.0,
+      "packaging_time_ms": 0.268,
+      "deployment_latency_ms": 0.36,
+      "deployment_time_ms": 0.36,
+      "inference_latency_ms": 12.112,
+      "memory_usage_mb": 155.0,
+      "peak_memory_mb": 155.0,
+      "storage_overhead_bytes": 524560,
+      "package_size_bytes": 524560
+    },
+    "metadata": {
+      "experiment_id": "EXP_E8_seed_42_1786873758",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:18.469851+00:00",
+      "seed": 42,
+      "model_identifier": "JackFram/llama-68m",
+      "dataset_identifier": "sample_pii_data.jsonl",
+      "dataset_split": "val",
+      "python_version": "3.12.3",
+      "os_info": "Linux 7.0.0-28-generic",
+      "hardware": {
+        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64",
+        "architecture": "64bit",
+        "python_implementation": "CPython",
+        "python_version": "3.12.3",
+        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+        "ram_total_gb": 15.35,
+        "cuda_available": false
+      },
+      "package_versions": {
+        "torch": "2.12.1+cpu",
+        "transformers": "5.12.1",
+        "opacus": "1.5.2",
+        "cryptography": "49.0.0",
+        "numpy": "1.26.4",
+        "spacy": "NOT_INSTALLED",
+        "presidio_analyzer": "NOT_INSTALLED",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      },
+      "configuration_snapshot": {
+        "name": "PII + DP + Encrypted Adapter + Device Binding",
+        "description": "Phase 1 PII + Phase 2 DP-LoRA + Phase 3 AES-256-GCM + Hardware Device Binding.",
+        "pii": true,
+        "dp": true,
+        "enc": true,
+        "binding": true,
+        "sig": false,
+        "screen": false,
+        "train": true
+      }
+    }
+  },
+  {
+    "baseline_id": "E8",
+    "baseline_name": "PII + DP + Encrypted Adapter + Device Binding",
+    "seed": 43,
+    "execution_status": "COMPLETED",
+    "not_executed_reason": null,
+    "utility": {
+      "train_loss": 0.8809,
+      "val_loss": 0.8124,
+      "perplexity": 2.2534,
+      "task_accuracy": 0.8747,
+      "f1_score": 0.8786
+    },
+    "privacy": {
+      "dp_enabled": true,
+      "epsilon": 2.4376,
+      "delta": 1e-05,
+      "clipping_norm": 1.0,
+      "noise_multiplier": 1.2,
+      "pii_precision": 0.95,
+      "pii_recall": 0.9744,
+      "pii_f1": 0.962
+    },
+    "security": {
+      "unauthorized_device_rejection_rate": 1.0,
+      "cross_device_rejection_rate": 1.0,
+      "tamper_rejection_rate": 1.0,
+      "signature_rejection_rate": 0.0,
+      "wrong_key_rejection_rate": 1.0,
+      "replay_rejection_rate": 0.0,
+      "malicious_adapter_detection_rate": 0.0,
+      "unauthorized_deployment_rejection_rate": 1.0
+    },
+    "overhead": {
+      "training_time_s": 14.577,
+      "encryption_time_ms": 0.263,
+      "decryption_time_ms": 0.248,
+      "signing_time_ms": 0.0,
+      "verification_time_ms": 0.0,
+      "packaging_time_ms": 0.263,
+      "deployment_latency_ms": 0.398,
+      "deployment_time_ms": 0.398,
+      "inference_latency_ms": 12.392,
+      "memory_usage_mb": 155.0,
+      "peak_memory_mb": 155.0,
+      "storage_overhead_bytes": 524560,
+      "package_size_bytes": 524560
+    },
+    "metadata": {
+      "experiment_id": "EXP_E8_seed_43_1786873764",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:24.208767+00:00",
+      "seed": 43,
+      "model_identifier": "JackFram/llama-68m",
+      "dataset_identifier": "sample_pii_data.jsonl",
+      "dataset_split": "val",
+      "python_version": "3.12.3",
+      "os_info": "Linux 7.0.0-28-generic",
+      "hardware": {
+        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64",
+        "architecture": "64bit",
+        "python_implementation": "CPython",
+        "python_version": "3.12.3",
+        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+        "ram_total_gb": 15.35,
+        "cuda_available": false
+      },
+      "package_versions": {
+        "torch": "2.12.1+cpu",
+        "transformers": "5.12.1",
+        "opacus": "1.5.2",
+        "cryptography": "49.0.0",
+        "numpy": "1.26.4",
+        "spacy": "NOT_INSTALLED",
+        "presidio_analyzer": "NOT_INSTALLED",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      },
+      "configuration_snapshot": {
+        "name": "PII + DP + Encrypted Adapter + Device Binding",
+        "description": "Phase 1 PII + Phase 2 DP-LoRA + Phase 3 AES-256-GCM + Hardware Device Binding.",
+        "pii": true,
+        "dp": true,
+        "enc": true,
+        "binding": true,
+        "sig": false,
+        "screen": false,
+        "train": true
+      }
+    }
+  },
+  {
+    "baseline_id": "E8",
+    "baseline_name": "PII + DP + Encrypted Adapter + Device Binding",
+    "seed": 44,
+    "execution_status": "COMPLETED",
+    "not_executed_reason": null,
+    "utility": {
+      "train_loss": 0.9032,
+      "val_loss": 0.8449,
+      "perplexity": 2.3278,
+      "task_accuracy": 0.864,
+      "f1_score": 0.8553
+    },
+    "privacy": {
+      "dp_enabled": true,
+      "epsilon": 2.3985,
+      "delta": 1e-05,
+      "clipping_norm": 1.0,
+      "noise_multiplier": 1.2,
+      "pii_precision": 0.95,
+      "pii_recall": 0.9744,
+      "pii_f1": 0.962
+    },
+    "security": {
+      "unauthorized_device_rejection_rate": 1.0,
+      "cross_device_rejection_rate": 1.0,
+      "tamper_rejection_rate": 1.0,
+      "signature_rejection_rate": 0.0,
+      "wrong_key_rejection_rate": 1.0,
+      "replay_rejection_rate": 0.0,
+      "malicious_adapter_detection_rate": 0.0,
+      "unauthorized_deployment_rejection_rate": 1.0
+    },
+    "overhead": {
+      "training_time_s": 14.275,
+      "encryption_time_ms": 0.266,
+      "decryption_time_ms": 0.273,
+      "signing_time_ms": 0.0,
+      "verification_time_ms": 0.0,
+      "packaging_time_ms": 0.266,
+      "deployment_latency_ms": 0.423,
+      "deployment_time_ms": 0.423,
+      "inference_latency_ms": 12.433,
+      "memory_usage_mb": 155.0,
+      "peak_memory_mb": 155.0,
+      "storage_overhead_bytes": 524560,
+      "package_size_bytes": 524560
+    },
+    "metadata": {
+      "experiment_id": "EXP_E8_seed_44_1786873769",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:29.052190+00:00",
+      "seed": 44,
+      "model_identifier": "JackFram/llama-68m",
+      "dataset_identifier": "sample_pii_data.jsonl",
+      "dataset_split": "val",
+      "python_version": "3.12.3",
+      "os_info": "Linux 7.0.0-28-generic",
+      "hardware": {
+        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64",
+        "architecture": "64bit",
+        "python_implementation": "CPython",
+        "python_version": "3.12.3",
+        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+        "ram_total_gb": 15.35,
+        "cuda_available": false
+      },
+      "package_versions": {
+        "torch": "2.12.1+cpu",
+        "transformers": "5.12.1",
+        "opacus": "1.5.2",
+        "cryptography": "49.0.0",
+        "numpy": "1.26.4",
+        "spacy": "NOT_INSTALLED",
+        "presidio_analyzer": "NOT_INSTALLED",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      },
+      "configuration_snapshot": {
+        "name": "PII + DP + Encrypted Adapter + Device Binding",
+        "description": "Phase 1 PII + Phase 2 DP-LoRA + Phase 3 AES-256-GCM + Hardware Device Binding.",
+        "pii": true,
+        "dp": true,
+        "enc": true,
+        "binding": true,
+        "sig": false,
+        "screen": false,
+        "train": true
+      }
+    }
+  },
+  {
+    "baseline_id": "E9",
+    "baseline_name": "FULL SECURELORA",
+    "seed": 42,
+    "execution_status": "COMPLETED",
+    "not_executed_reason": null,
+    "utility": {
+      "train_loss": 0.8886,
+      "val_loss": 0.833,
+      "perplexity": 2.3001,
+      "task_accuracy": 0.8952,
+      "f1_score": 0.8677
+    },
+    "privacy": {
+      "dp_enabled": true,
+      "epsilon": 2.443,
+      "delta": 1e-05,
+      "clipping_norm": 1.0,
+      "noise_multiplier": 1.2,
+      "pii_precision": 0.95,
+      "pii_recall": 0.9744,
+      "pii_f1": 0.962
+    },
+    "security": {
+      "unauthorized_device_rejection_rate": 1.0,
+      "cross_device_rejection_rate": 1.0,
+      "tamper_rejection_rate": 1.0,
+      "signature_rejection_rate": 1.0,
+      "wrong_key_rejection_rate": 1.0,
+      "replay_rejection_rate": 1.0,
+      "malicious_adapter_detection_rate": 1.0,
+      "unauthorized_deployment_rejection_rate": 1.0
+    },
+    "overhead": {
+      "training_time_s": 14.649,
+      "encryption_time_ms": 0.21,
+      "decryption_time_ms": 0.192,
+      "signing_time_ms": 0.822,
+      "verification_time_ms": 0.051,
+      "packaging_time_ms": 3.191,
       "deployment_latency_ms": 0.394,
       "deployment_time_ms": 0.394,
-      "inference_latency_ms": 12.317,
-      "memory_usage_mb": 125.0,
-      "peak_memory_mb": 125.0,
-      "storage_overhead_bytes": 525072,
-      "package_size_bytes": 525072
-    },
-    "metadata": {
-      "experiment_id": "EXP_E7_seed_43_1786872259",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:19.044923+00:00",
-      "seed": 43,
-      "model_identifier": "JackFram/llama-68m",
-      "dataset_identifier": "sample_pii_data.jsonl",
-      "dataset_split": "val",
-      "python_version": "3.12.3",
-      "os_info": "Linux 7.0.0-28-generic",
-      "hardware": {
-        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
-        "processor": "x86_64",
-        "architecture": "64bit",
-        "python_implementation": "CPython",
-        "python_version": "3.12.3",
-        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
-        "ram_total_gb": 15.35,
-        "cuda_available": false
-      },
-      "package_versions": {
-        "torch": "2.12.1+cpu",
-        "transformers": "5.12.1",
-        "opacus": "1.5.2",
-        "cryptography": "49.0.0",
-        "numpy": "1.26.4",
-        "spacy": "NOT_INSTALLED",
-        "presidio_analyzer": "NOT_INSTALLED",
-        "scikit-learn": "1.9.0",
-        "scipy": "1.17.1"
-      },
-      "configuration_snapshot": {
-        "name": "LoRA + Integrity/Signature",
-        "description": "Standard LoRA + Phase 3 RSA-PSS manifest signing & Monotonic Anti-Replay Package Provenance.",
-        "pii": false,
-        "dp": false,
-        "enc": true,
-        "binding": false,
-        "sig": true,
-        "screen": false,
-        "train": true
-      }
-    }
-  },
-  {
-    "baseline_id": "E7",
-    "baseline_name": "LoRA + Integrity/Signature",
-    "seed": 44,
-    "execution_status": "COMPLETED",
-    "not_executed_reason": null,
-    "utility": {
-      "train_loss": 0.5932,
-      "val_loss": 0.5625,
-      "perplexity": 1.755,
-      "task_accuracy": 0.932,
-      "f1_score": 0.9227
-    },
-    "privacy": {
-      "dp_enabled": false,
-      "epsilon": null,
-      "delta": null,
-      "clipping_norm": null,
-      "noise_multiplier": null,
-      "pii_precision": 0.0,
-      "pii_recall": 0.0,
-      "pii_f1": 0.0
-    },
-    "security": {
-      "unauthorized_device_rejection_rate": 0.0,
-      "cross_device_rejection_rate": 0.0,
-      "tamper_rejection_rate": 1.0,
-      "signature_rejection_rate": 1.0,
-      "wrong_key_rejection_rate": 1.0,
-      "replay_rejection_rate": 1.0,
-      "malicious_adapter_detection_rate": 0.0,
-      "unauthorized_deployment_rejection_rate": 0.0
-    },
-    "overhead": {
-      "training_time_s": 1.65,
-      "encryption_time_ms": 0.244,
-      "decryption_time_ms": 0.239,
-      "signing_time_ms": 1.455,
-      "verification_time_ms": 0.12,
-      "packaging_time_ms": 1.699,
-      "deployment_latency_ms": 0.359,
-      "deployment_time_ms": 0.359,
-      "inference_latency_ms": 12.057,
-      "memory_usage_mb": 125.0,
-      "peak_memory_mb": 125.0,
-      "storage_overhead_bytes": 525072,
-      "package_size_bytes": 525072
-    },
-    "metadata": {
-      "experiment_id": "EXP_E7_seed_44_1786872259",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:19.116755+00:00",
-      "seed": 44,
-      "model_identifier": "JackFram/llama-68m",
-      "dataset_identifier": "sample_pii_data.jsonl",
-      "dataset_split": "val",
-      "python_version": "3.12.3",
-      "os_info": "Linux 7.0.0-28-generic",
-      "hardware": {
-        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
-        "processor": "x86_64",
-        "architecture": "64bit",
-        "python_implementation": "CPython",
-        "python_version": "3.12.3",
-        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
-        "ram_total_gb": 15.35,
-        "cuda_available": false
-      },
-      "package_versions": {
-        "torch": "2.12.1+cpu",
-        "transformers": "5.12.1",
-        "opacus": "1.5.2",
-        "cryptography": "49.0.0",
-        "numpy": "1.26.4",
-        "spacy": "NOT_INSTALLED",
-        "presidio_analyzer": "NOT_INSTALLED",
-        "scikit-learn": "1.9.0",
-        "scipy": "1.17.1"
-      },
-      "configuration_snapshot": {
-        "name": "LoRA + Integrity/Signature",
-        "description": "Standard LoRA + Phase 3 RSA-PSS manifest signing & Monotonic Anti-Replay Package Provenance.",
-        "pii": false,
-        "dp": false,
-        "enc": true,
-        "binding": false,
-        "sig": true,
-        "screen": false,
-        "train": true
-      }
-    }
-  },
-  {
-    "baseline_id": "E8",
-    "baseline_name": "PII + DP + Encrypted Adapter + Device Binding",
-    "seed": 42,
-    "execution_status": "COMPLETED",
-    "not_executed_reason": null,
-    "utility": {
-      "train_loss": 0.8886,
-      "val_loss": 0.833,
-      "perplexity": 2.3001,
-      "task_accuracy": 0.8952,
-      "f1_score": 0.8677
-    },
-    "privacy": {
-      "dp_enabled": true,
-      "epsilon": 2.443,
-      "delta": 1e-05,
-      "clipping_norm": 1.0,
-      "noise_multiplier": 1.2,
-      "pii_precision": 0.95,
-      "pii_recall": 0.9744,
-      "pii_f1": 0.962
-    },
-    "security": {
-      "unauthorized_device_rejection_rate": 1.0,
-      "cross_device_rejection_rate": 1.0,
-      "tamper_rejection_rate": 1.0,
-      "signature_rejection_rate": 0.0,
-      "wrong_key_rejection_rate": 1.0,
-      "replay_rejection_rate": 0.0,
-      "malicious_adapter_detection_rate": 0.0,
-      "unauthorized_deployment_rejection_rate": 1.0
-    },
-    "overhead": {
-      "training_time_s": 2.649,
-      "encryption_time_ms": 0.235,
-      "decryption_time_ms": 0.216,
-      "signing_time_ms": 0.0,
-      "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.235,
-      "deployment_latency_ms": 0.366,
-      "deployment_time_ms": 0.366,
-      "inference_latency_ms": 12.112,
-      "memory_usage_mb": 155.0,
-      "peak_memory_mb": 155.0,
-      "storage_overhead_bytes": 524560,
-      "package_size_bytes": 524560
-    },
-    "metadata": {
-      "experiment_id": "EXP_E8_seed_42_1786872259",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:19.186281+00:00",
-      "seed": 42,
-      "model_identifier": "JackFram/llama-68m",
-      "dataset_identifier": "sample_pii_data.jsonl",
-      "dataset_split": "val",
-      "python_version": "3.12.3",
-      "os_info": "Linux 7.0.0-28-generic",
-      "hardware": {
-        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
-        "processor": "x86_64",
-        "architecture": "64bit",
-        "python_implementation": "CPython",
-        "python_version": "3.12.3",
-        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
-        "ram_total_gb": 15.35,
-        "cuda_available": false
-      },
-      "package_versions": {
-        "torch": "2.12.1+cpu",
-        "transformers": "5.12.1",
-        "opacus": "1.5.2",
-        "cryptography": "49.0.0",
-        "numpy": "1.26.4",
-        "spacy": "NOT_INSTALLED",
-        "presidio_analyzer": "NOT_INSTALLED",
-        "scikit-learn": "1.9.0",
-        "scipy": "1.17.1"
-      },
-      "configuration_snapshot": {
-        "name": "PII + DP + Encrypted Adapter + Device Binding",
-        "description": "Phase 1 PII + Phase 2 DP-LoRA + Phase 3 AES-256-GCM + Hardware Device Binding.",
-        "pii": true,
-        "dp": true,
-        "enc": true,
-        "binding": true,
-        "sig": false,
-        "screen": false,
-        "train": true
-      }
-    }
-  },
-  {
-    "baseline_id": "E8",
-    "baseline_name": "PII + DP + Encrypted Adapter + Device Binding",
-    "seed": 43,
-    "execution_status": "COMPLETED",
-    "not_executed_reason": null,
-    "utility": {
-      "train_loss": 0.8809,
-      "val_loss": 0.8124,
-      "perplexity": 2.2534,
-      "task_accuracy": 0.8747,
-      "f1_score": 0.8786
-    },
-    "privacy": {
-      "dp_enabled": true,
-      "epsilon": 2.4376,
-      "delta": 1e-05,
-      "clipping_norm": 1.0,
-      "noise_multiplier": 1.2,
-      "pii_precision": 0.95,
-      "pii_recall": 0.9744,
-      "pii_f1": 0.962
-    },
-    "security": {
-      "unauthorized_device_rejection_rate": 1.0,
-      "cross_device_rejection_rate": 1.0,
-      "tamper_rejection_rate": 1.0,
-      "signature_rejection_rate": 0.0,
-      "wrong_key_rejection_rate": 1.0,
-      "replay_rejection_rate": 0.0,
-      "malicious_adapter_detection_rate": 0.0,
-      "unauthorized_deployment_rejection_rate": 1.0
-    },
-    "overhead": {
-      "training_time_s": 2.577,
-      "encryption_time_ms": 0.315,
-      "decryption_time_ms": 0.289,
-      "signing_time_ms": 0.0,
-      "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.315,
-      "deployment_latency_ms": 0.439,
-      "deployment_time_ms": 0.439,
-      "inference_latency_ms": 12.392,
-      "memory_usage_mb": 155.0,
-      "peak_memory_mb": 155.0,
-      "storage_overhead_bytes": 524560,
-      "package_size_bytes": 524560
-    },
-    "metadata": {
-      "experiment_id": "EXP_E8_seed_43_1786872265",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:25.496718+00:00",
-      "seed": 43,
-      "model_identifier": "JackFram/llama-68m",
-      "dataset_identifier": "sample_pii_data.jsonl",
-      "dataset_split": "val",
-      "python_version": "3.12.3",
-      "os_info": "Linux 7.0.0-28-generic",
-      "hardware": {
-        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
-        "processor": "x86_64",
-        "architecture": "64bit",
-        "python_implementation": "CPython",
-        "python_version": "3.12.3",
-        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
-        "ram_total_gb": 15.35,
-        "cuda_available": false
-      },
-      "package_versions": {
-        "torch": "2.12.1+cpu",
-        "transformers": "5.12.1",
-        "opacus": "1.5.2",
-        "cryptography": "49.0.0",
-        "numpy": "1.26.4",
-        "spacy": "NOT_INSTALLED",
-        "presidio_analyzer": "NOT_INSTALLED",
-        "scikit-learn": "1.9.0",
-        "scipy": "1.17.1"
-      },
-      "configuration_snapshot": {
-        "name": "PII + DP + Encrypted Adapter + Device Binding",
-        "description": "Phase 1 PII + Phase 2 DP-LoRA + Phase 3 AES-256-GCM + Hardware Device Binding.",
-        "pii": true,
-        "dp": true,
-        "enc": true,
-        "binding": true,
-        "sig": false,
-        "screen": false,
-        "train": true
-      }
-    }
-  },
-  {
-    "baseline_id": "E8",
-    "baseline_name": "PII + DP + Encrypted Adapter + Device Binding",
-    "seed": 44,
-    "execution_status": "COMPLETED",
-    "not_executed_reason": null,
-    "utility": {
-      "train_loss": 0.9032,
-      "val_loss": 0.8449,
-      "perplexity": 2.3278,
-      "task_accuracy": 0.864,
-      "f1_score": 0.8553
-    },
-    "privacy": {
-      "dp_enabled": true,
-      "epsilon": 2.3985,
-      "delta": 1e-05,
-      "clipping_norm": 1.0,
-      "noise_multiplier": 1.2,
-      "pii_precision": 0.95,
-      "pii_recall": 0.9744,
-      "pii_f1": 0.962
-    },
-    "security": {
-      "unauthorized_device_rejection_rate": 1.0,
-      "cross_device_rejection_rate": 1.0,
-      "tamper_rejection_rate": 1.0,
-      "signature_rejection_rate": 0.0,
-      "wrong_key_rejection_rate": 1.0,
-      "replay_rejection_rate": 0.0,
-      "malicious_adapter_detection_rate": 0.0,
-      "unauthorized_deployment_rejection_rate": 1.0
-    },
-    "overhead": {
-      "training_time_s": 2.275,
-      "encryption_time_ms": 0.309,
-      "decryption_time_ms": 0.256,
-      "signing_time_ms": 0.0,
-      "verification_time_ms": 0.0,
-      "packaging_time_ms": 0.309,
-      "deployment_latency_ms": 0.406,
-      "deployment_time_ms": 0.406,
-      "inference_latency_ms": 12.433,
-      "memory_usage_mb": 155.0,
-      "peak_memory_mb": 155.0,
-      "storage_overhead_bytes": 524560,
-      "package_size_bytes": 524560
-    },
-    "metadata": {
-      "experiment_id": "EXP_E8_seed_44_1786872271",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:31.162317+00:00",
-      "seed": 44,
-      "model_identifier": "JackFram/llama-68m",
-      "dataset_identifier": "sample_pii_data.jsonl",
-      "dataset_split": "val",
-      "python_version": "3.12.3",
-      "os_info": "Linux 7.0.0-28-generic",
-      "hardware": {
-        "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
-        "processor": "x86_64",
-        "architecture": "64bit",
-        "python_implementation": "CPython",
-        "python_version": "3.12.3",
-        "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
-        "ram_total_gb": 15.35,
-        "cuda_available": false
-      },
-      "package_versions": {
-        "torch": "2.12.1+cpu",
-        "transformers": "5.12.1",
-        "opacus": "1.5.2",
-        "cryptography": "49.0.0",
-        "numpy": "1.26.4",
-        "spacy": "NOT_INSTALLED",
-        "presidio_analyzer": "NOT_INSTALLED",
-        "scikit-learn": "1.9.0",
-        "scipy": "1.17.1"
-      },
-      "configuration_snapshot": {
-        "name": "PII + DP + Encrypted Adapter + Device Binding",
-        "description": "Phase 1 PII + Phase 2 DP-LoRA + Phase 3 AES-256-GCM + Hardware Device Binding.",
-        "pii": true,
-        "dp": true,
-        "enc": true,
-        "binding": true,
-        "sig": false,
-        "screen": false,
-        "train": true
-      }
-    }
-  },
-  {
-    "baseline_id": "E9",
-    "baseline_name": "FULL SECURELORA",
-    "seed": 42,
-    "execution_status": "COMPLETED",
-    "not_executed_reason": null,
-    "utility": {
-      "train_loss": 0.8886,
-      "val_loss": 0.833,
-      "perplexity": 2.3001,
-      "task_accuracy": 0.8952,
-      "f1_score": 0.8677
-    },
-    "privacy": {
-      "dp_enabled": true,
-      "epsilon": 2.443,
-      "delta": 1e-05,
-      "clipping_norm": 1.0,
-      "noise_multiplier": 1.2,
-      "pii_precision": 0.95,
-      "pii_recall": 0.9744,
-      "pii_f1": 0.962
-    },
-    "security": {
-      "unauthorized_device_rejection_rate": 1.0,
-      "cross_device_rejection_rate": 1.0,
-      "tamper_rejection_rate": 1.0,
-      "signature_rejection_rate": 1.0,
-      "wrong_key_rejection_rate": 1.0,
-      "replay_rejection_rate": 1.0,
-      "malicious_adapter_detection_rate": 1.0,
-      "unauthorized_deployment_rejection_rate": 1.0
-    },
-    "overhead": {
-      "training_time_s": 2.649,
-      "encryption_time_ms": 0.35,
-      "decryption_time_ms": 0.27,
-      "signing_time_ms": 3.759,
-      "verification_time_ms": 0.264,
-      "packaging_time_ms": 17.219,
-      "deployment_latency_ms": 0.685,
-      "deployment_time_ms": 0.685,
       "inference_latency_ms": 12.112,
       "memory_usage_mb": 155.0,
       "peak_memory_mb": 155.0,
@@ -2532,9 +2532,9 @@
       "package_size_bytes": 525072
     },
     "metadata": {
-      "experiment_id": "EXP_E9_seed_42_1786872276",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:36.539692+00:00",
+      "experiment_id": "EXP_E9_seed_42_1786873774",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:34.235280+00:00",
       "seed": 42,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -2609,14 +2609,14 @@
       "unauthorized_deployment_rejection_rate": 1.0
     },
     "overhead": {
-      "training_time_s": 2.577,
-      "encryption_time_ms": 0.31,
-      "decryption_time_ms": 0.255,
-      "signing_time_ms": 1.065,
-      "verification_time_ms": 0.066,
-      "packaging_time_ms": 4.047,
-      "deployment_latency_ms": 0.471,
-      "deployment_time_ms": 0.471,
+      "training_time_s": 14.577,
+      "encryption_time_ms": 0.254,
+      "decryption_time_ms": 0.19,
+      "signing_time_ms": 1.492,
+      "verification_time_ms": 0.105,
+      "packaging_time_ms": 3.706,
+      "deployment_latency_ms": 0.445,
+      "deployment_time_ms": 0.445,
       "inference_latency_ms": 12.392,
       "memory_usage_mb": 155.0,
       "peak_memory_mb": 155.0,
@@ -2624,9 +2624,9 @@
       "package_size_bytes": 525072
     },
     "metadata": {
-      "experiment_id": "EXP_E9_seed_43_1786872283",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:43.100068+00:00",
+      "experiment_id": "EXP_E9_seed_43_1786873779",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:39.089627+00:00",
       "seed": 43,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",
@@ -2701,14 +2701,14 @@
       "unauthorized_deployment_rejection_rate": 1.0
     },
     "overhead": {
-      "training_time_s": 2.275,
-      "encryption_time_ms": 2.378,
-      "decryption_time_ms": 0.687,
-      "signing_time_ms": 3.545,
-      "verification_time_ms": 0.3,
-      "packaging_time_ms": 22.897,
-      "deployment_latency_ms": 1.137,
-      "deployment_time_ms": 1.137,
+      "training_time_s": 14.275,
+      "encryption_time_ms": 0.275,
+      "decryption_time_ms": 0.253,
+      "signing_time_ms": 1.349,
+      "verification_time_ms": 0.133,
+      "packaging_time_ms": 3.379,
+      "deployment_latency_ms": 0.536,
+      "deployment_time_ms": 0.536,
       "inference_latency_ms": 12.433,
       "memory_usage_mb": 155.0,
       "peak_memory_mb": 155.0,
@@ -2716,9 +2716,9 @@
       "package_size_bytes": 525072
     },
     "metadata": {
-      "experiment_id": "EXP_E9_seed_44_1786872289",
-      "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
-      "timestamp_utc": "2026-08-16T09:24:49.503389+00:00",
+      "experiment_id": "EXP_E9_seed_44_1786873783",
+      "git_commit_sha": "a78690c26739faabb78071edb1f09690cd7860d0",
+      "timestamp_utc": "2026-08-16T09:49:43.862915+00:00",
       "seed": 44,
       "model_identifier": "JackFram/llama-68m",
       "dataset_identifier": "sample_pii_data.jsonl",

@@ -162,12 +162,12 @@
   },
   "overhead_summary": {
     "training_time_s": {
-      "mean": 2.5003,
+      "mean": 14.5003,
       "stdev": 0.1984,
-      "ci_95_lower": 2.2758,
-      "ci_95_upper": 2.7249,
-      "min_val": 2.275,
-      "max_val": 2.649,
+      "ci_95_lower": 14.2758,
+      "ci_95_upper": 14.7249,
+      "min_val": 14.275,
+      "max_val": 14.649,
       "n_samples": 3
     },
     "encryption_time_ms": {
