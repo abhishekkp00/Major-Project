@@ -320,9 +320,44 @@
 
             </div>
 
+            <!-- EXPERIMENTAL CHARTS GRID (STEP 10) -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
+                <!-- 1. BASE VS SECURELORA PII LEAKAGE -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title">1. BASE VS SECURELORA PII LEAKAGE RATE</div></div>
+                    <div style="position:relative; height:200px;">
+                        <canvas id="chart-pii-leakage"></canvas>
+                    </div>
+                </div>
+                <!-- 2. STRUCTURAL VS BEHAVIORAL VS COMBINED F1 -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title">2. SCREENING PERFORMANCE (STRUCTURAL vs BEHAVIORAL vs COMBINED F1)</div></div>
+                    <div style="position:relative; height:200px;">
+                        <canvas id="chart-screening-f1"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
+                <!-- 3. ADAPTIVE ATTACK ITERATIONS -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title">3. ADAPTIVE ATTACK EVASION TRAJECTORY</div></div>
+                    <div style="position:relative; height:200px;">
+                        <canvas id="chart-evasion-iterations"></canvas>
+                    </div>
+                </div>
+                <!-- 4. PRIVACY VS UTILITY TRADE-OFF -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title">4. PRIVACY VS UTILITY TRADE-OFF (EPSILON vs PERPLEXITY)</div></div>
+                    <div style="position:relative; height:200px;">
+                        <canvas id="chart-privacy-utility"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- 5. DEPLOYMENT DURATIONS & OVERHEAD CHART -->
             <div class="card" style="margin-top: 1rem;">
-                <div class="card-header"><div class="card-title">5. DEPLOYMENT & OVERHEAD ANALYSIS</div></div>
+                <div class="card-header"><div class="card-title">5. SECURITY & DEPLOYMENT OVERHEAD ANALYSIS</div></div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                     <div>
                         <div class="metrics-stats-grid">
@@ -334,17 +369,9 @@
                             <div class="mstat"><span class="mstat-lbl">Inference Overhead</span><span id="dm-inf-overhead" class="mstat-val">N/A</span></div>
                         </div>
                     </div>
-                    <div style="position:relative; height:180px;">
+                    <div style="position:relative; height:200px;">
                         <canvas id="chart-overhead"></canvas>
                     </div>
-                </div>
-            </div>
-
-            <!-- 6. PRIVACY / UTILITY VISUALIZATION -->
-            <div class="card" style="margin-top: 1rem;">
-                <div class="card-header"><div class="card-title">6. PRIVACY vs UTILITY TRADE-OFF (EPSILON vs PERPLEXITY)</div></div>
-                <div style="position:relative; height:220px;" id="chart-privacy-utility-container">
-                    <canvas id="chart-privacy-utility"></canvas>
                 </div>
             </div>
 

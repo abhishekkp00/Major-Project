@@ -678,7 +678,7 @@ def get_pipeline_summary(job_id):
                 "cross_device_rejection": sec.get("cross_device_rejection_rate"),
                 "unauthorized_rejection": sec.get("unauthorized_deployment_rejection_rate"),
             },
-            "security_significance": "Hardware-bound HKDF key derivation: adapter cannot be decrypted on any other device. Cross-device rejection rate 100%.",
+            "security_significance": "Hardware-bound HKDF key derivation: adapter cannot be decrypted on any unauthorized device. Cross-device rejection rate near 100% under evaluated fingerprint configurations.",
             "result": _vstep("Step 4: Device Authorization") if vsteps else "N/A",
         },
         {
@@ -802,11 +802,11 @@ def get_dataset_templates():
 @orchestrator_bp.route("/api/orchestrator/chat", methods=["POST"])
 def orchestrator_chat():
     """
-    Executes Base Model vs SecureLoRA PEFT Model inference using the canonical ModelRegistry.
+    Executes Base Model vs SecureLoRA PEFT Model inference using the canonical inference_service.
     Exposes max_new_tokens and temperature generation parameters.
-    No analytics fallback if a PEFT model is expected/loaded.
+    No analytics fallback. Returns status="MODEL_UNAVAILABLE" if model is not loaded.
     """
-    from src.orchestrator.chat_engine import generate_with_securelora_model
+    from src.orchestrator.inference_service import compare_base_and_securelora
     from src.orchestrator.model_registry import model_registry
 
     data = request.json or {}
@@ -816,42 +816,51 @@ def orchestrator_chat():
     top_p = float(data.get("top_p", 0.9))
 
     if not question:
-        return jsonify({"success": False, "error": "question parameter is required"}), 400
+        return jsonify({"success": False, "status": "INVALID_REQUEST", "error": "question parameter is required"}), 400
 
     if not model_registry.is_verified():
         return jsonify({
             "success": False,
             "status": "MODEL_UNAVAILABLE",
-            "message": "SecureLoRA deployment must be verified first.",
-            "adapter_active": False,
-            "model_verified": False,
+            "message": "SecureLoRA model is unavailable. Deployment must be verified first.",
+            "base_output": "[MODEL_UNAVAILABLE]",
+            "securelora_output": "[MODEL_UNAVAILABLE]",
+            "base_pii_entities": [],
+            "securelora_pii_entities": [],
+            "base_pii_count": 0,
+            "securelora_pii_count": 0,
+            "adapter_loaded": False,
+            "deployment_verified": False,
             "model_info": {
                 "base_model_name": "N/A",
-                "adapter_name": "N/A",
+                "adapter_id": "N/A",
                 "deployment_id": "N/A",
-                "status": "UNAVAILABLE"
+                "deployment_status": "UNAVAILABLE"
             }
         }), 400
 
-    res = generate_with_securelora_model(
-        prompt=question,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-        top_p=top_p
-    )
+    gen_config = {
+        "max_new_tokens": max_new_tokens,
+        "temperature": temperature,
+        "top_p": top_p
+    }
+
+    res = compare_base_and_securelora(prompt=question, generation_config=gen_config)
 
     if res.get("status") == "SUCCESS":
         return jsonify({
             "success": True,
             "status": "SUCCESS",
+            "prompt": question,
             "question": question,
             "base_output": res["base_output"],
             "securelora_output": res["securelora_output"],
-            "post_processed_output": res["post_processed_output"],
-            "base_pii": res["base_pii"],
-            "securelora_pii": res["securelora_pii"],
-            "adapter_active": True,
-            "model_verified": True,
+            "base_pii_entities": res["base_pii_entities"],
+            "securelora_pii_entities": res["securelora_pii_entities"],
+            "base_pii_count": res["base_pii_count"],
+            "securelora_pii_count": res["securelora_pii_count"],
+            "adapter_loaded": res["adapter_loaded"],
+            "deployment_verified": res["deployment_verified"],
             "model_info": res["model_info"],
             "raw_answer": res["base_output"],
             "answer": res["securelora_output"]
@@ -859,12 +868,18 @@ def orchestrator_chat():
     else:
         return jsonify({
             "success": False,
-            "status": res.get("status", "GENERATION_ERROR"),
+            "status": res.get("status", "MODEL_UNAVAILABLE"),
             "message": res.get("message", "Model generation failed"),
-            "adapter_active": res.get("adapter_active", False),
-            "model_verified": res.get("model_verified", False),
+            "base_output": res.get("base_output", "[MODEL_UNAVAILABLE]"),
+            "securelora_output": res.get("securelora_output", "[MODEL_UNAVAILABLE]"),
+            "base_pii_entities": res.get("base_pii_entities", []),
+            "securelora_pii_entities": res.get("securelora_pii_entities", []),
+            "base_pii_count": res.get("base_pii_count", 0),
+            "securelora_pii_count": res.get("securelora_pii_count", 0),
+            "adapter_loaded": res.get("adapter_loaded", False),
+            "deployment_verified": res.get("deployment_verified", False),
             "model_info": res.get("model_info", {})
-        }), 500
+        }), 400 if res.get("status") == "MODEL_UNAVAILABLE" else 500
 
 
 @orchestrator_bp.route("/api/orchestrator/model-status", methods=["GET"])
@@ -876,12 +891,14 @@ def get_model_status():
     return jsonify({
         "success": True,
         "model_verified": verified,
-        "adapter_active": verified,
+        "adapter_loaded": info["adapter_loaded"],
         "base_model_name": info["base_model_name"],
-        "adapter_name": info["adapter_name"],
+        "adapter_id": info["adapter_id"],
         "deployment_id": info["deployment_id"],
-        "status": "VERIFIED" if verified else "UNAVAILABLE"
+        "deployment_status": info["deployment_status"],
+        "status": info["deployment_status"]
     })
+
 
 
 

@@ -402,7 +402,7 @@ def _generate_markdown_reports(
         f"- **Finding**: AES-256-GCM decryption and RSA-PSS signature verification add only **~{e9.overhead_summary['deployment_latency_ms'].mean:.2f} ms** total deployment latency.",
         "",
         "### RQ3: Security Defense Effectiveness",
-        "- **Finding**: Hardware device binding, ciphertext tamper checks, RSA-PSS signatures, wrong-key decryption, anti-replay sequence tracking, and pre-packaging adapter screening achieve **100% threat rejection rate**.",
+        "- **Finding**: Hardware device binding, ciphertext tamper checks, RSA-PSS signatures, wrong-key decryption, anti-replay sequence tracking, and pre-packaging adapter screening achieve high empirical threat rejection rates in evaluated scenarios.",
         "",
         "---",
         "",

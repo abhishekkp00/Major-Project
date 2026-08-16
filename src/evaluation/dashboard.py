@@ -24,7 +24,7 @@ from src.orchestrator.routes import orchestrator_bp
 from src.orchestrator.service import orchestrator
 from src.orchestrator.transparency import build_transparency_trace
 from src.orchestrator.dataset_processor import validate_dataset_file, preprocess_and_standardize
-from src.orchestrator.chat_engine import answer_question, load_records_from_job, load_records_from_jsonl, compute_dataset_analytics
+from src.orchestrator.chat_engine import answer_question
 from src.evaluation.research_api import research_api_bp
 
 # Setup logging
@@ -123,6 +123,7 @@ def get_p4_status():
 @app.route('/api/phase4/verify', methods=['POST'])
 def trigger_p4_verify():
     global base_model, peft_model, tokenizer, adapter_loaded, last_verification_steps
+    from src.orchestrator.model_registry import model_registry
     
     data = request.json or {}
     scenario = str(data.get("scenario", "default")).lower()
@@ -157,6 +158,7 @@ def trigger_p4_verify():
         }
         last_verification_steps = steps_status
         adapter_loaded = False
+        model_registry.clear()
         return jsonify({
             "success": False,
             "steps": steps_status,
@@ -175,6 +177,7 @@ def trigger_p4_verify():
         }
         last_verification_steps = steps_status
         adapter_loaded = False
+        model_registry.clear()
         return jsonify({
             "success": False,
             "steps": steps_status,
@@ -193,6 +196,7 @@ def trigger_p4_verify():
         }
         last_verification_steps = steps_status
         adapter_loaded = False
+        model_registry.clear()
         return jsonify({
             "success": False,
             "steps": steps_status,
@@ -211,12 +215,13 @@ def trigger_p4_verify():
         }
         last_verification_steps = steps_status
         adapter_loaded = False
+        model_registry.clear()
         return jsonify({
             "success": False,
             "steps": steps_status,
             "error": "ReplayProtectionError: Package sequence #1 nonce expired. Replay attack blocked."
         })
-    elif scenario in ["successful", "success"]:
+    elif scenario in ["successful", "success", "demo_success"]:
         steps_status = {
             "Step 1: Package Completeness": "PASSED",
             "Step 2: Integrity Verification": "PASSED",
@@ -232,7 +237,7 @@ def trigger_p4_verify():
         return jsonify({
             "success": True,
             "steps": steps_status,
-            "error": ""
+            "error": None
         })
 
     
@@ -306,6 +311,15 @@ def trigger_p4_verify():
                         
                     # 8. Inference Validation
                     try:
+                        model_registry.register(
+                            base_model=base_model,
+                            peft_model=peft_model,
+                            tokenizer=tokenizer,
+                            base_model_name=base_model_name,
+                            adapter_id=manifest.get("adapter_id", "secure_lora_adapter"),
+                            deployment_id=manifest.get("package_id", "verified_deployment"),
+                            deployment_status="VERIFIED"
+                        )
                         inference_result = run_side_by_side_inference(
                             base_model=base_model,
                             peft_model=peft_model,
@@ -315,12 +329,6 @@ def trigger_p4_verify():
                         steps_status["Step 8: Inference Validation"] = "PASSED"
                         verification_success = True
                         adapter_loaded = True
-                        # ── Register model with chat engine so Q&A uses the fine-tuned LLM ──
-                        try:
-                            from src.orchestrator.chat_engine import register_model as _reg
-                            _reg(peft_model, tokenizer, base_model_name)
-                        except Exception as _re:
-                            logger.warning("Chat engine model registration failed: %s", _re)
                     except Exception as e:
                         steps_status["Step 8: Inference Validation"] = "FAILED"
                         raise
@@ -337,6 +345,7 @@ def trigger_p4_verify():
         verification_success = False
         adapter_loaded = False
         peft_model = None
+        model_registry.clear()
 
     last_verification_steps = steps_status
     
@@ -367,80 +376,63 @@ def trigger_p4_verify():
 
 @app.route('/api/phase4/generate', methods=['POST'])
 def p4_generate():
-    global base_model, peft_model, tokenizer, adapter_loaded
+    from src.orchestrator.inference_service import compare_base_and_securelora
+    from src.orchestrator.model_registry import model_registry
     
     data = request.json or {}
-    prompt = data.get("prompt", "")
+    prompt = data.get("prompt", "").strip()
     if not prompt:
         return jsonify({"error": "Prompt is required"}), 400
-        
-    if base_model is None:
-        return jsonify({"error": "Base model is not loaded. Trigger verification first."}), 400
 
-    # Format inputs for model execution
-    inputs = tokenizer(prompt, return_tensors="pt")
-    inputs = {k: v.to("cpu") for k, v in inputs.items()}
+    if not model_registry.is_verified():
+        return jsonify({
+            "status": "MODEL_UNAVAILABLE",
+            "message": "SecureLoRA model is unavailable. Deployment must be verified first.",
+            "base_response": "[MODEL_UNAVAILABLE]",
+            "lora_response": "[MODEL_UNAVAILABLE]",
+            "base_output": "[MODEL_UNAVAILABLE]",
+            "securelora_output": "[MODEL_UNAVAILABLE]",
+            "base_pii_entities": [],
+            "securelora_pii_entities": [],
+            "base_pii_count": 0,
+            "securelora_pii_count": 0,
+            "adapter_active": False,
+            "adapter_loaded": False,
+            "deployment_verified": False
+        }), 400
 
-    # Run the actual PyTorch model layers in the background to verify GPU/CPU execution flows
-    with torch.no_grad():
-        if peft_model is not None and adapter_loaded:
-            peft_model.eval()
-            with peft_model.disable_adapter():
-                _ = peft_model.generate(
-                    **inputs,
-                    max_new_tokens=5,
-                    pad_token_id=tokenizer.pad_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                    do_sample=False
-                )
-            _ = peft_model.generate(
-                **inputs,
-                max_new_tokens=5,
-                pad_token_id=tokenizer.pad_token_id,
-                eos_token_id=tokenizer.eos_token_id,
-                do_sample=False
-            )
-        else:
-            base_model.eval()
-            _ = base_model.generate(
-                **inputs,
-                max_new_tokens=5,
-                pad_token_id=tokenizer.pad_token_id,
-                eos_token_id=tokenizer.eos_token_id,
-                do_sample=False
-            )
-
-    # Extract the text payload for PII redaction evaluation
-    text_to_redact = prompt.strip()
-    if ":" in text_to_redact:
-        prefix_part, content_part = text_to_redact.split(":", 1)
-        if any(kw in prefix_part.lower() for kw in ["redact", "mask", "scrub", "instruction", "input"]):
-            text_to_redact = content_part.strip()
-
-    for prefix in ["Redact Personally Identifiable Information (PII) from this text:", "Redact PHI from this clinical record:", "Scrub HIPAA identifiers:"]:
-        if text_to_redact.lower().startswith(prefix.lower()):
-            text_to_redact = text_to_redact[len(prefix):].strip()
-            break
-
-    # 1. Baseline Model Response: Leaks raw input text without redaction
-    base_response = text_to_redact
-
-    # 2. Secured Model Response: Applies full Advanced Hybrid PII Engine
-    from src.security.pii_engine import mask_pii_advanced
-    redacted, entity_counts = mask_pii_advanced(text_to_redact)
-
-    if peft_model is not None and adapter_loaded:
-        lora_response = redacted
+    res = compare_base_and_securelora(prompt)
+    if res.get("status") == "SUCCESS":
+        return jsonify({
+            "base_response": res["base_output"],
+            "lora_response": res["securelora_output"],
+            "base_output": res["base_output"],
+            "securelora_output": res["securelora_output"],
+            "base_pii_entities": res["base_pii_entities"],
+            "securelora_pii_entities": res["securelora_pii_entities"],
+            "base_pii_count": res["base_pii_count"],
+            "securelora_pii_count": res["securelora_pii_count"],
+            "adapter_active": True,
+            "adapter_loaded": res["adapter_loaded"],
+            "deployment_verified": res["deployment_verified"]
+        })
     else:
-        lora_response = "[ADAPTER LOCKED] Please complete Phase 4 secure device verification first."
+        return jsonify({
+            "status": res.get("status", "MODEL_UNAVAILABLE"),
+            "message": res.get("message", "Model generation failed"),
+            "base_response": "[MODEL_UNAVAILABLE]",
+            "lora_response": "[MODEL_UNAVAILABLE]",
+            "base_output": "[MODEL_UNAVAILABLE]",
+            "securelora_output": "[MODEL_UNAVAILABLE]",
+            "base_pii_entities": [],
+            "securelora_pii_entities": [],
+            "base_pii_count": 0,
+            "securelora_pii_count": 0,
+            "adapter_active": False,
+            "adapter_loaded": False,
+            "deployment_verified": False
+        }), 400
 
-    adapter_active = (peft_model is not None) and (base_response != lora_response)
-
-    return jsonify({
-        "base_response": base_response,
-        "lora_response": lora_response,
-        "adapter_active": adapter_active
-    })
 
 
 @app.route('/api/transparency/inspect', methods=['POST'])
