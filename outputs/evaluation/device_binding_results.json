@@ -1,0 +1,21 @@
+{
+  "security": {
+    "unauthorized_device_rejection_rate": 1.0,
+    "unauthorized_trials": 100,
+    "rejections": 100
+  },
+  "robustness": {
+    "legitimate_change_acceptance_rate": 1.0,
+    "legitimate_trials": 50,
+    "acceptances": 50
+  },
+  "availability": {
+    "false_rejection_rate": 0.0,
+    "same_device_trials": 50,
+    "false_rejections": 0
+  },
+  "overhead": {
+    "fingerprint_generation_latency_ms": 0.261,
+    "authorization_evaluation_latency_ms": 0.017
+  }
+}

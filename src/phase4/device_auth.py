@@ -51,12 +51,11 @@ def verify_device_binding(
         policy=policy,
     )
 
-
-
     if result.state == DeviceState.REAUTHORIZATION_REQUIRED:
         if admin_reauth_token:
             logger.info("Attempting admin reauthorization...")
-            result = reauthorize_device(result, admin_reauth_token)
+            result, audit_rec = reauthorize_device(result, admin_reauth_token)
+            logger.info("Audit Record: %s", audit_rec.to_dict())
         else:
             raise DeviceAuthorizationError(
                 f"Device authorization FAILED: {result.reason_for_rejection}. "

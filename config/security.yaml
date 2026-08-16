@@ -10,15 +10,30 @@ package_version: "3.0.0"
 # Controls strictness and allowable feature changes for adapter deployment.
 #
 # Device States:
-#   1. AUTHORIZED — all policy rules pass, fingerprint matches.
-#   2. REAUTHORIZATION_REQUIRED — semi-stable features changed within policy,
-#      requiring explicit admin re-authorization.
-#   3. UNAUTHORIZED — stable features changed or disallowed changes detected.
+#   1. AUTHORIZED — all policy rules pass, fingerprint matches baseline.
+#   2. REAUTHORIZATION_REQUIRED — allowable semi-stable/volatile features changed,
+#      requiring explicit admin re-authorization token.
+#   3. UNAUTHORIZED — stable features changed or policy-disallowed changes detected.
 binding_policy:
+  enabled: true
   strictness: "high"   # Options: high, medium, low
-  allowed_feature_changes:
-    network_interface: true
-    hostname: false
-    machine_id: false
-    disk_uuid: false
+
+  stable_features:
+    machine_id: "required"
+    cpu_model: "required"
+
+  semi_stable_features:
+    disk_uuid: "required"
+
+  volatile_features:
+    hostname: "informational"
+    network_interfaces: "informational"
+
+  policy:
+    allow_network_change: true
+    allow_hostname_change: true
+    allow_disk_change: false
+    allow_machine_id_change: false
+    allow_cpu_change: false
+
 

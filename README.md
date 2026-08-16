@@ -105,10 +105,21 @@ export DP_ACCOUNTANT=rdp         # rdp (Rényi) or prv (PRV)
 
 ### 3. Adaptive Device-Bound Adapter Authorization System (`src/security/fingerprint.py`, `device_auth_policy.py`, `key_derivation.py`)
 
-Rather than relying on fragile static matching, SecureLoRA features an **Adaptive, Policy-Driven Device Authorization Engine** that classifies device entropy attributes into stability tiers:
+> **Architectural Designation**: SecureLoRA relies on **software-derived device identity with policy-controlled authorization**. It does *not* claim a hardware root of trust, TPM PCR sealing, or unbreakable hardware binding.
 
-- **Stable Identity Features** (`machine_id`, `cpu_model`): Attributes expected to survive reboots, process restarts, and network topology changes. Any mutation in a stable feature constitutes a *Sensitive Event* (e.g., hypervisor migration, VM cloning, CPU swap) and immediately triggers the `UNAUTHORIZED` state.
-- **Semi-Stable Features** (`disk_uuid`, `hostname`, `network_interface`): Attributes that may mutate during legitimate system maintenance.
+Rather than relying on fragile static string matching, SecureLoRA features an **Adaptive, Policy-Driven Device Authorization Engine** that classifies device attributes into operational stability tiers:
+
+- **Stable Identity Features** (`machine_id`, `cpu_model`): Operational assumption that attributes survive reboots, process restarts, and network topology changes.
+- **Semi-Stable Features** (`disk_uuid`): Attributes expected to remain unchanged unless storage expansion occurs.
+- **Volatile Features** (`hostname`, `network_interface`): Attributes that may mutate during dynamic DHCP assignment or administrative network changes.
+
+#### Operational Limitations:
+- **Root Compromise**: Root users can read `/etc/machine-id` or inspect ephemeral volatile memory.
+- **Spoofable Identifiers**: Software identifiers can be spoofed by privileged processes or hypervisor overrides.
+- **VM Cloning**: Image cloning copies `/etc/machine-id` and hypervisor UUIDs.
+- **Hardware Replacement**: CPU/Disk replacement changes device identity, requiring admin re-authorization.
+- **Identifier Manipulation**: Synthetic environment attributes can be manipulated in unisolated environments.
+
 
 #### Policy-Driven State Machine
 

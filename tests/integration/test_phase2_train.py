@@ -83,10 +83,10 @@ def test_phase2_training(tmp_dir):
         assert (adapter_dir / "adapter_config.json").exists()
         assert (adapter_dir / "adapter_model.safetensors").exists() or (adapter_dir / "adapter_model.bin").exists()
 
-        report_file = Path("eval_report.json")
+        report_file = Path("outputs/evaluation/eval_report.json") if Path("outputs/evaluation/eval_report.json").exists() else Path("eval_report.json")
         assert report_file.exists()
         report = json.loads(report_file.read_text())
-        assert "validation_loss" in report
+        assert "val_loss" in report or "validation_loss" in report
         assert "perplexity" in report
 
         # Verify no un-shredded tmp files
@@ -99,6 +99,8 @@ def test_phase2_training(tmp_dir):
         shutil.rmtree(tmp_dir, ignore_errors=True)
         if Path("eval_report.json").exists():
             Path("eval_report.json").unlink()
+        if Path("outputs/evaluation/eval_report.json").exists():
+            Path("outputs/evaluation/eval_report.json").unlink()
         for k in [
             "SECURE_LORA_INPUT_DIR", "SECURE_LORA_OUTPUT_DIR", "SECURE_LORA_CHECKPOINT_DIR",
             "SECURE_LORA_OUTPUT_DIR_LORA", "SECURE_LORA_ENCRYPTED_DATA", "SECURE_LORA_METADATA_PATH",

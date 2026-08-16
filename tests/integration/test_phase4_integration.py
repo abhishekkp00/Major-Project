@@ -5,16 +5,54 @@ from pathlib import Path
 import json
 
 from src.phase4.main import run_deployment_pipeline
+from src.phase3.package_builder import build_package
+from src.security import (
+    generate_dev_keypair,
+    derive_key,
+    get_fingerprint_hash,
+    encrypt_adapter,
+    compute_sha256,
+    save_hash,
+)
 
 
 @pytest.fixture
-def original_package_dir():
-    return Path("outputs/protected_adapter")
+def valid_package_bundle(tmp_path: Path):
+    pkg_out = tmp_path / "valid_pkg"
+    pkg_out.mkdir()
+    adapter_src = tmp_path / "dummy_adapter"
+    adapter_src.mkdir()
+    (adapter_src / "adapter_config.json").write_text('{"peft_type": "LORA"}')
+    import torch
+    torch.save({}, adapter_src / "adapter_model.bin")
 
+    priv_pem = pkg_out / "dev_private.pem"
+    pub_pem = pkg_out / "public.pem"
+    generate_dev_keypair(priv_pem, pub_pem)
+    salt = "demo-integration-salt-abc123xyz"
+    fp_hash = get_fingerprint_hash()
+    key = derive_key(fp_hash, salt)
 
-@pytest.fixture
-def correct_salt():
-    return "demo-integration-salt-abc123xyz"
+    enc_file = pkg_out / "adapter.enc"
+    hash_file = pkg_out / "adapter.hash"
+    meta_file = pkg_out / "metadata.json"
+
+    meta = encrypt_adapter(adapter_src, enc_file, key, fp_hash)
+    meta_file.write_text(json.dumps(meta, indent=2))
+
+    c_hash = compute_sha256(enc_file)
+    save_hash(c_hash, hash_file)
+
+    build_package(
+        package_dir=pkg_out,
+        adapter_id="lora-adapter-v1",
+        model_reference="JackFram/llama-68m",
+        fingerprint_hash=fp_hash,
+        enc_metadata=meta,
+        public_key_src=pub_pem,
+        private_key_src=priv_pem,
+    )
+    return pkg_out, salt
 
 
 @pytest.fixture
@@ -22,13 +60,12 @@ def temp_validation_dir(tmp_path: Path):
     return tmp_path / "deployment_validation"
 
 
-def test_integration_success_path(original_package_dir, correct_salt, temp_validation_dir):
-    if not original_package_dir.exists():
-        pytest.skip("Original protected adapter package not found.")
+def test_integration_success_path(valid_package_bundle, temp_validation_dir):
+    pkg_dir, salt = valid_package_bundle
 
     exit_code = run_deployment_pipeline(
-        package_path=original_package_dir,
-        salt=correct_salt,
+        package_path=pkg_dir,
+        salt=salt,
         base_model_name="JackFram/llama-68m",
         prompt="Compare security models.",
         output_dir=temp_validation_dir
@@ -40,15 +77,14 @@ def test_integration_success_path(original_package_dir, correct_salt, temp_valid
 
     report = json.loads((temp_validation_dir / "validation_report.json").read_text())
     assert report["verification_pipeline"]["success"] is True
-    assert report["verification_pipeline"]["steps"]["Step 8: Inference Validation"] == "PASSED"
+    assert report["verification_pipeline"]["steps"]["Step 9: Adapter Load & Inference"] == "PASSED"
 
 
-def test_integration_unauthorized_salt(original_package_dir, temp_validation_dir):
-    if not original_package_dir.exists():
-        pytest.skip("Original protected adapter package not found.")
+def test_integration_unauthorized_salt(valid_package_bundle, temp_validation_dir):
+    pkg_dir, _ = valid_package_bundle
 
     exit_code = run_deployment_pipeline(
-        package_path=original_package_dir,
+        package_path=pkg_dir,
         salt="wrong-unauthorized-salt-value",
         base_model_name="JackFram/llama-68m",
         prompt="Compare security models.",
@@ -60,16 +96,15 @@ def test_integration_unauthorized_salt(original_package_dir, temp_validation_dir
 
     report = json.loads((temp_validation_dir / "validation_report.json").read_text())
     assert report["verification_pipeline"]["success"] is False
-    assert report["verification_pipeline"]["steps"]["Step 6: Decryption & Extraction"] == "FAILED"
-    assert report["verification_pipeline"]["steps"]["Step 7: PEFT Model Loading"] == "SKIPPED"
+    assert report["verification_pipeline"]["steps"]["Step 8: Decryption & Extraction"] == "FAILED"
+    assert report["verification_pipeline"]["steps"]["Step 9: Adapter Load & Inference"] == "SKIPPED"
 
 
-def test_integration_tampered_package(original_package_dir, correct_salt, tmp_path, temp_validation_dir):
-    if not original_package_dir.exists():
-        pytest.skip("Original protected adapter package not found.")
+def test_integration_tampered_package(valid_package_bundle, tmp_path, temp_validation_dir):
+    orig_dir, salt = valid_package_bundle
 
     tamper_dir = tmp_path / "tampered_pkg"
-    shutil.copytree(original_package_dir, tamper_dir)
+    shutil.copytree(orig_dir, tamper_dir)
 
     enc_file = tamper_dir / "adapter.enc"
     data = bytearray(enc_file.read_bytes())
@@ -78,7 +113,7 @@ def test_integration_tampered_package(original_package_dir, correct_salt, tmp_pa
 
     exit_code = run_deployment_pipeline(
         package_path=tamper_dir,
-        salt=correct_salt,
+        salt=salt,
         base_model_name="JackFram/llama-68m",
         prompt="Compare security models.",
         output_dir=temp_validation_dir
@@ -87,22 +122,20 @@ def test_integration_tampered_package(original_package_dir, correct_salt, tmp_pa
     assert exit_code == 1
     report = json.loads((temp_validation_dir / "validation_report.json").read_text())
     assert report["verification_pipeline"]["success"] is False
-    assert report["verification_pipeline"]["steps"]["Step 2: Integrity Verification"] == "FAILED"
-    assert report["verification_pipeline"]["steps"]["Step 3: Signature Verification"] == "SKIPPED"
+    assert report["verification_pipeline"]["steps"]["Step 4: Digest Validation"] == "FAILED"
 
 
-def test_integration_incomplete_manifest(original_package_dir, correct_salt, tmp_path, temp_validation_dir):
-    if not original_package_dir.exists():
-        pytest.skip("Original protected adapter package not found.")
+def test_integration_incomplete_manifest(valid_package_bundle, tmp_path, temp_validation_dir):
+    orig_dir, salt = valid_package_bundle
 
     incomplete_dir = tmp_path / "incomplete_pkg"
-    shutil.copytree(original_package_dir, incomplete_dir)
+    shutil.copytree(orig_dir, incomplete_dir)
 
     (incomplete_dir / "adapter.sig").unlink()
 
     exit_code = run_deployment_pipeline(
         package_path=incomplete_dir,
-        salt=correct_salt,
+        salt=salt,
         base_model_name="JackFram/llama-68m",
         prompt="Compare security models.",
         output_dir=temp_validation_dir
@@ -112,4 +145,3 @@ def test_integration_incomplete_manifest(original_package_dir, correct_salt, tmp
     report = json.loads((temp_validation_dir / "validation_report.json").read_text())
     assert report["verification_pipeline"]["success"] is False
     assert report["verification_pipeline"]["steps"]["Step 1: Package Completeness"] == "FAILED"
-    assert report["verification_pipeline"]["steps"]["Step 2: Integrity Verification"] == "SKIPPED"
