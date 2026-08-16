@@ -393,15 +393,27 @@
                     <div class="card-title">
                         🤖 SECURE MODEL INTERACTION
                     </div>
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <span style="font-size:0.8rem; color:var(--text-muted);">Model: Base + SecureLoRA Adapter</span>
-                        <span class="badge badge-passed">VERIFIED</span>
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-muted);">
+                        <span>Model: <strong id="model-status-base" style="color:var(--text-main);">Unloaded</strong></span>
+                        <span>| Adapter: <strong id="model-status-adapter" style="color:var(--text-main);">None</strong></span>
+                        <span id="model-status-badge" class="badge badge-unverified">UNAVAILABLE</span>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Input Prompt</label>
-                    <textarea id="model-prompt-input" class="form-input" rows="3" placeholder="Enter prompt to evaluate fine-tuned model behavior (e.g. Write a customer response email for John Smith)..."></textarea>
+                    <textarea id="model-prompt-input" class="form-input" rows="3" placeholder="Enter prompt to evaluate fine-tuned model behavior (e.g. Write a clinical encounter summary or customer support response)..."></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div>
+                        <label class="form-label" style="font-size:0.75rem;">Max New Tokens</label>
+                        <input id="model-max-tokens" type="number" class="form-input" value="128" min="16" max="512" style="font-size:0.85rem;" />
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size:0.75rem;">Temperature</label>
+                        <input id="model-temperature" type="number" step="0.1" class="form-input" value="0.7" min="0.0" max="2.0" style="font-size:0.85rem;" />
+                    </div>
                 </div>
 
                 <button class="btn btn-primary" onclick="generateModelResponse()" id="btn-generate-model">
@@ -410,13 +422,24 @@
 
                 <div class="model-outputs-grid" style="margin-top: 1.5rem; display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="output-box">
-                        <div class="output-header">Base Model Output (Un-tuned)</div>
+                        <div class="output-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>Base Model Output (Un-tuned)</span>
+                            <span id="base-pii-badge" class="badge badge-unverified">PII: N/A</span>
+                        </div>
                         <div class="output-content" id="base-model-output">Click 'Generate Response' to run side-by-side inference.</div>
                     </div>
                     <div class="output-box" style="border-color: rgba(16,185,129,0.3);">
-                        <div class="output-header" style="color:#34d399;">SecureLoRA Output (Fine-Tuned + Sanitized)</div>
+                        <div class="output-header" style="display:flex; justify-content:space-between; align-items:center; color:#34d399;">
+                            <span>SecureLoRA Output (Model Generated)</span>
+                            <span id="sec-pii-badge" class="badge badge-passed">PII: N/A</span>
+                        </div>
                         <div class="output-content" id="secure-model-output">Click 'Generate Response' to run side-by-side inference.</div>
                     </div>
+                </div>
+
+                <div id="post-guardrail-container" class="output-box" style="margin-top:1rem; border-color: rgba(245,158,11,0.3); display:none;">
+                    <div class="output-header" style="color:#fbbf24;">POST-GENERATION PII GUARDRAIL (AFTER LLM GENERATION)</div>
+                    <div class="output-content" id="post-guardrail-output"></div>
                 </div>
             </div>
         </div>

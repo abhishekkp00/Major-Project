@@ -777,74 +777,87 @@ def get_dataset_templates():
 
 @orchestrator_bp.route("/api/orchestrator/chat", methods=["POST"])
 def orchestrator_chat():
-    """Handles chat/inference questions over the active dataset or loaded model."""
-    from src.orchestrator.chat_engine import answer_question, load_records_from_job, load_records_from_jsonl
-    from pathlib import Path
+    """
+    Executes Base Model vs SecureLoRA PEFT Model inference using the canonical ModelRegistry.
+    Exposes max_new_tokens and temperature generation parameters.
+    No analytics fallback if a PEFT model is expected/loaded.
+    """
+    from src.orchestrator.chat_engine import generate_with_securelora_model
+    from src.orchestrator.model_registry import model_registry
 
     data = request.json or {}
     question = data.get("question", "").strip()
-    job_id = data.get("job_id")
+    max_new_tokens = int(data.get("max_new_tokens", 128))
+    temperature = float(data.get("temperature", 0.7))
+    top_p = float(data.get("top_p", 0.9))
 
     if not question:
         return jsonify({"success": False, "error": "question parameter is required"}), 400
 
-    records = []
-    # 1. Check if specific job_id is passed or recent jobs exist
-    if job_id:
-        job = orchestrator.get_job(job_id)
-        if job:
-            job_dir = orchestrator.base_jobs_dir / job_id
-            records = load_records_from_job(job_dir)
+    if not model_registry.is_verified():
+        return jsonify({
+            "success": False,
+            "status": "MODEL_UNAVAILABLE",
+            "message": "SecureLoRA deployment must be verified first.",
+            "adapter_active": False,
+            "model_verified": False,
+            "model_info": {
+                "base_model_name": "N/A",
+                "adapter_name": "N/A",
+                "deployment_id": "N/A",
+                "status": "UNAVAILABLE"
+            }
+        }), 400
 
-    if not records:
-        all_jobs = orchestrator.get_all_jobs()
-        if all_jobs:
-            latest_job = all_jobs[-1] if isinstance(all_jobs, list) else list(all_jobs.values())[-1]
-            latest_id = latest_job.get("job_id") if isinstance(latest_job, dict) else str(latest_job)
-            if latest_id:
-                latest_dir = orchestrator.base_jobs_dir / latest_id
-                records = load_records_from_job(latest_dir)
+    res = generate_with_securelora_model(
+        prompt=question,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_p=top_p
+    )
 
-
-    # 2. Fallback to sample dataset if no job records found
-    if not records:
-        samples_dir = Path(__file__).resolve().parents[2] / "samples"
-        for sample_file in [samples_dir / "real_world_pii.jsonl", samples_dir / "sample_pii_data.jsonl", samples_dir / "sample_medical_phi.jsonl"]:
-            if sample_file.exists():
-                records = load_records_from_jsonl(sample_file.read_text(encoding="utf-8"))
-                if records:
-                    break
-
-    guarded_answer, privacy_status, was_blocked = answer_question(question, records)
-
-    # Produce baseline raw answer for side-by-side comparison
-    if was_blocked:
-        raw_answer = "⚠️ Base Model Output (Un-tuned Baseline):\n[UNRESTRICTED] Request for sensitive PII or credentials. Base model without privacy controls attempts to complete or leak sensitive prompt tokens directly."
+    if res.get("status") == "SUCCESS":
+        return jsonify({
+            "success": True,
+            "status": "SUCCESS",
+            "question": question,
+            "base_output": res["base_output"],
+            "securelora_output": res["securelora_output"],
+            "post_processed_output": res["post_processed_output"],
+            "base_pii": res["base_pii"],
+            "securelora_pii": res["securelora_pii"],
+            "adapter_active": True,
+            "model_verified": True,
+            "model_info": res["model_info"],
+            "raw_answer": res["base_output"],
+            "answer": res["securelora_output"]
+        })
     else:
-        sample_rec = records[0] if records else {}
-        if isinstance(sample_rec, dict):
-            raw_sample = (
-                sample_rec.get("input")
-                or sample_rec.get("text")
-                or sample_rec.get("clinical_note")
-                or sample_rec.get("output")
-                or sample_rec.get("instruction")
-                or str(sample_rec)
-            )
-        else:
-            raw_sample = str(sample_rec)
-
-        raw_answer = f"⚠️ Base Model Output (Un-tuned Baseline):\n\n{raw_sample}\n\n(Note: Un-tuned base model exposes raw un-masked PII and sensitive identifiers directly in text completions.)"
+        return jsonify({
+            "success": False,
+            "status": res.get("status", "GENERATION_ERROR"),
+            "message": res.get("message", "Model generation failed"),
+            "adapter_active": res.get("adapter_active", False),
+            "model_verified": res.get("model_verified", False),
+            "model_info": res.get("model_info", {})
+        }), 500
 
 
-
+@orchestrator_bp.route("/api/orchestrator/model-status", methods=["GET"])
+def get_model_status():
+    """Returns the backend ModelRegistry status."""
+    from src.orchestrator.model_registry import model_registry
+    info = model_registry.get_info()
+    verified = model_registry.is_verified()
     return jsonify({
         "success": True,
-        "question": question,
-        "answer": guarded_answer,
-        "raw_answer": raw_answer,
-        "privacy_status": privacy_status,
-        "was_blocked": was_blocked
+        "model_verified": verified,
+        "adapter_active": verified,
+        "base_model_name": info["base_model_name"],
+        "adapter_name": info["adapter_name"],
+        "deployment_id": info["deployment_id"],
+        "status": "VERIFIED" if verified else "UNAVAILABLE"
     })
+
 
 

@@ -37,18 +37,208 @@ _chat_model_name = None  # Base model name string
 
 
 def register_model(model, tokenizer, model_name: str):
-    """Called by Phase 4 after a successful deployment verification."""
-    global _chat_model, _chat_tokenizer, _chat_model_name
-    with _model_lock:
-        _chat_model = model
-        _chat_tokenizer = tokenizer
-        _chat_model_name = model_name
-    logger.info("Chat engine: fine-tuned model registered (%s)", model_name)
+    """Backwards compatible forwarder to global model_registry."""
+    from src.orchestrator.model_registry import model_registry
+    model_registry.register(
+        base_model=getattr(model, "base_model", model),
+        peft_model=model,
+        tokenizer=tokenizer,
+        base_model_name=model_name
+    )
 
 
 def get_registered_model():
-    with _model_lock:
-        return _chat_model, _chat_tokenizer, _chat_model_name
+    from src.orchestrator.model_registry import model_registry
+    info = model_registry.get_info()
+    return info["peft_model"], info["tokenizer"], info["base_model_name"]
+
+
+# ---------------------------------------------------------------------------
+# 5. Authentic LLM Inference — Base Model vs SecureLoRA PEFT Model
+# ---------------------------------------------------------------------------
+
+def generate_with_securelora_model(
+    prompt: str,
+    max_new_tokens: int = 128,
+    temperature: float = 0.7,
+    top_p: float = 0.9,
+    seed: Optional[int] = 42
+) -> Dict[str, Any]:
+    """
+    Executes actual PyTorch model generation using the registered Base Model vs PEFT Adapter Model.
+    NO analytics fallback if model is available.
+    Returns explicit MODEL_UNAVAILABLE status if no verified PEFT model is loaded.
+    """
+    from src.orchestrator.model_registry import model_registry
+    from src.security.pii_engine import HybridPIIEngine
+
+    if not model_registry.is_verified():
+        return {
+            "status": "MODEL_UNAVAILABLE",
+            "message": "SecureLoRA deployment must be verified first.",
+            "adapter_active": False,
+            "model_verified": False,
+            "model_info": {
+                "base_model_name": "N/A",
+                "adapter_name": "N/A",
+                "deployment_id": "N/A",
+                "status": "UNAVAILABLE"
+            }
+        }
+
+    info = model_registry.get_info()
+    base_model = info["base_model"]
+    peft_model = info["peft_model"]
+    tokenizer = info["tokenizer"]
+
+    if peft_model is None or tokenizer is None:
+        return {
+            "status": "MODEL_UNAVAILABLE",
+            "message": "SecureLoRA deployment must be verified first.",
+            "adapter_active": False,
+            "model_verified": False,
+            "model_info": {
+                "base_model_name": info.get("base_model_name", "N/A"),
+                "adapter_name": info.get("adapter_name", "N/A"),
+                "deployment_id": info.get("deployment_id", "N/A"),
+                "status": "UNAVAILABLE"
+            }
+        }
+
+    try:
+        import torch
+
+        device = next(peft_model.parameters()).device
+        inputs = tokenizer(prompt, return_tensors="pt")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        do_sample = temperature > 0
+        gen_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "pad_token_id": tokenizer.pad_token_id or tokenizer.eos_token_id,
+            "eos_token_id": tokenizer.eos_token_id,
+            "do_sample": do_sample,
+        }
+        if do_sample:
+            gen_kwargs["temperature"] = temperature
+            gen_kwargs["top_p"] = top_p
+
+        # 1. BASE MODEL GENERATION (with adapter disabled)
+        if seed is not None:
+            torch.manual_seed(seed)
+
+        peft_model.eval()
+        with torch.no_grad():
+            try:
+                with peft_model.disable_adapter():
+                    base_outputs = peft_model.generate(**inputs, **gen_kwargs)
+            except Exception:
+                base_outputs = base_model.generate(**inputs, **gen_kwargs) if base_model is not None else peft_model.generate(**inputs, **gen_kwargs)
+
+            base_raw = tokenizer.decode(base_outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+
+        # 2. SECURELORA MODEL GENERATION (with adapter active)
+        if seed is not None:
+            torch.manual_seed(seed)
+
+        with torch.no_grad():
+            peft_outputs = peft_model.generate(**inputs, **gen_kwargs)
+            securelora_raw = tokenizer.decode(peft_outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+
+        # 3. INDEPENDENT PII EVALUATION ON BOTH RAW GENERATIONS
+        pii_engine = HybridPIIEngine()
+
+        base_detected = pii_engine.detect(base_raw) if base_raw else {}
+        securelora_detected = pii_engine.detect(securelora_raw) if securelora_raw else {}
+
+        base_entities_list = []
+        for etype, vals in base_detected.items():
+            for val in vals:
+                base_entities_list.append({"type": etype, "value": val})
+
+        securelora_entities_list = []
+        for etype, vals in securelora_detected.items():
+            for val in vals:
+                securelora_entities_list.append({"type": etype, "value": val})
+
+        base_pii_summary = {
+            "count": sum(len(v) for v in base_detected.values()),
+            "entities": base_entities_list
+        }
+        securelora_pii_summary = {
+            "count": sum(len(v) for v in securelora_detected.values()),
+            "entities": securelora_entities_list
+        }
+
+        # 4. POST-GENERATION PII GUARDRAIL (clearly labeled separately from model output)
+        masked_text, _ = pii_engine.mask(securelora_raw) if securelora_raw else ("", {})
+        post_processed_output = masked_text
+
+        return {
+            "status": "SUCCESS",
+            "question": prompt,
+            "base_output": base_raw,
+            "securelora_output": securelora_raw,
+            "post_processed_output": post_processed_output,
+            "base_pii": base_pii_summary,
+            "securelora_pii": securelora_pii_summary,
+            "adapter_active": True,
+            "model_verified": True,
+            "model_info": {
+                "base_model_name": info["base_model_name"],
+                "adapter_name": info["adapter_name"],
+                "deployment_id": info["deployment_id"],
+                "status": "VERIFIED"
+            }
+        }
+
+    except Exception as e:
+        logger.exception("Error executing PEFT generation:")
+        return {
+            "status": "GENERATION_ERROR",
+            "message": f"Generation failed: {str(e)}",
+            "adapter_active": True,
+            "model_verified": True,
+            "model_info": {
+                "base_model_name": info.get("base_model_name", "Unknown"),
+                "adapter_name": info.get("adapter_name", "Unknown"),
+                "deployment_id": info.get("deployment_id", "Unknown"),
+                "status": "ERROR"
+            }
+        }
+
+
+# ---------------------------------------------------------------------------
+# 6. Legacy Public API
+# ---------------------------------------------------------------------------
+
+def answer_question(
+    question: str,
+    records: List[Dict[str, Any]]
+) -> Tuple[str, str, bool]:
+    """
+    Backwards compatible interface for chat prompts.
+    Uses generate_with_securelora_model if model is loaded, else analytics mode.
+    """
+    if not question.strip():
+        return "Please ask a question about your dataset.", "SAFE", False
+
+    if _is_pii_seeking(question):
+        return _PRIVACY_BLOCK_RESPONSE, "BLOCKED", True
+
+    from src.orchestrator.model_registry import model_registry
+    if model_registry.is_verified():
+        gen_res = generate_with_securelora_model(question)
+        if gen_res.get("status") == "SUCCESS":
+            return gen_res["securelora_output"], "SAFE", False
+
+    if not records:
+        return "SecureLoRA deployment must be verified first.", "SAFE", False
+
+    raw_answer = _answer_from_analytics(question, records)
+    guarded_answer, leaked_counts = _regex_mask(raw_answer)
+    privacy_status = "GUARDED" if leaked_counts else "SAFE"
+    return guarded_answer, privacy_status, False
 
 
 # ---------------------------------------------------------------------------

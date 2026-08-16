@@ -582,44 +582,107 @@ async function loadRunHistory() {
 /* ---------------------------------------------------------------------------
    MODE 3: MODEL INTERACTION VIEW
    --------------------------------------------------------------------------- */
+async function loadModelStatus() {
+  const baseEl = document.getElementById('model-status-base');
+  const adpEl = document.getElementById('model-status-adapter');
+  const badgeEl = document.getElementById('model-status-badge');
+  if (!badgeEl) return;
+
+  try {
+    const res = await fetch('/api/orchestrator/model-status');
+    const data = await res.json();
+
+    if (data.success) {
+      if (baseEl) baseEl.textContent = data.base_model_name || 'Unloaded';
+      if (adpEl) adpEl.textContent = data.adapter_name || 'None';
+
+      if (data.model_verified) {
+        badgeEl.className = 'badge badge-passed';
+        badgeEl.textContent = 'VERIFIED';
+      } else {
+        badgeEl.className = 'badge badge-unverified';
+        badgeEl.textContent = 'UNAVAILABLE';
+      }
+    }
+  } catch (err) {
+    console.error('Failed fetching model status:', err);
+  }
+}
+
 function openSecureModelView() {
   switchTab(document.getElementById('tabModel'), 'model');
+  loadModelStatus();
 }
 
 async function generateModelResponse() {
   const promptInput = document.getElementById('model-prompt-input');
+  const tokensInput = document.getElementById('model-max-tokens');
+  const tempInput = document.getElementById('model-temperature');
+
   const btn = document.getElementById('btn-generate-model');
   const baseOut = document.getElementById('base-model-output');
   const secOut = document.getElementById('secure-model-output');
+  const postOut = document.getElementById('post-guardrail-output');
+  const postContainer = document.getElementById('post-guardrail-container');
+
+  const basePiiBadge = document.getElementById('base-pii-badge');
+  const secPiiBadge = document.getElementById('sec-pii-badge');
 
   if (!promptInput || !promptInput.value.trim()) {
     alert('Please enter a prompt first.');
     return;
   }
 
+  const maxNewTokens = tokensInput ? parseInt(tokensInput.value) || 128 : 128;
+  const temperature = tempInput ? parseFloat(tempInput.value) || 0.7 : 0.7;
+
   if (btn) btn.disabled = true;
   if (baseOut) baseOut.textContent = 'Generating base model output...';
-  if (secOut) secOut.textContent = 'Generating SecureLoRA output...';
+  if (secOut) secOut.textContent = 'Generating SecureLoRA model output...';
+  if (postContainer) postContainer.style.display = 'none';
 
   try {
     const res = await fetch('/api/orchestrator/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: promptInput.value })
+      body: JSON.stringify({
+        question: promptInput.value,
+        max_new_tokens: maxNewTokens,
+        temperature: temperature
+      })
     });
     const data = await res.json();
 
-    if (data.answer) {
-      if (baseOut) baseOut.textContent = data.raw_answer || data.answer;
-      if (secOut) secOut.textContent = data.answer;
-    } else {
-      if (baseOut) baseOut.textContent = 'Base model response generated.';
-      if (secOut) secOut.textContent = `[SecureLoRA Active Response]\n${promptInput.value}\n\nGenerated output: All sensitive entities masked, adapter fine-tuned output applied safely.`;
+    if (data.status === 'MODEL_UNAVAILABLE' || !data.success) {
+      if (baseOut) baseOut.textContent = `[MODEL UNAVAILABLE]\n${data.message || 'SecureLoRA deployment must be verified first.'}`;
+      if (secOut) secOut.textContent = `[MODEL UNAVAILABLE]\n${data.message || 'SecureLoRA deployment must be verified first.'}`;
+      loadModelStatus();
+      return;
+    }
+
+    if (data.status === 'SUCCESS') {
+      if (baseOut) baseOut.textContent = data.base_output || '(Empty generation)';
+      if (secOut) secOut.textContent = data.securelora_output || '(Empty generation)';
+
+      if (basePiiBadge && data.base_pii) {
+        basePiiBadge.textContent = `PII: ${data.base_pii.count} entities`;
+        basePiiBadge.className = data.base_pii.count > 0 ? 'badge badge-danger' : 'badge badge-passed';
+      }
+      if (secPiiBadge && data.securelora_pii) {
+        secPiiBadge.textContent = `PII: ${data.securelora_pii.count} entities`;
+        secPiiBadge.className = data.securelora_pii.count > 0 ? 'badge badge-danger' : 'badge badge-passed';
+      }
+
+      if (data.post_processed_output && data.post_processed_output !== data.securelora_output) {
+        if (postOut) postOut.textContent = data.post_processed_output;
+        if (postContainer) postContainer.style.display = 'block';
+      }
+      loadModelStatus();
     }
   } catch (err) {
-    console.error('Inference error:', err);
-    if (baseOut) baseOut.textContent = 'Base model response available.';
-    if (secOut) secOut.textContent = `[SecureLoRA Model Active]\nPrompt: "${promptInput.value}"\nResult: Successfully processed through secure adapter pipeline. PII entities masked cleanly.`;
+    console.error('Inference request error:', err);
+    if (baseOut) baseOut.textContent = 'Inference request failed.';
+    if (secOut) secOut.textContent = 'Inference request failed.';
   } finally {
     if (btn) btn.disabled = false;
   }

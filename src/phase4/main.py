@@ -188,10 +188,19 @@ def run_deployment_pipeline(
                             base_model, tokenizer = load_base_model_and_tokenizer(base_model_name)
                             peft_model = load_peft_adapter(base_model, decrypted_adapter_dir)
                             try:
-                                from src.orchestrator.chat_engine import register_model
-                                register_model(peft_model, tokenizer, base_model_name)
+                                from src.orchestrator.model_registry import model_registry
+                                adapter_id = target_adapter_id or manifest.get("adapter_id", "secure_lora_adapter")
+                                pkg_id = manifest.get("package_id", "verified_deployment")
+                                model_registry.register(
+                                    base_model=base_model,
+                                    peft_model=peft_model,
+                                    tokenizer=tokenizer,
+                                    base_model_name=base_model_name,
+                                    adapter_name=adapter_id,
+                                    deployment_id=pkg_id
+                                )
                             except Exception as reg_err:
-                                logger.warning("Could not register model in chat engine: %s", reg_err)
+                                logger.warning("Could not register model in model_registry: %s", reg_err)
 
                             inference_result = run_side_by_side_inference(
                                 base_model=base_model,
