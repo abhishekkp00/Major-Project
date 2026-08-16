@@ -112,9 +112,10 @@ def run_deployment_pipeline(
                 # ── Step 5: Key Derivation ──────────────────────────────────
                 logger.info("[5/8] Deriving device-bound decryption key...")
                 try:
-                    key = get_device_bound_key(salt)
+                    kdf_ver = manifest.get("encryption", {}).get("kdf_version")
+                    key = get_device_bound_key(salt, kdf_version=kdf_ver)
                     steps_status["Step 5: Key Derivation"] = "PASSED"
-                    logger.info("[5/8] PASS — AES-256 key derived dynamically in-memory.")
+                    logger.info("[5/8] PASS — AES-256 key derived via HKDF-SHA256 in-memory.")
                 except Exception as e:
                     steps_status["Step 5: Key Derivation"] = "FAILED"
                     raise ValueError(f"Key derivation failed: {e}") from e
