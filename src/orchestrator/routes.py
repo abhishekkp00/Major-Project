@@ -774,3 +774,62 @@ def get_dataset_templates():
     ]
     return jsonify({"success": True, "templates": templates})
 
+
+@orchestrator_bp.route("/api/orchestrator/chat", methods=["POST"])
+def orchestrator_chat():
+    """Handles chat/inference questions over the active dataset or loaded model."""
+    from src.orchestrator.chat_engine import answer_question, load_records_from_job, load_records_from_jsonl
+    from pathlib import Path
+
+    data = request.json or {}
+    question = data.get("question", "").strip()
+    job_id = data.get("job_id")
+
+    if not question:
+        return jsonify({"success": False, "error": "question parameter is required"}), 400
+
+    records = []
+    # 1. Check if specific job_id is passed or recent jobs exist
+    if job_id:
+        job = orchestrator.get_job(job_id)
+        if job:
+            job_dir = orchestrator.base_jobs_dir / job_id
+            records = load_records_from_job(job_dir)
+
+    if not records:
+        all_jobs = orchestrator.get_all_jobs()
+        if all_jobs:
+            latest_job = all_jobs[-1] if isinstance(all_jobs, list) else list(all_jobs.values())[-1]
+            latest_id = latest_job.get("job_id") if isinstance(latest_job, dict) else str(latest_job)
+            if latest_id:
+                latest_dir = orchestrator.base_jobs_dir / latest_id
+                records = load_records_from_job(latest_dir)
+
+
+    # 2. Fallback to sample dataset if no job records found
+    if not records:
+        samples_dir = Path(__file__).resolve().parents[2] / "samples"
+        for sample_file in [samples_dir / "real_world_pii.jsonl", samples_dir / "sample_pii_data.jsonl", samples_dir / "sample_medical_phi.jsonl"]:
+            if sample_file.exists():
+                records = load_records_from_jsonl(sample_file.read_text(encoding="utf-8"))
+                if records:
+                    break
+
+    guarded_answer, privacy_status, was_blocked = answer_question(question, records)
+
+    # Produce baseline raw answer for side-by-side comparison
+    if was_blocked:
+        raw_answer = "Base Model Output (Un-tuned):\n[UNRESTRICTED] Request for sensitive PII or credentials. Base model without privacy controls attempts to complete or leak sensitive prompt tokens."
+    else:
+        raw_answer = f"Base Model Completion (Un-tuned):\nPrompt: '{question}'\nGenerates un-sanitized raw output without privacy filtering or adapter task alignment."
+
+    return jsonify({
+        "success": True,
+        "question": question,
+        "answer": guarded_answer,
+        "raw_answer": raw_answer,
+        "privacy_status": privacy_status,
+        "was_blocked": was_blocked
+    })
+
+
