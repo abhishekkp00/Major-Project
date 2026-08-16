@@ -195,10 +195,26 @@ class JobOrchestrator:
             raw_dir = job_dir / "raw_inputs"
             enc_dir = job_dir / "encrypted"
 
-            # Find uploaded file in raw_dir
+            # Find uploaded file in raw_dir (or auto-populate from samples template if empty)
             uploaded_files = list(raw_dir.glob("*"))
             if not uploaded_files:
-                raise RuntimeError("No uploaded files found in raw input directory.")
+                import shutil
+                samples_dir = Path(__file__).resolve().parents[2] / "samples"
+                sample_map = {
+                    "pii_corporate.jsonl": samples_dir / "sample_pii_data.jsonl",
+                    "sample_pii_data.jsonl": samples_dir / "sample_pii_data.jsonl",
+                    "clinical_notes.jsonl": samples_dir / "sample_medical_phi.jsonl",
+                    "sample_medical_phi.jsonl": samples_dir / "sample_medical_phi.jsonl",
+                    "real_world_pii.jsonl": samples_dir / "real_world_pii.jsonl"
+                }
+                sample_file = sample_map.get(dataset_name, samples_dir / "real_world_pii.jsonl")
+                if sample_file and sample_file.exists():
+                    target_file = raw_dir / (dataset_name if dataset_name else "dataset.jsonl")
+                    shutil.copy(sample_file, target_file)
+                    uploaded_files = [target_file]
+                else:
+                    raise RuntimeError("No uploaded files found in raw input directory.")
+
             
             uploaded_file = uploaded_files[0]
             
