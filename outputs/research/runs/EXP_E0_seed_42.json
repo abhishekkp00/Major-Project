@@ -1,0 +1,92 @@
+{
+  "baseline_id": "E0",
+  "baseline_name": "Base Model",
+  "seed": 42,
+  "execution_status": "COMPLETED",
+  "not_executed_reason": null,
+  "utility": {
+    "train_loss": 2.1599,
+    "val_loss": 1.8472,
+    "perplexity": 6.3423,
+    "task_accuracy": 0.7265,
+    "f1_score": 0.7152
+  },
+  "privacy": {
+    "dp_enabled": false,
+    "epsilon": null,
+    "delta": null,
+    "clipping_norm": null,
+    "noise_multiplier": null,
+    "pii_precision": 0.0,
+    "pii_recall": 0.0,
+    "pii_f1": 0.0
+  },
+  "security": {
+    "unauthorized_device_rejection_rate": 0.0,
+    "cross_device_rejection_rate": 0.0,
+    "tamper_rejection_rate": 0.0,
+    "signature_rejection_rate": 0.0,
+    "wrong_key_rejection_rate": 0.0,
+    "replay_rejection_rate": 0.0,
+    "malicious_adapter_detection_rate": 0.0,
+    "unauthorized_deployment_rejection_rate": 0.0
+  },
+  "overhead": {
+    "training_time_s": 0.0,
+    "encryption_time_ms": 0.0,
+    "decryption_time_ms": 0.0,
+    "signing_time_ms": 0.0,
+    "verification_time_ms": 0.0,
+    "packaging_time_ms": 0.0,
+    "deployment_latency_ms": 0.0,
+    "deployment_time_ms": 0.0,
+    "inference_latency_ms": 12.393,
+    "memory_usage_mb": 120.0,
+    "peak_memory_mb": 120.0,
+    "storage_overhead_bytes": 524288,
+    "package_size_bytes": 524288
+  },
+  "metadata": {
+    "experiment_id": "EXP_E0_seed_42_1786872221",
+    "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
+    "timestamp_utc": "2026-08-16T09:23:41.329403+00:00",
+    "seed": 42,
+    "model_identifier": "JackFram/llama-68m",
+    "dataset_identifier": "sample_pii_data.jsonl",
+    "dataset_split": "val",
+    "python_version": "3.12.3",
+    "os_info": "Linux 7.0.0-28-generic",
+    "hardware": {
+      "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "architecture": "64bit",
+      "python_implementation": "CPython",
+      "python_version": "3.12.3",
+      "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+      "ram_total_gb": 15.35,
+      "cuda_available": false
+    },
+    "package_versions": {
+      "torch": "2.12.1+cpu",
+      "transformers": "5.12.1",
+      "opacus": "1.5.2",
+      "cryptography": "49.0.0",
+      "numpy": "1.26.4",
+      "spacy": "NOT_INSTALLED",
+      "presidio_analyzer": "NOT_INSTALLED",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1"
+    },
+    "configuration_snapshot": {
+      "name": "Base Model",
+      "description": "Base language model JackFram/llama-68m evaluated zero-shot without fine-tuning, PII redaction, DP, encryption, or device binding.",
+      "pii": false,
+      "dp": false,
+      "enc": false,
+      "binding": false,
+      "sig": false,
+      "screen": false,
+      "train": false
+    }
+  }
+}

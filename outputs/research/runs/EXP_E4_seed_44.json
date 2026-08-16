@@ -1,0 +1,92 @@
+{
+  "baseline_id": "E4",
+  "baseline_name": "PII + DP-LoRA",
+  "seed": 44,
+  "execution_status": "COMPLETED",
+  "not_executed_reason": null,
+  "utility": {
+    "train_loss": 0.9032,
+    "val_loss": 0.8449,
+    "perplexity": 2.3278,
+    "task_accuracy": 0.864,
+    "f1_score": 0.8553
+  },
+  "privacy": {
+    "dp_enabled": true,
+    "epsilon": 2.3985,
+    "delta": 1e-05,
+    "clipping_norm": 1.0,
+    "noise_multiplier": 1.2,
+    "pii_precision": 0.95,
+    "pii_recall": 0.9744,
+    "pii_f1": 0.962
+  },
+  "security": {
+    "unauthorized_device_rejection_rate": 0.0,
+    "cross_device_rejection_rate": 0.0,
+    "tamper_rejection_rate": 0.0,
+    "signature_rejection_rate": 0.0,
+    "wrong_key_rejection_rate": 0.0,
+    "replay_rejection_rate": 0.0,
+    "malicious_adapter_detection_rate": 0.0,
+    "unauthorized_deployment_rejection_rate": 0.0
+  },
+  "overhead": {
+    "training_time_s": 2.275,
+    "encryption_time_ms": 0.0,
+    "decryption_time_ms": 0.0,
+    "signing_time_ms": 0.0,
+    "verification_time_ms": 0.0,
+    "packaging_time_ms": 0.0,
+    "deployment_latency_ms": 0.0,
+    "deployment_time_ms": 0.0,
+    "inference_latency_ms": 12.433,
+    "memory_usage_mb": 155.0,
+    "peak_memory_mb": 155.0,
+    "storage_overhead_bytes": 524288,
+    "package_size_bytes": 524288
+  },
+  "metadata": {
+    "experiment_id": "EXP_E4_seed_44_1786872252",
+    "git_commit_sha": "daabe04b0011a756f95fcbeb447972b64ba79b51",
+    "timestamp_utc": "2026-08-16T09:24:12.968690+00:00",
+    "seed": 44,
+    "model_identifier": "JackFram/llama-68m",
+    "dataset_identifier": "sample_pii_data.jsonl",
+    "dataset_split": "val",
+    "python_version": "3.12.3",
+    "os_info": "Linux 7.0.0-28-generic",
+    "hardware": {
+      "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "architecture": "64bit",
+      "python_implementation": "CPython",
+      "python_version": "3.12.3",
+      "cpu_model": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+      "ram_total_gb": 15.35,
+      "cuda_available": false
+    },
+    "package_versions": {
+      "torch": "2.12.1+cpu",
+      "transformers": "5.12.1",
+      "opacus": "1.5.2",
+      "cryptography": "49.0.0",
+      "numpy": "1.26.4",
+      "spacy": "NOT_INSTALLED",
+      "presidio_analyzer": "NOT_INSTALLED",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1"
+    },
+    "configuration_snapshot": {
+      "name": "PII + DP-LoRA",
+      "description": "Phase 1 PII masking + Phase 2 Opacus DP-LoRA fine-tuning.",
+      "pii": true,
+      "dp": true,
+      "enc": false,
+      "binding": false,
+      "sig": false,
+      "screen": false,
+      "train": true
+    }
+  }
+}

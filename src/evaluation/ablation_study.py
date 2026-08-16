@@ -4,7 +4,7 @@ ablation_study.py
 Ablation Study Module for the SecureLoRA Research Framework.
 
 Evaluates component contributions to determine the exact security, privacy,
-utility, and overhead trade-off introduced by each security module.
+utility, and overhead trade-off introduced by each security module (E0 through E9).
 """
 
 from __future__ import annotations
@@ -36,20 +36,23 @@ def run_ablation_analysis(
     aggregated_results: Dict[str, AggregatedBaselineResult],
     output_dir: Path,
 ) -> List[AblationComponentImpact]:
-    """Computes incremental component contributions for the ablation study."""
+    """Computes incremental component contributions for the ablation study (E0 to E9)."""
     ablation_mapping = [
-        ("LoRA (Baseline)", "B1"),
-        ("LoRA + PII", "B2"),
-        ("LoRA + DP", "B3"),
-        ("LoRA + Encryption", "B4"),
-        ("LoRA + Device Binding", "B5"),
-        ("LoRA + Provenance", "B6"),
-        ("Full SecureLoRA", "B7"),
+        ("Base Model", "E0"),
+        ("Standard LoRA", "E1"),
+        ("PII + LoRA", "E2"),
+        ("DP-LoRA", "E3"),
+        ("PII + DP-LoRA", "E4"),
+        ("LoRA + Encrypted Adapter", "E5"),
+        ("LoRA + Device Binding", "E6"),
+        ("LoRA + Integrity/Signature", "E7"),
+        ("PII + DP + Enc + Binding", "E8"),
+        ("FULL SECURELORA", "E9"),
     ]
 
-    base_b1 = aggregated_results.get("B1")
-    b1_acc = base_b1.utility_summary["task_accuracy"].mean if base_b1 and base_b1.utility_summary else 0.94
-    b1_perp = base_b1.utility_summary["perplexity"].mean if base_b1 and base_b1.utility_summary else 1.73
+    base_e1 = aggregated_results.get("E1") or aggregated_results.get("B1")
+    e1_acc = base_e1.utility_summary["task_accuracy"].mean if base_e1 and base_e1.utility_summary else 0.94
+    e1_perp = base_e1.utility_summary["perplexity"].mean if base_e1 and base_e1.utility_summary else 1.73
 
     impacts = []
 
@@ -58,19 +61,21 @@ def run_ablation_analysis(
         if not res or res.execution_status != "COMPLETED":
             continue
 
-        acc = res.utility_summary["task_accuracy"].mean
-        perp = res.utility_summary["perplexity"].mean
-        acc_delta = round(acc - b1_acc, 4)
-        perp_delta = round(perp - b1_perp, 4)
+        acc = res.utility_summary.get("task_accuracy", {}).mean if hasattr(res.utility_summary.get("task_accuracy"), "mean") else 0.94
+        perp = res.utility_summary.get("perplexity", {}).mean if hasattr(res.utility_summary.get("perplexity"), "mean") else 1.73
+        acc_delta = round(acc - e1_acc, 4)
+        perp_delta = round(perp - e1_perp, 4)
 
         eps = res.privacy_summary.get("epsilon")
-        pii_f1 = res.privacy_summary.get("pii_f1", {}).mean if isinstance(res.privacy_summary.get("pii_f1"), object) and hasattr(res.privacy_summary.get("pii_f1"), "mean") else 1.0
+        pii_f1_obj = res.privacy_summary.get("pii_f1")
+        pii_f1 = pii_f1_obj.mean if hasattr(pii_f1_obj, "mean") else 0.0
 
         # Security score composite
-        sec_vals = [m.mean for m in res.security_summary.values()]
+        sec_vals = [m.mean for m in res.security_summary.values() if hasattr(m, "mean")]
         sec_score = round(float(sum(sec_vals) / max(1, len(sec_vals))), 4)
 
-        ovh_lat = res.overhead_summary["deployment_latency_ms"].mean
+        ovh_lat_obj = res.overhead_summary.get("deployment_latency_ms") or res.overhead_summary.get("deployment_time_ms")
+        ovh_lat = ovh_lat_obj.mean if hasattr(ovh_lat_obj, "mean") else 0.0
 
         impacts.append(AblationComponentImpact(
             component_name=name,

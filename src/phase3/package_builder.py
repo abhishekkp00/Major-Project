@@ -129,7 +129,7 @@ def build_manifest(
         "created_at_utc": creation_time,
         "expiration_timestamp": expiration_timestamp,
         "binding_policy_version": binding_policy_version,
-        "kdf_version": enc_metadata.get("kdf_version", "hkdf-sha256-v1"),
+        "kdf_version": (enc_metadata or {}).get("kdf_version", "hkdf-sha256-v1"),
         "encryption_version": "aes-256-gcm-v1",
         "signature_algorithm": "rsa-pss-2048-sha256",
         "digest_algorithm": "sha256",
@@ -175,15 +175,28 @@ def build_package(
     private_key_src: Optional[Path] = None,
     sequence_number: int = 1,
     expiration_timestamp: Optional[str] = None,
+    enable_screening: bool = True,
+    admin_override_token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     High-level package orchestrator:
-      1. Copies public key to package
-      2. Computes manifest with all 18 security fields
-      3. Signs the canonical manifest authentication digest (manifest + ciphertext digest)
-      4. Saves adapter.sig
-      5. Verifies package completeness
+      1. Pre-packaging Security Screening Gate (Structural + Behavioral vetting)
+      2. Copies public key to package
+      3. Computes manifest with all 18 security fields
+      4. Signs the canonical manifest authentication digest (manifest + ciphertext digest)
+      5. Saves adapter.sig
+      6. Verifies package completeness
     """
+    if enable_screening:
+        from src.security.adapter_screening import pre_packaging_screening_gate
+        logger.info("Executing Phase 3 pre-packaging security screening gate for '%s'...", adapter_id)
+        screening_report = pre_packaging_screening_gate(
+            adapter_source=package_dir,
+            adapter_id=adapter_id,
+            admin_override_token=admin_override_token,
+        )
+        logger.info("Pre-packaging security screening passed (decision=%s, risk=%.4f)", screening_report.decision, screening_report.risk_score)
+
     dest_pub = package_dir / "public.pem"
     if public_key_src.resolve() != dest_pub.resolve():
         shutil.copy2(public_key_src, dest_pub)

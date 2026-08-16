@@ -1,17 +1,27 @@
 [
   {
-    "component_name": "LoRA (Baseline)",
-    "baseline_id": "B1",
-    "utility_delta_accuracy": 0.0,
-    "perplexity_delta": 0.0,
+    "component_name": "Base Model",
+    "baseline_id": "E0",
+    "utility_delta_accuracy": -0.2139,
+    "perplexity_delta": 4.6303,
     "epsilon": null,
-    "pii_f1": 1.0,
+    "pii_f1": 0.0,
     "security_score": 0.0,
     "overhead_latency_ms": 0.0
   },
   {
-    "component_name": "LoRA + PII",
-    "baseline_id": "B2",
+    "component_name": "Standard LoRA",
+    "baseline_id": "E1",
+    "utility_delta_accuracy": 0.0,
+    "perplexity_delta": 0.0,
+    "epsilon": null,
+    "pii_f1": 0.0,
+    "security_score": 0.0,
+    "overhead_latency_ms": 0.0
+  },
+  {
+    "component_name": "PII + LoRA",
+    "baseline_id": "E2",
     "utility_delta_accuracy": 0.0,
     "perplexity_delta": 0.0,
     "epsilon": null,
@@ -20,53 +30,73 @@
     "overhead_latency_ms": 0.0
   },
   {
-    "component_name": "LoRA + DP",
-    "baseline_id": "B3",
-    "utility_delta_accuracy": -0.06,
-    "perplexity_delta": 0.5211,
-    "epsilon": 2.41,
-    "pii_f1": 1.0,
+    "component_name": "DP-LoRA",
+    "baseline_id": "E3",
+    "utility_delta_accuracy": -0.061,
+    "perplexity_delta": 0.5517,
+    "epsilon": 2.443,
+    "pii_f1": 0.0,
     "security_score": 0.0,
     "overhead_latency_ms": 0.0
   },
   {
-    "component_name": "LoRA + Encryption",
-    "baseline_id": "B4",
+    "component_name": "PII + DP-LoRA",
+    "baseline_id": "E4",
+    "utility_delta_accuracy": -0.061,
+    "perplexity_delta": 0.5517,
+    "epsilon": 2.443,
+    "pii_f1": 0.962,
+    "security_score": 0.0,
+    "overhead_latency_ms": 0.0
+  },
+  {
+    "component_name": "LoRA + Encrypted Adapter",
+    "baseline_id": "E5",
     "utility_delta_accuracy": 0.0,
     "perplexity_delta": 0.0,
     "epsilon": null,
-    "pii_f1": 1.0,
-    "security_score": 0.1667,
-    "overhead_latency_ms": 0.3843
+    "pii_f1": 0.0,
+    "security_score": 0.25,
+    "overhead_latency_ms": 0.527
   },
   {
     "component_name": "LoRA + Device Binding",
-    "baseline_id": "B5",
+    "baseline_id": "E6",
     "utility_delta_accuracy": 0.0,
     "perplexity_delta": 0.0,
     "epsilon": null,
-    "pii_f1": 1.0,
-    "security_score": 0.5,
-    "overhead_latency_ms": 0.1783
+    "pii_f1": 0.0,
+    "security_score": 0.625,
+    "overhead_latency_ms": 0.3983
   },
   {
-    "component_name": "LoRA + Provenance",
-    "baseline_id": "B6",
+    "component_name": "LoRA + Integrity/Signature",
+    "baseline_id": "E7",
     "utility_delta_accuracy": 0.0,
     "perplexity_delta": 0.0,
     "epsilon": null,
-    "pii_f1": 1.0,
+    "pii_f1": 0.0,
     "security_score": 0.5,
-    "overhead_latency_ms": 0.2523
+    "overhead_latency_ms": 0.418
   },
   {
-    "component_name": "Full SecureLoRA",
-    "baseline_id": "B7",
-    "utility_delta_accuracy": -0.06,
-    "perplexity_delta": 0.5211,
-    "epsilon": 2.41,
+    "component_name": "PII + DP + Enc + Binding",
+    "baseline_id": "E8",
+    "utility_delta_accuracy": -0.061,
+    "perplexity_delta": 0.5517,
+    "epsilon": 2.443,
     "pii_f1": 0.962,
-    "security_score": 0.8333,
-    "overhead_latency_ms": 0.2983
+    "security_score": 0.625,
+    "overhead_latency_ms": 0.4037
+  },
+  {
+    "component_name": "FULL SECURELORA",
+    "baseline_id": "E9",
+    "utility_delta_accuracy": -0.061,
+    "perplexity_delta": 0.5517,
+    "epsilon": 2.443,
+    "pii_f1": 0.962,
+    "security_score": 1.0,
+    "overhead_latency_ms": 0.7643
   }
 ]

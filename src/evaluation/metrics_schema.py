@@ -18,6 +18,7 @@ from src.evaluation.reproducibility import ReproducibilityMetadata
 
 @dataclass
 class MLUtilityMetrics:
+    train_loss: float = 0.0
     val_loss: float = 0.0
     perplexity: float = 1.0
     task_accuracy: float = 1.0
@@ -38,9 +39,11 @@ class PrivacyMetrics:
 
 @dataclass
 class SecurityMetrics:
+    unauthorized_device_rejection_rate: float = 1.0
     cross_device_rejection_rate: float = 1.0
     tamper_rejection_rate: float = 1.0
     signature_rejection_rate: float = 1.0
+    wrong_key_rejection_rate: float = 1.0
     replay_rejection_rate: float = 1.0
     malicious_adapter_detection_rate: float = 1.0
     unauthorized_deployment_rejection_rate: float = 1.0
@@ -55,9 +58,12 @@ class SystemsOverheadMetrics:
     verification_time_ms: float = 0.0
     packaging_time_ms: float = 0.0
     deployment_latency_ms: float = 0.0
+    deployment_time_ms: float = 0.0
     inference_latency_ms: float = 0.0
     memory_usage_mb: float = 0.0
+    peak_memory_mb: float = 0.0
     storage_overhead_bytes: int = 0
+    package_size_bytes: int = 0
 
 
 @dataclass

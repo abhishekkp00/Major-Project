@@ -1,0 +1,11 @@
+Experiment ID,Configuration,Unauthorized Device Rejection,Tamper Rejection,Signature Rejection,Wrong-Key Rejection,Replay Rejection,Malicious Detection
+E0,Base Model,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+E1,Standard LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+E2,PII + LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+E3,DP-LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+E4,PII + DP-LoRA,0.00%,0.00%,0.00%,0.00%,0.00%,0.00%
+E5,LoRA + Encrypted Adapter,0.00%,100.00%,0.00%,100.00%,0.00%,0.00%
+E6,LoRA + Device Binding,100.00%,100.00%,0.00%,100.00%,0.00%,0.00%
+E7,LoRA + Integrity/Signature,0.00%,100.00%,100.00%,100.00%,100.00%,0.00%
+E8,PII + DP + Encrypted Adapter + Device Binding,100.00%,100.00%,0.00%,100.00%,0.00%,0.00%
+E9,FULL SECURELORA,100.00%,100.00%,100.00%,100.00%,100.00%,100.00%

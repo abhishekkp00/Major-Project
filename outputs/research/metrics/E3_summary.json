@@ -1,0 +1,282 @@
+{
+  "baseline_id": "E3",
+  "baseline_name": "DP-LoRA",
+  "description": "Phase 2 DP-LoRA fine-tuning using Opacus per-example gradients and noise.",
+  "execution_status": "COMPLETED",
+  "not_executed_reason": null,
+  "num_seeds": 3,
+  "utility_summary": {
+    "train_loss": {
+      "mean": 0.8909,
+      "stdev": 0.0113,
+      "ci_95_lower": 0.8781,
+      "ci_95_upper": 0.9037,
+      "min_val": 0.8809,
+      "max_val": 0.9032,
+      "n_samples": 3
+    },
+    "val_loss": {
+      "mean": 0.8301,
+      "stdev": 0.0164,
+      "ci_95_lower": 0.8115,
+      "ci_95_upper": 0.8487,
+      "min_val": 0.8124,
+      "max_val": 0.8449,
+      "n_samples": 3
+    },
+    "perplexity": {
+      "mean": 2.2938,
+      "stdev": 0.0376,
+      "ci_95_lower": 2.2512,
+      "ci_95_upper": 2.3363,
+      "min_val": 2.2534,
+      "max_val": 2.3278,
+      "n_samples": 3
+    },
+    "task_accuracy": {
+      "mean": 0.878,
+      "stdev": 0.0159,
+      "ci_95_lower": 0.86,
+      "ci_95_upper": 0.8959,
+      "min_val": 0.864,
+      "max_val": 0.8952,
+      "n_samples": 3
+    },
+    "f1_score": {
+      "mean": 0.8672,
+      "stdev": 0.0117,
+      "ci_95_lower": 0.854,
+      "ci_95_upper": 0.8804,
+      "min_val": 0.8553,
+      "max_val": 0.8786,
+      "n_samples": 3
+    }
+  },
+  "privacy_summary": {
+    "dp_enabled": true,
+    "epsilon": 2.443,
+    "delta": 1e-05,
+    "clipping_norm": 1.0,
+    "noise_multiplier": 1.2,
+    "pii_precision": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "pii_recall": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "pii_f1": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    }
+  },
+  "security_summary": {
+    "unauthorized_device_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "cross_device_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "tamper_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "signature_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "wrong_key_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "replay_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "malicious_adapter_detection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "unauthorized_deployment_rejection_rate": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    }
+  },
+  "overhead_summary": {
+    "training_time_s": {
+      "mean": 2.5003,
+      "stdev": 0.1984,
+      "ci_95_lower": 2.2758,
+      "ci_95_upper": 2.7249,
+      "min_val": 2.275,
+      "max_val": 2.649,
+      "n_samples": 3
+    },
+    "encryption_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "decryption_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "signing_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "verification_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "packaging_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "deployment_latency_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "deployment_time_ms": {
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci_95_lower": 0.0,
+      "ci_95_upper": 0.0,
+      "min_val": 0.0,
+      "max_val": 0.0,
+      "n_samples": 3
+    },
+    "inference_latency_ms": {
+      "mean": 12.3123,
+      "stdev": 0.1747,
+      "ci_95_lower": 12.1146,
+      "ci_95_upper": 12.51,
+      "min_val": 12.112,
+      "max_val": 12.433,
+      "n_samples": 3
+    },
+    "memory_usage_mb": {
+      "mean": 155.0,
+      "stdev": 0.0,
+      "ci_95_lower": 155.0,
+      "ci_95_upper": 155.0,
+      "min_val": 155.0,
+      "max_val": 155.0,
+      "n_samples": 3
+    },
+    "peak_memory_mb": {
+      "mean": 155.0,
+      "stdev": 0.0,
+      "ci_95_lower": 155.0,
+      "ci_95_upper": 155.0,
+      "min_val": 155.0,
+      "max_val": 155.0,
+      "n_samples": 3
+    },
+    "storage_overhead_bytes": {
+      "mean": 524288.0,
+      "stdev": 0.0,
+      "ci_95_lower": 524288.0,
+      "ci_95_upper": 524288.0,
+      "min_val": 524288.0,
+      "max_val": 524288.0,
+      "n_samples": 3
+    },
+    "package_size_bytes": {
+      "mean": 524288.0,
+      "stdev": 0.0,
+      "ci_95_lower": 524288.0,
+      "ci_95_upper": 524288.0,
+      "min_val": 524288.0,
+      "max_val": 524288.0,
+      "n_samples": 3
+    }
+  }
+}
