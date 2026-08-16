@@ -1,0 +1,34 @@
+{
+  "dataset": "SecureLoRA Synthetic PII/PHI Benchmark",
+  "dataset_id": "synthetic",
+  "version": "1.5.0",
+  "revision": "v1.5.0",
+  "source": "SecureLoRA Synthetic Benchmark Generator",
+  "license": "MIT License / Project Internal Benchmark",
+  "attribution": "SecureLoRA Framework Controlled Synthetic Benchmark",
+  "domain": "Controlled Enterprise & Healthcare PII/PHI",
+  "subset": 30,
+  "seed": 1001,
+  "timestamp": "2026-08-16T17:31:42.143846+00:00",
+  "record_count": 30,
+  "ground_truth_available": true,
+  "synthetic_source": true,
+  "redistribution_permitted": true,
+  "statistics": {
+    "num_records": 30,
+    "avg_input_len": 24.93,
+    "avg_output_len": 215.83,
+    "ground_truth_available": true,
+    "domain": "Controlled Enterprise & Healthcare PII/PHI",
+    "synthetic_source": true,
+    "license": "MIT License / Project Internal Benchmark",
+    "total_annotated_entities": 22,
+    "pii_entity_types": {
+      "SSN": 5,
+      "EMAIL": 6,
+      "PHONE": 7,
+      "IP_ADDRESS": 3,
+      "API_KEY": 1
+    }
+  }
+}

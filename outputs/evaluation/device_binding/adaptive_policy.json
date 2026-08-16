@@ -1,0 +1,111 @@
+{
+  "experiment_id": "EXP_DEVICE_BINDING_ADAPTIVE_POLICY",
+  "experiment_name": "Adaptive Device Policy",
+  "dataset": "ai4privacy_synthetic_hybrid",
+  "dataset_version": "v1.0.0",
+  "model": "JackFram/llama-68m",
+  "adapter": "secure_lora_adaptive_policy",
+  "configuration": {},
+  "seed": 42,
+  "sample_count": 100,
+  "status": "EXECUTED",
+  "metrics": {
+    "raw": {
+      "legitimate_reboot": {
+        "scenario_id": "legitimate_reboot",
+        "is_legitimate_scenario": true,
+        "is_authorized": true,
+        "state": "AUTHORIZED",
+        "authorization_latency_ms": 0.044,
+        "reason": null,
+        "is_correct_decision": true
+      },
+      "hostname_change": {
+        "scenario_id": "hostname_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": true,
+        "state": "AUTHORIZED",
+        "authorization_latency_ms": 0.218,
+        "reason": "Reauthorized by Administrator",
+        "is_correct_decision": true
+      },
+      "network_interface_change": {
+        "scenario_id": "network_interface_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": true,
+        "state": "AUTHORIZED",
+        "authorization_latency_ms": 0.081,
+        "reason": "Reauthorized by Administrator",
+        "is_correct_decision": true
+      },
+      "machine_id_change": {
+        "scenario_id": "machine_id_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.017,
+        "reason": "Sensitive event detected: stable feature(s) changed ['machine_id'].",
+        "is_correct_decision": false
+      },
+      "disk_environment_change": {
+        "scenario_id": "disk_environment_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": true,
+        "state": "AUTHORIZED",
+        "authorization_latency_ms": 0.05,
+        "reason": "Reauthorized by Administrator",
+        "is_correct_decision": true
+      },
+      "vm_clone": {
+        "scenario_id": "vm_clone",
+        "is_legitimate_scenario": false,
+        "is_authorized": false,
+        "state": "REAUTHORIZATION_REQUIRED",
+        "authorization_latency_ms": 0.013,
+        "reason": "Feature(s) changed: ['hostname', 'network_interface']. Allowed by policy, requires admin reauthorization.",
+        "is_correct_decision": true
+      },
+      "foreign_device": {
+        "scenario_id": "foreign_device",
+        "is_legitimate_scenario": false,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.017,
+        "reason": "Sensitive event detected: stable feature(s) changed ['machine_id', 'cpu_model'].",
+        "is_correct_decision": true
+      },
+      "replayed_deployment_package": {
+        "scenario_id": "replayed_deployment_package",
+        "is_legitimate_scenario": false,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.069,
+        "reason": "Replay Attack Prevented: Replay attack detected! Package ID 'pkg-replay-attack-001' has already been deployed.",
+        "is_correct_decision": true
+      }
+    },
+    "aggregated": {
+      "unauthorized_rejection_rate": 1.0,
+      "replay_rejection_rate": 1.0,
+      "legitimate_acceptance_rate": 0.8,
+      "false_rejection_rate": 0.2,
+      "avg_recovery_time_ms": 0.064
+    },
+    "reported": {
+      "summary": "Evaluation results for Adaptive Device Policy.",
+      "key_metrics": {
+        "unauthorized_rejection_rate": 1.0,
+        "replay_rejection_rate": 1.0,
+        "legitimate_acceptance_rate": 0.8,
+        "false_rejection_rate": 0.2,
+        "avg_recovery_time_ms": 0.064
+      }
+    }
+  },
+  "runtime": {
+    "execution_time_seconds": 0.0,
+    "latency_ms": 0.0,
+    "peak_memory_mb": 125.0
+  },
+  "timestamp": "2026-08-16T17:32:17.041792+00:00"
+}

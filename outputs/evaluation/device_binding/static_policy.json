@@ -1,0 +1,111 @@
+{
+  "experiment_id": "EXP_DEVICE_BINDING_STATIC_POLICY",
+  "experiment_name": "Static Fingerprint Policy",
+  "dataset": "ai4privacy_synthetic_hybrid",
+  "dataset_version": "v1.0.0",
+  "model": "JackFram/llama-68m",
+  "adapter": "secure_lora_static_policy",
+  "configuration": {},
+  "seed": 42,
+  "sample_count": 100,
+  "status": "EXECUTED",
+  "metrics": {
+    "raw": {
+      "legitimate_reboot": {
+        "scenario_id": "legitimate_reboot",
+        "is_legitimate_scenario": true,
+        "is_authorized": true,
+        "state": "AUTHORIZED",
+        "authorization_latency_ms": 0.048,
+        "reason": null,
+        "is_correct_decision": true
+      },
+      "hostname_change": {
+        "scenario_id": "hostname_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.007,
+        "reason": "Static fingerprint hash mismatch.",
+        "is_correct_decision": false
+      },
+      "network_interface_change": {
+        "scenario_id": "network_interface_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.006,
+        "reason": "Static fingerprint hash mismatch.",
+        "is_correct_decision": false
+      },
+      "machine_id_change": {
+        "scenario_id": "machine_id_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.005,
+        "reason": "Static fingerprint hash mismatch.",
+        "is_correct_decision": false
+      },
+      "disk_environment_change": {
+        "scenario_id": "disk_environment_change",
+        "is_legitimate_scenario": true,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.004,
+        "reason": "Static fingerprint hash mismatch.",
+        "is_correct_decision": false
+      },
+      "vm_clone": {
+        "scenario_id": "vm_clone",
+        "is_legitimate_scenario": false,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.005,
+        "reason": "Static fingerprint hash mismatch.",
+        "is_correct_decision": true
+      },
+      "foreign_device": {
+        "scenario_id": "foreign_device",
+        "is_legitimate_scenario": false,
+        "is_authorized": false,
+        "state": "UNAUTHORIZED",
+        "authorization_latency_ms": 0.005,
+        "reason": "Static fingerprint hash mismatch.",
+        "is_correct_decision": true
+      },
+      "replayed_deployment_package": {
+        "scenario_id": "replayed_deployment_package",
+        "is_legitimate_scenario": false,
+        "is_authorized": true,
+        "state": "AUTHORIZED",
+        "authorization_latency_ms": 0.005,
+        "reason": "Static policy approved matching device fingerprint hash (No Anti-Replay Nonce Check).",
+        "is_correct_decision": false
+      }
+    },
+    "aggregated": {
+      "unauthorized_rejection_rate": 0.6667,
+      "replay_rejection_rate": 0.0,
+      "legitimate_acceptance_rate": 0.2,
+      "false_rejection_rate": 0.8,
+      "avg_recovery_time_ms": 0.011
+    },
+    "reported": {
+      "summary": "Evaluation results for Static Fingerprint Policy.",
+      "key_metrics": {
+        "unauthorized_rejection_rate": 0.6667,
+        "replay_rejection_rate": 0.0,
+        "legitimate_acceptance_rate": 0.2,
+        "false_rejection_rate": 0.8,
+        "avg_recovery_time_ms": 0.011
+      }
+    }
+  },
+  "runtime": {
+    "execution_time_seconds": 0.0,
+    "latency_ms": 0.0,
+    "peak_memory_mb": 125.0
+  },
+  "timestamp": "2026-08-16T17:32:17.041076+00:00"
+}

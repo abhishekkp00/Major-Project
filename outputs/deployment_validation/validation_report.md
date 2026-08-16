@@ -4,12 +4,12 @@
 ---
 
 ### 📋 Overview
-- **Deployment Status:** ✅ SUCCESS
-- **Generated At (UTC):** `2026-08-15T17:08:17.607133+00:00`
+- **Deployment Status:** ❌ FAILED
+- **Generated At (UTC):** `2026-08-16T16:36:13.821481+00:00`
 - **Framework Schema Version:** `4.0.0`
 - **Target Adapter ID:** `lora-adapter-v1`
 - **Base Model Reference:** `JackFram/llama-68m`
-- **Device Fingerprint Hash Prefix:** `3b2e5a31edf89f14...`
+- **Device Fingerprint Hash Prefix:** `3926c635fa8a1260...`
 
 ---
 
@@ -19,13 +19,13 @@ The pipeline enforces six consecutive verification stages. The system fails clos
 | Verification Stage | Status |
 |:---|:---|
 | Step 1: Package Completeness | 🟩 PASSED |
-| Step 2: Integrity Verification | 🟩 PASSED |
-| Step 3: Signature Verification | 🟩 PASSED |
-| Step 4: Device Authorization | 🟩 PASSED |
-| Step 5: Key Derivation | 🟩 PASSED |
-| Step 6: Decryption & Extraction | 🟩 PASSED |
-| Step 7: PEFT Model Loading | 🟩 PASSED |
-| Step 8: Inference Validation | 🟩 PASSED |
+| Step 2: Integrity Verification | ⬜ SKIPPED |
+| Step 3: Signature Verification | ⬜ SKIPPED |
+| Step 4: Device Authorization | ⬜ SKIPPED |
+| Step 5: Key Derivation | ⬜ SKIPPED |
+| Step 6: Decryption & Extraction | ⬜ SKIPPED |
+| Step 7: PEFT Model Loading | ⬜ SKIPPED |
+| Step 8: Inference Validation | ⬜ SKIPPED |
 
 
 ---
@@ -38,19 +38,16 @@ A side-by-side generation test was performed to verify if the fine-tuned adapter
 
 #### **Base Model Generation (Without Adapter):**
 ```text
-
-The Secure device is a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by
+[N/A]
 ```
 
 #### **Fine-Tuned Model Generation (With Loaded PEFT Adapter):**
 ```text
-
-The SIM card is certified by the National Institute for AES-1256 and is certified by the National Institute for AES-1256 and is certified by AES-1256.
-The SIM card is certified by AES-125
+[N/A]
 ```
 
 #### **Comparison Diagnosis:**
-- **Outputs Differ (Adapter Active):** `True`
+- **Outputs Differ (Adapter Active):** `False`
 
 ---
 

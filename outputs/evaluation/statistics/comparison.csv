@@ -1,0 +1,7 @@
+category,detector_or_attack,f1_mean_std,precision_mean_std,recall_mean_std,accuracy_mean_std,fpr_mean_std,fnr_mean_std,latency_mean_std
+adapter_screening,structural_only,0.8571 ± 0.0000,1.0000 ± 0.0000,0.7500 ± 0.0000,0.8000 ± 0.0000,0.0000 ± 0.0000,0.2500 ± 0.0000,1.3380 ± 0.1155
+adapter_screening,behavioral_only,0.0000 ± 0.0000,1.0000 ± 0.0000,0.0000 ± 0.0000,0.2000 ± 0.0000,0.0000 ± 0.0000,1.0000 ± 0.0000,1.2814 ± 0.1045
+adapter_screening,combined,0.8571 ± 0.0000,1.0000 ± 0.0000,0.7500 ± 0.0000,0.8000 ± 0.0000,0.0000 ± 0.0000,0.2500 ± 0.0000,1.2960 ± 0.0785
+adaptive_evasion_baseline,combined,N/A,N/A,N/A,0.7500 ± 0.0000,N/A,0.2500 ± 0.0000,N/A
+adaptive_evasion_nonadaptive,combined,N/A,N/A,N/A,0.7500 ± 0.0000,N/A,0.2500 ± 0.0000,N/A
+adaptive_evasion_adaptive,combined,N/A,N/A,N/A,0.7500 ± 0.0000,N/A,0.2500 ± 0.0000,N/A

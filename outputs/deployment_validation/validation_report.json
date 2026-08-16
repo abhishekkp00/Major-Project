@@ -1,6 +1,6 @@
 {
   "report_type": "Phase 4 Secure Deployment & Inference Validation Report",
-  "generated_at_utc": "2026-08-15T17:08:17.607133+00:00",
+  "generated_at_utc": "2026-08-16T16:36:13.821481+00:00",
   "schema_version": "4.0.0",
   "adapter_metadata": {
     "adapter_id": "lora-adapter-v1",
@@ -8,27 +8,27 @@
     "schema_version": "3.0.0"
   },
   "target_device": {
-    "fingerprint_hash_prefix": "3b2e5a31edf89f14...",
-    "device_matched": true
+    "fingerprint_hash_prefix": "3926c635fa8a1260...",
+    "device_matched": false
   },
   "verification_pipeline": {
-    "success": true,
+    "success": false,
     "steps": {
       "Step 1: Package Completeness": "PASSED",
-      "Step 2: Integrity Verification": "PASSED",
-      "Step 3: Signature Verification": "PASSED",
-      "Step 4: Device Authorization": "PASSED",
-      "Step 5: Key Derivation": "PASSED",
-      "Step 6: Decryption & Extraction": "PASSED",
-      "Step 7: PEFT Model Loading": "PASSED",
-      "Step 8: Inference Validation": "PASSED"
+      "Step 2: Integrity Verification": "SKIPPED",
+      "Step 3: Signature Verification": "SKIPPED",
+      "Step 4: Device Authorization": "SKIPPED",
+      "Step 5: Key Derivation": "SKIPPED",
+      "Step 6: Decryption & Extraction": "SKIPPED",
+      "Step 7: PEFT Model Loading": "SKIPPED",
+      "Step 8: Inference Validation": "SKIPPED"
     }
   },
   "inference_validation": {
     "prompt": "Secure device binding verification.",
-    "base_output": "\nThe Secure device is a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by a secure device. Secure device is secured by a secure device that is secured by",
-    "peft_output": "\nThe SIM card is certified by the National Institute for AES-1256 and is certified by the National Institute for AES-1256 and is certified by AES-1256.\nThe SIM card is certified by AES-125",
-    "adapter_active": true
+    "base_output": "[N/A]",
+    "peft_output": "[N/A]",
+    "adapter_active": false
   },
   "security_guarantees": {
     "zero_plaintext_at_rest": true,
