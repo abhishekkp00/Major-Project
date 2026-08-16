@@ -1,7 +1,7 @@
 {
   "adapters": {
     "job_test_security_123": {
-      "last_sequence": 14,
+      "last_sequence": 17,
       "processed_packages": [
         "aa7107b2-1a3f-42b5-ba3a-21f095b47c75",
         "58317050-db0e-4c63-940c-1e0b01a71c98",
@@ -16,9 +16,12 @@
         "1744a415-2565-4edc-b089-001b6691a631",
         "863607fd-9ef1-43d1-b2d8-127255c73db8",
         "0e43e7bc-d8c6-4ad2-a0be-d886946dd304",
-        "0c40798e-d1f3-4dc7-ab3b-3d34ebc8848f"
+        "0c40798e-d1f3-4dc7-ab3b-3d34ebc8848f",
+        "949bc1ad-55b6-415b-af79-26871a732d5c",
+        "5acc399c-c23c-45a3-95fa-7b9e333738cd",
+        "cbedecf7-c823-482e-8da7-2e28469fe87d"
       ],
-      "last_deployed_utc": "2026-08-16T11:04:14.115591+00:00"
+      "last_deployed_utc": "2026-08-16T11:37:20.769304+00:00"
     },
     "lora-adapter-v1": {
       "last_sequence": 10,
@@ -35,6 +38,20 @@
         "939d5a51-9969-4102-8211-35f077c022e0"
       ],
       "last_deployed_utc": "2026-08-16T09:25:47.878110+00:00"
+    },
+    "job_1786882160_9540133a": {
+      "last_sequence": 1,
+      "processed_packages": [
+        "bf7488e1-b612-487a-bbcd-3321c523eb72"
+      ],
+      "last_deployed_utc": "2026-08-16T12:10:00.673416+00:00"
+    },
+    "job_1786882311_20228121": {
+      "last_sequence": 1,
+      "processed_packages": [
+        "023c3e95-319d-46f3-8546-443d5e330ac6"
+      ],
+      "last_deployed_utc": "2026-08-16T12:12:30.992207+00:00"
     }
   }
 }

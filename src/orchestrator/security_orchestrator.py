@@ -78,6 +78,14 @@ def run_security_orchestration(
         outcomes["security_screening_risk_score"] = screening_result.adapter_risk_score
         outcomes["security_screening_risk_level"] = screening_result.risk_level
         outcomes["security_screening"] = "pass"
+        if hasattr(screening_result, "to_dict"):
+            outcomes["screening_details"] = screening_result.to_dict()
+            try:
+                (job_dir / "screening_report.json").write_text(
+                    json.dumps(screening_result.to_dict(), indent=2), encoding="utf-8"
+                )
+            except Exception:
+                pass
     except Exception as e:
         logger.warning("[%s] Security screening warning: %s", job_id, e)
         outcomes["security_screening"] = "warning"
