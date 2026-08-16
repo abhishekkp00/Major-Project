@@ -1,7 +1,15 @@
 """
 test_model_registry_inference.py
 =================================
-Unit tests for SecureLoRA ModelRegistry, PEFT inference, and PII evaluation.
+Unit tests for SecureLoRA ModelRegistry, PEFT inference service, and PII evaluation.
+
+Proves:
+  1. Base model is actually used for BASE generation.
+  2. PEFT model is actually used for SECURELORA generation.
+  3. adapter_loaded is True ONLY when adapter exists in registry.
+  4. Analytics fallback cannot replace valid model inference (returns MODEL_UNAVAILABLE).
+  5. Tokenizer/model compatibility is checked (pad token fallback).
+  6. Failed model loading produces MODEL_UNAVAILABLE.
 """
 
 import unittest
@@ -9,24 +17,31 @@ from unittest.mock import MagicMock, patch
 import torch
 
 from src.orchestrator.model_registry import ModelRegistry, model_registry
-from src.orchestrator.chat_engine import generate_with_securelora_model, answer_question
+from src.orchestrator.inference_service import (
+    generate_base,
+    generate_securelora,
+    compare_base_and_securelora,
+)
+from src.orchestrator.chat_engine import answer_question, generate_with_securelora_model
 
 
 class DummyTokenizer:
-    pad_token_id = 0
-    eos_token_id = 2
+    def __init__(self):
+        self.pad_token = None
+        self.eos_token = "<eos>"
+        self.pad_token_id = None
+        self.eos_token_id = 2
 
     def __call__(self, text, return_tensors="pt", **kwargs):
-        # Return mock input ids tensor
         return {"input_ids": torch.tensor([[101, 102, 103]])}
 
     def decode(self, token_ids, skip_special_tokens=True):
         if isinstance(token_ids, torch.Tensor):
             token_ids = token_ids.tolist()
         if token_ids == [201, 202]:
-            return "Base Model response text with john.doe@acme.corp."
+            return "Base Model response containing john.doe@acme.corp."
         elif token_ids == [301, 302]:
-            return "SecureLoRA response text with masked entities."
+            return "SecureLoRA response with redacted medical notes."
         return "Decoded text output."
 
 
@@ -67,11 +82,17 @@ class TestModelRegistryAndInference(unittest.TestCase):
 
     def setUp(self):
         model_registry.clear()
+        self.ml_patcher = patch("src.security.pii_engine.get_ml_engine")
+        self.mock_ml = self.ml_patcher.start()
+        mock_instance = MagicMock()
+        mock_instance.extract_entities.return_value = []
+        self.mock_ml.return_value = mock_instance
 
     def tearDown(self):
+        self.ml_patcher.stop()
         model_registry.clear()
 
-    def test_1_peft_model_registration(self):
+    def test_1_base_model_is_actually_used_for_base(self):
         base_model = DummyBaseModel()
         peft_model = DummyPeftModel(base_model)
         tokenizer = DummyTokenizer()
@@ -80,13 +101,14 @@ class TestModelRegistryAndInference(unittest.TestCase):
             base_model=base_model,
             peft_model=peft_model,
             tokenizer=tokenizer,
-            base_model_name="sshleifer/tiny-gpt2",
-            adapter_name="test_job_123",
-            deployment_id="dep_456"
+            base_model_name="test-base-68m",
+            adapter_id="adapter-v1",
+            deployment_id="dep-101"
         )
-        self.assertTrue(model_registry.is_verified())
+        base_out = generate_base("What is the patient condition?")
+        self.assertIn("Base Model response", base_out)
 
-    def test_2_tokenizer_registration(self):
+    def test_2_peft_model_is_actually_used_for_securelora(self):
         base_model = DummyBaseModel()
         peft_model = DummyPeftModel(base_model)
         tokenizer = DummyTokenizer()
@@ -95,29 +117,18 @@ class TestModelRegistryAndInference(unittest.TestCase):
             base_model=base_model,
             peft_model=peft_model,
             tokenizer=tokenizer,
-            base_model_name="test-base",
+            base_model_name="test-base-68m",
+            adapter_id="adapter-v1",
+            deployment_id="dep-101"
         )
-        info = model_registry.get_info()
-        self.assertIs(info["tokenizer"], tokenizer)
+        sec_out = generate_securelora("What is the patient condition?")
+        self.assertIn("SecureLoRA response", sec_out)
+        self.assertNotEqual(generate_base("Test"), sec_out)
 
-    def test_3_model_retrieval(self):
-        base_model = DummyBaseModel()
-        peft_model = DummyPeftModel(base_model)
-        tokenizer = DummyTokenizer()
+    def test_3_adapter_loaded_is_true_only_when_adapter_exists(self):
+        info_unloaded = model_registry.get_info()
+        self.assertFalse(info_unloaded["adapter_loaded"])
 
-        model_registry.register(
-            base_model=base_model,
-            peft_model=peft_model,
-            tokenizer=tokenizer,
-            base_model_name="test-base",
-            adapter_name="adapter-xyz"
-        )
-        info = model_registry.get_info()
-        self.assertIs(info["base_model"], base_model)
-        self.assertIs(info["peft_model"], peft_model)
-        self.assertEqual(info["adapter_name"], "adapter-xyz")
-
-    def test_4_generation_uses_peft_model(self):
         base_model = DummyBaseModel()
         peft_model = DummyPeftModel(base_model)
         tokenizer = DummyTokenizer()
@@ -127,15 +138,30 @@ class TestModelRegistryAndInference(unittest.TestCase):
             peft_model=peft_model,
             tokenizer=tokenizer,
             base_model_name="test-base",
+            adapter_id="adapter-xyz",
+            deployment_id="dep-123"
         )
-        res = generate_with_securelora_model("Test prompt")
-        self.assertEqual(res["status"], "SUCCESS")
-        self.assertIn("SecureLoRA response text", res["securelora_output"])
+        info_loaded = model_registry.get_info()
+        self.assertTrue(info_loaded["adapter_loaded"])
+        self.assertTrue(info_loaded["deployment_verified"])
 
-    def test_5_base_model_generation_uses_base_model(self):
+    def test_4_analytics_fallback_cannot_replace_valid_model_inference(self):
+        # Unloaded model must return MODEL_UNAVAILABLE status without synthetic analytics
+        res = compare_base_and_securelora("Summarize dataset records.")
+        self.assertEqual(res["status"], "MODEL_UNAVAILABLE")
+        self.assertEqual(res["base_output"], "[MODEL_UNAVAILABLE]")
+        self.assertEqual(res["securelora_output"], "[MODEL_UNAVAILABLE]")
+
+        ans_res, status, blocked = answer_question("Summarize dataset records.")
+        self.assertIn("MODEL_UNAVAILABLE", ans_res)
+        self.assertEqual(status, "UNAVAILABLE")
+
+    def test_5_tokenizer_model_compatibility_is_checked(self):
+        tokenizer = DummyTokenizer()
+        self.assertIsNone(tokenizer.pad_token)
+
         base_model = DummyBaseModel()
         peft_model = DummyPeftModel(base_model)
-        tokenizer = DummyTokenizer()
 
         model_registry.register(
             base_model=base_model,
@@ -143,31 +169,17 @@ class TestModelRegistryAndInference(unittest.TestCase):
             tokenizer=tokenizer,
             base_model_name="test-base",
         )
-        res = generate_with_securelora_model("Test prompt")
-        self.assertEqual(res["status"], "SUCCESS")
-        self.assertIn("Base Model response text", res["base_output"])
+        # Verify pad token was set to eos_token for compatibility
+        self.assertEqual(tokenizer.pad_token, "<eos>")
 
-    def test_6_both_outputs_are_independently_generated(self):
-        base_model = DummyBaseModel()
-        peft_model = DummyPeftModel(base_model)
-        tokenizer = DummyTokenizer()
-
-        model_registry.register(
-            base_model=base_model,
-            peft_model=peft_model,
-            tokenizer=tokenizer,
-            base_model_name="test-base",
-        )
-        res = generate_with_securelora_model("Test prompt")
-        self.assertNotEqual(res["base_output"], res["securelora_output"])
-
-    def test_7_analytics_fallback_only_when_model_unavailable(self):
-        # When model is not registered:
+    def test_6_failed_model_loading_produces_model_unavailable(self):
+        model_registry.clear()
         res = generate_with_securelora_model("Test prompt")
         self.assertEqual(res["status"], "MODEL_UNAVAILABLE")
-        self.assertFalse(res["adapter_active"])
+        self.assertFalse(res["adapter_loaded"])
+        self.assertFalse(res["deployment_verified"])
 
-    def test_8_pii_evaluation_happens_after_generation(self):
+    def test_7_side_by_side_comparison_with_pii_evaluation(self):
         base_model = DummyBaseModel()
         peft_model = DummyPeftModel(base_model)
         tokenizer = DummyTokenizer()
@@ -177,41 +189,17 @@ class TestModelRegistryAndInference(unittest.TestCase):
             peft_model=peft_model,
             tokenizer=tokenizer,
             base_model_name="test-base",
+            adapter_id="test_adapter",
+            deployment_id="dep_001"
         )
-        res = generate_with_securelora_model("Test prompt")
-        self.assertIn("base_pii", res)
-        self.assertIn("securelora_pii", res)
-        self.assertIsInstance(res["base_pii"]["count"], int)
-        self.assertIsInstance(res["securelora_pii"]["count"], int)
-
-    def test_9_adapter_active_reflects_actual_peft_state(self):
-        base_model = DummyBaseModel()
-        peft_model = DummyPeftModel(base_model)
-        tokenizer = DummyTokenizer()
-
-        model_registry.register(
-            base_model=base_model,
-            peft_model=peft_model,
-            tokenizer=tokenizer,
-            base_model_name="test-base",
-        )
-        res = generate_with_securelora_model("Test prompt")
-        self.assertTrue(res["adapter_active"])
-
-    def test_10_model_verified_reflects_deployment_verification(self):
-        base_model = DummyBaseModel()
-        peft_model = DummyPeftModel(base_model)
-        tokenizer = DummyTokenizer()
-
-        model_registry.register(
-            base_model=base_model,
-            peft_model=peft_model,
-            tokenizer=tokenizer,
-            base_model_name="test-base",
-        )
-        res = generate_with_securelora_model("Test prompt")
-        self.assertTrue(res["model_verified"])
-        self.assertEqual(res["model_info"]["status"], "VERIFIED")
+        res = compare_base_and_securelora("Check PII")
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertTrue(res["adapter_loaded"])
+        self.assertTrue(res["deployment_verified"])
+        self.assertIn("john.doe@acme.corp", res["base_output"])
+        self.assertGreater(res["base_pii_count"], 0)
+        self.assertIsInstance(res["base_pii_entities"], list)
+        self.assertIsInstance(res["securelora_pii_entities"], list)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,7 @@ class BaseDatasetAdapter(abc.ABC):
     def get_metadata(self) -> Dict[str, Any]:
         """Returns structured metadata about the dataset adapter state."""
         return {
+            "name": self.dataset_name,
             "dataset_id": self.dataset_id,
             "dataset_name": self.dataset_name,
             "version": self.version,
@@ -103,12 +104,68 @@ class BaseDatasetAdapter(abc.ABC):
             "source": self.source,
             "license": self.license_info,
             "attribution": self.attribution,
+            "record_count": len(self._loaded_records),
             "domain": self.domain,
             "ground_truth_available": self.ground_truth_available,
             "synthetic_source": self.synthetic_source,
             "redistribution_permitted": self.redistribution_permitted,
             "download_timestamp": self._download_timestamp or datetime.now(timezone.utc).isoformat(),
+            "split_information": self.get_split_information(),
             "split": self._current_split,
+            "subset_size": self._effective_subset_size,
+            "total_loaded_records": len(self._loaded_records)
+        }
+
+    def load(
+        self,
+        subset_size: Optional[int] = None,
+        split: str = "train",
+        seed: int = 42,
+        **kwargs
+    ) -> List[Dict[str, Any]]:
+        """Common interface method: loads dataset records with optional subset_size."""
+        return self.load_dataset(subset_size=subset_size, split=split, seed=seed, **kwargs)
+
+    def metadata(self) -> Dict[str, Any]:
+        """Common interface method: returns dataset metadata."""
+        return self.get_metadata()
+
+    def records(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Common interface method: returns loaded records."""
+        return self.get_records(limit=limit)
+
+    def split(
+        self,
+        train_ratio: float = 0.8,
+        seed: int = 42,
+        split_name: Optional[str] = None
+    ) -> Union[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]]:
+        """Common interface method: returns dataset splits or train/test dict."""
+        if split_name is not None:
+            return self.get_split(split_name=split_name)
+        if not self._loaded_records:
+            return {"train": [], "test": []}
+        rng = random.Random(seed)
+        shuffled = list(self._loaded_records)
+        rng.shuffle(shuffled)
+        split_idx = int(len(shuffled) * train_ratio)
+        return {
+            "train": shuffled[:split_idx],
+            "test": shuffled[split_idx:]
+        }
+
+    def ground_truth(self) -> Dict[str, Any]:
+        """Common interface method: returns ground truth PII information."""
+        return self.get_ground_truth()
+
+    def statistics(self) -> Dict[str, Any]:
+        """Common interface method: returns dataset statistics."""
+        return self.get_statistics()
+
+    def get_split_information(self) -> Dict[str, Any]:
+        """Exposes split information details."""
+        return {
+            "current_split": self._current_split,
             "subset_size": self._effective_subset_size,
             "total_loaded_records": len(self._loaded_records)
         }

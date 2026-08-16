@@ -164,14 +164,19 @@ class DynamicMLNER:
     """
     ML-based Named Entity Recognition (NER) pipeline.
     Uses neural weights to dynamically extract PERSON, ORG, LOC, DATE entities.
+    Lazy-initialized on first extraction request.
     """
 
     def __init__(self):
         self.engine = None
         self.engine_type = None
-        self._initialize_engine()
+        self._initialized = False
 
     def _initialize_engine(self):
+        if self._initialized:
+            return
+        self._initialized = True
+
         # 1. Try Microsoft Presidio Analyzer
         try:
             from presidio_analyzer import AnalyzerEngine
@@ -209,6 +214,9 @@ class DynamicMLNER:
         Dynamically extracts (entity_text, entity_label) from text.
         Labels: 'PERSON', 'ORGANIZATION', 'LOCATION', 'DATE'.
         """
+        if not self._initialized:
+            self._initialize_engine()
+
         if not self.engine:
             return []
 
@@ -239,6 +247,7 @@ class DynamicMLNER:
             logger.warning("Dynamic ML NER extraction error: %s", e)
 
         return extracted
+
 
 
 # Global ML instance
@@ -341,10 +350,17 @@ class HybridPIIEngine:
 
 
 # Convenience Singleton Functions
-_DEFAULT_ENGINE = HybridPIIEngine()
+_DEFAULT_ENGINE: Optional[HybridPIIEngine] = None
+
+def get_default_engine() -> HybridPIIEngine:
+    global _DEFAULT_ENGINE
+    if _DEFAULT_ENGINE is None:
+        _DEFAULT_ENGINE = HybridPIIEngine()
+    return _DEFAULT_ENGINE
 
 def detect_pii_advanced(text: str) -> Dict[str, List[str]]:
-    return _DEFAULT_ENGINE.detect(text)
+    return get_default_engine().detect(text)
 
 def mask_pii_advanced(text: str) -> Tuple[str, Dict[str, int]]:
-    return _DEFAULT_ENGINE.mask(text)
+    return get_default_engine().mask(text)
+
