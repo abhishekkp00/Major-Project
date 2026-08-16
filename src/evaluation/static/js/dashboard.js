@@ -69,6 +69,12 @@ async function initDatasetTemplates() {
   }
 }
 
+let selectedSubsetSize = 10000;
+
+function updateSelectedSubset(val) {
+  selectedSubsetSize = parseInt(val) || 10000;
+}
+
 function selectDatasetCard(tmpl) {
   activeDataset = tmpl;
   document.querySelectorAll('.dataset-card').forEach(c => c.classList.remove('selected'));
@@ -78,11 +84,15 @@ function selectDatasetCard(tmpl) {
   const infoBox = document.getElementById('selected-dataset-info');
   if (infoBox) infoBox.style.display = 'block';
 
-  document.getElementById('info-ds-name').textContent = tmpl.name;
-  document.getElementById('info-ds-count').textContent = `${tmpl.record_count} Records`;
-  document.getElementById('info-ds-format').textContent = tmpl.format;
-  document.getElementById('info-ds-category').textContent = tmpl.privacy_category;
-  document.getElementById('info-ds-status').textContent = tmpl.status;
+  const nameEl = document.getElementById('info-ds-name');
+  const licEl = document.getElementById('info-ds-license');
+  const gtEl = document.getElementById('info-ds-gt');
+  const statusEl = document.getElementById('info-ds-status');
+
+  if (nameEl) nameEl.textContent = tmpl.name;
+  if (licEl) licEl.textContent = tmpl.license || 'Apache-2.0 / MIT';
+  if (gtEl) gtEl.textContent = tmpl.ground_truth_available ? 'Span Annotations' : 'EHR Coverage Metrics';
+  if (statusEl) statusEl.textContent = tmpl.status || 'READY';
 }
 
 /* ---------------------------------------------------------------------------
@@ -118,14 +128,19 @@ async function startSecurePipeline() {
   if (btnStart) btnStart.disabled = true;
 
   try {
-    // 1. Create Job
+    const subsetVal = parseInt(document.getElementById('info-ds-subset-select')?.value || selectedSubsetSize) || 10000;
+    
+    // 1. Create Job with dataset adapter type and subset size
     const createRes = await fetch('/api/orchestrator/jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        dataset_name: activeDataset.filename,
+        dataset_name: activeDataset.name || activeDataset.id,
+        dataset_type: activeDataset.id,
+        dataset_id: activeDataset.id,
+        subset_size: subsetVal,
         version: '1.0.0',
-        epochs: 20,
+        epochs: 1,
         training_mode: activeTrainingMode,
         dp_enabled: activeTrainingMode === 'DP-LoRA',
         dp_epsilon: parseFloat(document.getElementById('dp-epsilon')?.value || 2.44),
@@ -138,6 +153,7 @@ async function startSecurePipeline() {
       if (btnStart) btnStart.disabled = false;
       return;
     }
+
 
     activeJobId = createData.job_id;
 

@@ -75,12 +75,21 @@
                     <div id="selected-dataset-info" class="dataset-info-box" style="display:none;">
                         <div class="info-row">
                             <div><span class="info-label">Name:</span> <span id="info-ds-name" class="info-val">-</span></div>
-                            <div><span class="info-label">Records:</span> <span id="info-ds-count" class="info-val">-</span></div>
-                            <div><span class="info-label">Format:</span> <span id="info-ds-format" class="info-val">-</span></div>
-                            <div><span class="info-label">Category:</span> <span id="info-ds-category" class="info-val">-</span></div>
+                            <div>
+                                <span class="info-label">Subset Size:</span>
+                                <select id="info-ds-subset-select" class="form-input" style="width:auto; padding:0.2rem 0.5rem; font-size:0.8rem; display:inline-block; font-weight:700;" onchange="updateSelectedSubset(this.value)">
+                                    <option value="1000">1,000 Records</option>
+                                    <option value="5000">5,000 Records</option>
+                                    <option value="10000" selected>10,000 Records</option>
+                                    <option value="25000">25,000 Records</option>
+                                </select>
+                            </div>
+                            <div><span class="info-label">License:</span> <span id="info-ds-license" class="info-val">-</span></div>
+                            <div><span class="info-label">Ground Truth:</span> <span id="info-ds-gt" class="info-val">-</span></div>
                             <div><span class="info-label">Status:</span> <span id="info-ds-status" class="info-val badge-passed">READY</span></div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- STEP 2: TRAINING MODE -->

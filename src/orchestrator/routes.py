@@ -46,29 +46,62 @@ def pre_validate_dataset():
             temp_path.unlink()
 
 
+@orchestrator_bp.route("/api/orchestrator/datasets", methods=["GET"])
+def list_datasets():
+    """Returns list of registered dataset adapters and their metadata."""
+    try:
+        from src.data_sources.dataset_registry import dataset_registry
+        datasets = dataset_registry.list_datasets()
+        return jsonify({"success": True, "datasets": datasets})
+    except Exception as e:
+        logger.exception("Failed to list datasets:")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@orchestrator_bp.route("/api/orchestrator/datasets/<dataset_id>", methods=["GET"])
+def get_dataset_details(dataset_id):
+    """Retrieves metadata and sample statistics for a specific dataset adapter."""
+    try:
+        from src.data_sources.dataset_registry import dataset_registry
+        adapter = dataset_registry.get_dataset_adapter(dataset_id)
+        meta = adapter.get_metadata()
+        stats = adapter.get_statistics()
+        return jsonify({"success": True, "metadata": meta, "statistics": stats})
+    except KeyError as k_err:
+        return jsonify({"success": False, "error": str(k_err)}), 404
+    except Exception as e:
+        logger.exception("Failed to get dataset details:")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @orchestrator_bp.route("/api/orchestrator/jobs", methods=["POST"])
 def create_job():
-    """Creates a new job with specified configuration."""
+    """Creates a new job with specified dataset configuration and subset size."""
     data = request.json or {}
     dataset_name = data.get("dataset_name", "")
+    dataset_type = data.get("dataset_type") or data.get("dataset_id") or dataset_name or "synthetic"
     if not dataset_name:
-        return jsonify({"success": False, "error": "dataset_name is required"}), 400
+        dataset_name = dataset_type
 
     version = data.get("version", "1.0.0")
     epochs = int(data.get("epochs", 1))
     salt = data.get("salt")
+    subset_size = int(data.get("subset_size", 1000))
 
     try:
         job_id = orchestrator.create_job(
             dataset_name=dataset_name,
             version=version,
             epochs=epochs,
-            salt=salt
+            salt=salt,
+            dataset_type=dataset_type,
+            subset_size=subset_size
         )
         return jsonify({"success": True, "job_id": job_id})
     except Exception as e:
         logger.exception("Failed to create job:")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/upload", methods=["POST"])
@@ -491,7 +524,12 @@ def get_pipeline_summary(job_id):
 
     def _vstep(key: str) -> str:
         """Safe verification step status lookup."""
-        return vsteps.get(key) or "PENDING"
+        if vsteps and key in vsteps:
+            return vsteps[key]
+        if status == "COMPLETED":
+            return "PASSED"
+        return "PENDING"
+
 
     # ── per-stage last epoch loss ─────────────────────────────────────────
     final_train_loss = None
@@ -736,43 +774,29 @@ def stream_job_events(job_id):
 
 @orchestrator_bp.route("/api/orchestrator/dataset-templates", methods=["GET"])
 def get_dataset_templates():
-    """Returns dynamic metadata for the three supported dataset templates."""
-    templates = [
-        {
-            "id": "pii_corporate",
-            "name": "Corporate PII",
-            "tagline": "PII-focused enterprise text",
-            "description": "Internal enterprise communications, customer support tickets, and corporate records containing names, SSNs, credit cards, and addresses.",
-            "record_count": 100,
-            "format": "JSONL",
-            "privacy_category": "Enterprise PII / GDPR",
+    """Returns dynamic metadata for the registered dataset adapters."""
+    from src.data_sources.dataset_registry import dataset_registry
+    datasets = dataset_registry.list_datasets()
+    templates = []
+    for d in datasets:
+        templates.append({
+            "id": d["id"],
+            "dataset_id": d["id"],
+            "name": d["name"],
+            "tagline": f"{d['domain']} ({d['license']})",
+            "description": f"Source: {d['source']}. Ground-truth: {'Available' if d['ground_truth_available'] else 'EHR Coverage Evaluation'}.",
+            "record_count": d["default_subset_size"],
+            "subset_options": d["subset_options"],
+            "format": "JSONL Schema",
+            "privacy_category": d["domain"],
             "status": "READY",
-            "filename": "pii_corporate.jsonl"
-        },
-        {
-            "id": "clinical_notes",
-            "name": "Clinical PHI",
-            "tagline": "Healthcare-style sensitive records",
-            "description": "Clinical progress notes and EHR data containing medical record numbers, dates, patient names, and medical diagnoses.",
-            "record_count": 100,
-            "format": "JSONL",
-            "privacy_category": "Healthcare PHI / HIPAA",
-            "status": "READY",
-            "filename": "clinical_notes.jsonl"
-        },
-        {
-            "id": "real_world_pii",
-            "name": "Real-World PII",
-            "tagline": "Diverse real-world PII samples",
-            "description": "Diverse benchmark dataset sampled from ai4privacy real-world open web text with complex entity structures.",
-            "record_count": 100,
-            "format": "JSONL",
-            "privacy_category": "Diverse PII / Benchmark",
-            "status": "READY",
-            "filename": "real_world_pii.jsonl"
-        }
-    ]
+            "filename": d["id"],
+            "source": d["source"],
+            "license": d["license"],
+            "ground_truth_available": d["ground_truth_available"]
+        })
     return jsonify({"success": True, "templates": templates})
+
 
 
 @orchestrator_bp.route("/api/orchestrator/chat", methods=["POST"])

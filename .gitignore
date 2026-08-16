@@ -87,4 +87,8 @@ paper_figures/*.pdf
 *.swo
 .DS_Store
 Thumbs.db
-
+# ── Evaluation & Test Output Artefacts ───────────────────────────────────────
+outputs/evaluation/datasets/
+outputs/evaluation/pii_benchmark/
+outputs/test_jobs/
+outputs/.deployment_state.json

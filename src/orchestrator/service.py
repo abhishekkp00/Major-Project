@@ -89,7 +89,9 @@ class JobOrchestrator:
         dataset_name: str,
         version: str = "1.0.0",
         epochs: int = 1,
-        salt: Optional[str] = None
+        salt: Optional[str] = None,
+        dataset_type: Optional[str] = None,
+        subset_size: Optional[int] = 1000
     ) -> str:
         job_id = f"job_{int(datetime.now(timezone.utc).timestamp())}_{uuid.uuid4().hex[:8]}"
         job_dir = self.base_jobs_dir / job_id
@@ -116,6 +118,8 @@ class JobOrchestrator:
         job_record = {
             "job_id": job_id,
             "dataset_name": dataset_name,
+            "dataset_type": dataset_type or dataset_name,
+            "subset_size": subset_size or 1000,
             "version": version,
             "status": "CREATED",
             "stage": "dataset_intake",
@@ -134,7 +138,7 @@ class JobOrchestrator:
             self.jobs[job_id] = job_record
         self._save_db()
 
-        logger.info("Created orchestration job: %s", job_id)
+        logger.info("Created orchestration job: %s (dataset_type=%s, subset_size=%s)", job_id, dataset_type or dataset_name, subset_size)
         return job_id
 
     def add_dataset_file(self, job_id: str, filename: str, content: bytes):
@@ -182,6 +186,8 @@ class JobOrchestrator:
         salt = job["salt"]
         epochs = job["epochs"]
         dataset_name = job["dataset_name"]
+        dataset_type = job.get("dataset_type", dataset_name)
+        subset_size = job.get("subset_size", 1000)
         version = job["version"]
 
         try:
@@ -195,25 +201,38 @@ class JobOrchestrator:
             raw_dir = job_dir / "raw_inputs"
             enc_dir = job_dir / "encrypted"
 
-            # Find uploaded file in raw_dir (or auto-populate from samples template if empty)
+            # Check if dataset adapter is requested or if raw_dir is empty
             uploaded_files = list(raw_dir.glob("*"))
             if not uploaded_files:
-                import shutil
-                samples_dir = Path(__file__).resolve().parents[2] / "samples"
-                sample_map = {
-                    "pii_corporate.jsonl": samples_dir / "sample_pii_data.jsonl",
-                    "sample_pii_data.jsonl": samples_dir / "sample_pii_data.jsonl",
-                    "clinical_notes.jsonl": samples_dir / "sample_medical_phi.jsonl",
-                    "sample_medical_phi.jsonl": samples_dir / "sample_medical_phi.jsonl",
-                    "real_world_pii.jsonl": samples_dir / "real_world_pii.jsonl"
-                }
-                sample_file = sample_map.get(dataset_name, samples_dir / "real_world_pii.jsonl")
-                if sample_file and sample_file.exists():
-                    target_file = raw_dir / (dataset_name if dataset_name else "dataset.jsonl")
-                    shutil.copy(sample_file, target_file)
+                try:
+                    from src.data_sources.dataset_registry import dataset_registry
+                    logger.info("[%s] Ingesting via DatasetAdapter '%s' (subset=%d)...", job_id, dataset_type, subset_size)
+                    adapter = dataset_registry.get_dataset_adapter(dataset_type)
+                    records = adapter.load_dataset(subset_size=subset_size)
+                    target_file = raw_dir / "dataset.jsonl"
+                    with open(target_file, "w", encoding="utf-8") as f:
+                        for r in records:
+                            f.write(json.dumps(r) + "\n")
                     uploaded_files = [target_file]
-                else:
-                    raise RuntimeError("No uploaded files found in raw input directory.")
+                except Exception as adapter_err:
+                    logger.warning("[%s] Dataset adapter load failed, checking fallback samples: %s", job_id, adapter_err)
+                    import shutil
+                    samples_dir = Path(__file__).resolve().parents[2] / "samples"
+                    sample_map = {
+                        "pii_corporate.jsonl": samples_dir / "sample_pii_data.jsonl",
+                        "sample_pii_data.jsonl": samples_dir / "sample_pii_data.jsonl",
+                        "clinical_notes.jsonl": samples_dir / "sample_medical_phi.jsonl",
+                        "sample_medical_phi.jsonl": samples_dir / "sample_medical_phi.jsonl",
+                        "real_world_pii.jsonl": samples_dir / "real_world_pii.jsonl"
+                    }
+                    sample_file = sample_map.get(dataset_name, samples_dir / "real_world_pii.jsonl")
+                    if sample_file and sample_file.exists():
+                        target_file = raw_dir / (dataset_name if dataset_name else "dataset.jsonl")
+                        shutil.copy(sample_file, target_file)
+                        uploaded_files = [target_file]
+                    else:
+                        raise RuntimeError("No uploaded files found in raw input directory.")
+
 
             
             uploaded_file = uploaded_files[0]

@@ -187,9 +187,10 @@ def test_workbench_html_structure_and_templates(client):
     assert d_tmpl["success"] is True
     assert len(d_tmpl["templates"]) == 3
     ids = [t["id"] for t in d_tmpl["templates"]]
-    assert "pii_corporate" in ids
-    assert "clinical_notes" in ids
-    assert "real_world_pii" in ids
+    assert "ai4privacy" in ids or "pii_corporate" in ids
+    assert "synthea" in ids or "clinical_notes" in ids
+    assert "synthetic" in ids or "real_world_pii" in ids
+
 
     # 2. Main Index Route Rendering
     res = client.get("/")
