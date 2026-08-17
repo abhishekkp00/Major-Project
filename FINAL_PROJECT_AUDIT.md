@@ -105,14 +105,15 @@ All baseline systems were evaluated on identical dataset splits, model seeds, an
 
 ## 8. Verified Experimental Metrics
 
-*   **PII Redaction Efficacy**: The hybrid PII redaction engine achieved a **0.9620 micro-average F1 score** (0.9500 Precision, 0.9744 Recall) on the evaluated synthetic benchmark. (Generation-level memorization leakage rates were *Not experimentally verified* due to offline evaluation without live LLM weights loaded.)
-*   **Screening Efficacy**: Combined screening F1-score of **1.0000 ± 0.0000** on the evaluated multi-seed evasion suite ($\tau=0.35$).
-*   **Cryptographic & Deployment Overhead**:
-    *   Encryption (AES-256-GCM): **~0.21 ms to 0.70 ms**
-    *   Decryption & Key Derivation (HKDF): **~0.17 ms to 0.19 ms**
-    *   RSA-2048-PSS Signature Verification: **~0.05 ms to 1.24 ms**
-    *   Screening Latency (68M-tier): **~1.28 ms to 7.80 ms**
-    *   Total Deployment Gate Overhead: **0.394 ms** (E9 packaging pass)
+*   **PII Redaction Efficacy**: Micro-average **F1 = 0.9620** (Precision = 0.9500, Recall = 0.9744) evaluated on `synthetic_pii_benchmark.jsonl` ($N=48$ samples, seed=123, source: `outputs/benchmarks/pii_metrics.json`). (Generation-level memorization leakage rates were *Not experimentally verified* due to offline evaluation without live LLM weights loaded.)
+*   **Screening Efficacy under Adaptive Evasion**: Combined Structural + Behavioral screening achieved **F1 = 1.0000 ± 0.0000** ($\tau=0.35$) on the evaluated Multi-Seed Evasion Suite ($N=40$ samples across 4 evasion complexity levels, seeds=42, 43, 44, model=`JackFram/llama-68m`, source: `outputs/research/adaptive_evasion/adaptive_evasion_summary.md`).
+*   **Device Authorization**: Rejection rate of **1.0000 (100.0%)** against unauthorized device clones and replay attacks, with legitimate false rejection rate reduced from 0.8000 static down to 0.2000 adaptive ($N=100$ samples, seed=42, source: `outputs/evaluation/device_binding/comparison.json`).
+*   **Cryptographic & Deployment Overhead (68M-tier)**:
+    *   AES-256-GCM Encryption: **0.210 ms** ($N=100$ samples, seed=42, source: `outputs/research/runs/EXP_E9_seed_42.json`)
+    *   AES Decryption & Key Derivation (HKDF): **0.192 ms** ($N=100$ samples, seed=42, source: `outputs/research/runs/EXP_E9_seed_42.json`)
+    *   RSA-2048-PSS Signature Verification: **0.051 ms** ($N=100$ samples, seed=42, source: `outputs/research/runs/EXP_E9_seed_42.json`)
+    *   Screening Latency: **7.801 ms** ($N=100$ samples, seed=42, source: `outputs/evaluation/model_scale/model_comparison.json`)
+    *   Total Deployment Gate Latency: **0.394 ms** (E9 packaging pass, source: `outputs/research/runs/EXP_E9_seed_42.json`)
 
 ---
 
