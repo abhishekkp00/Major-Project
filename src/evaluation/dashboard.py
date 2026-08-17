@@ -57,13 +57,17 @@ def get_masked_salt(salt: str) -> str:
     return f"{salt[:3]}...{salt[-3:]}"
 
 
+@app.route('/static/synthetic_pii_benchmark.jsonl')
 @app.route('/static/real_world_pii.jsonl')
-def get_real_world_pii():
-    try:
-        with open('real_world_pii.jsonl', 'r', encoding='utf-8') as f:
-            return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
-    except Exception as e:
-        return str(e), 404
+def get_synthetic_pii_benchmark():
+    for candidate in [Path('synthetic_pii_benchmark.jsonl'), Path('real_world_pii.jsonl')]:
+        if candidate.exists():
+            try:
+                with open(candidate, 'r', encoding='utf-8') as f:
+                    return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+            except Exception as e:
+                return str(e), 404
+    return "Benchmark dataset file not found", 404
 
 
 @app.route('/api/template/<string:name>')
@@ -72,7 +76,8 @@ def get_template_dataset(name: str):
     template_files = {
         'pii_corporate':  'sample_pii_data.jsonl',
         'clinical_notes': 'sample_medical_phi.jsonl',
-        'real_world_pii': 'real_world_pii.jsonl',
+        'synthetic_pii':  'synthetic_pii_benchmark.jsonl',
+        'real_world_pii': 'synthetic_pii_benchmark.jsonl',
     }
     filename = template_files.get(name)
     if not filename:
@@ -649,7 +654,7 @@ def secure_chat():
                     has_pipeline_run = True
 
     if not records and adapter_loaded:
-        for fallback in ["sample_medical_phi.jsonl", "real_world_pii.jsonl", "sample_pii_data.jsonl"]:
+        for fallback in ["synthetic_pii_benchmark.jsonl", "sample_medical_phi.jsonl", "real_world_pii.jsonl", "sample_pii_data.jsonl"]:
             for candidate in [Path("samples") / fallback, Path(fallback)]:
                 if candidate.exists():
                     records = load_records_from_jsonl(candidate.read_text(encoding="utf-8"))
