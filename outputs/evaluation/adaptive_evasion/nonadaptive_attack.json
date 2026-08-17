@@ -2,7 +2,7 @@
   "attack_type": "non_adaptive",
   "seed": 123,
   "max_iterations": 5,
-  "timestamp": "2026-08-16T18:15:58.401806+00:00",
+  "timestamp": "2026-08-17T09:45:54.083149+00:00",
   "detectors": {
     "structural_only": {
       "detector_type": "structural_only",

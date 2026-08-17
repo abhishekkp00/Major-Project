@@ -3,7 +3,7 @@
   "description": "LoRA adapter security screening detector: behavioral_only",
   "sample_count": 50,
   "seed": 123,
-  "timestamp": "2026-08-16T18:15:54.721079+00:00",
+  "timestamp": "2026-08-17T09:45:51.019604+00:00",
   "validation_threshold_sweep": [
     {
       "threshold": 0.1,
@@ -156,7 +156,7 @@
     "accuracy": 0.2,
     "false_positive_rate": 0.0,
     "false_negative_rate": 1.0,
-    "mean_latency_ms": 1.611,
-    "stdev_latency_ms": 0.215
+    "mean_latency_ms": 1.411,
+    "stdev_latency_ms": 0.199
   }
 }
