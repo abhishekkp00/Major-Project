@@ -59,7 +59,7 @@ All numerical research claims across `README.md`, `docs/`, `src/`, and `dashboar
 
 ## Reproducibility
 
-Every major research claim is backed by executable code, dataset configurations, random seeds, and artifact outputs:
+Every reported experimental metric is backed by executable evaluation code and a corresponding result artifact; live generation-level memorization evaluation remains unexecuted.
 
 1. **Privacy Evaluation Suite**:
    - **Script**: `src/phase1/evaluate_pii.py` / `scripts/dp_sweep.py`
@@ -124,4 +124,4 @@ SecureLoRA is framed as a **unified software-engineering pipeline** combining es
 READY
 
 ### Justification:
-The repository is fully functional, 100% reproducible, dataset-safe, internally consistent across all 245 test cases, dashboard endpoints, and output artifacts. All scientific wording has been de-escalated to empirical, defensible language, and all raw experimental numerical results match canonical source artifacts without fabrication or modification.
+The repository is functionally verified and reproducible for the documented offline evaluation suite, dataset-safe, internally consistent across all 245 test cases, dashboard endpoints, and output artifacts. All scientific wording has been de-escalated to empirical, defensible language, and all raw experimental numerical results match canonical source artifacts without fabrication or modification.

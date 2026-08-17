@@ -20,7 +20,7 @@
 
 1. **Unsanitized PII Memorization**: Reduces sensitive entity exposure using RAM-first PII redaction that minimizes persistent plaintext exposure combined with $(\epsilon, \delta)$-Differential Privacy (DP-LoRA).
 2. **Untrusted Third-Party LoRA Adapters**: Evaluates adapters prior to deployment using joint structural spectral rank screening and behavioral activation subspace probes.
-3. **Adaptive Adversarial Evasion**: Defends against stealthy adapters crafted to bypass static structural anomaly checks.
+3. **Adaptive Adversarial Evasion**: Evaluates and mitigates adaptive evasion of static structural screening through joint structural and behavioral analysis.
 4. **Adapter Theft & Illegal Relocation**: Cryptographically binds adapter execution to authorized target devices via HKDF-SHA256 key derivation and AES-256-GCM authenticated encryption.
 5. **Package Tampering & Replay Attacks**: Secures deployment archives with RSA-2048-PSS digital signatures and anti-replay nonce tracking.
 
