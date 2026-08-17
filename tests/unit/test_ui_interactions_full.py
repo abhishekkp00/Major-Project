@@ -96,7 +96,7 @@ def test_research_workbench_full_flow(client):
     assert r_scr.status_code == 200
     d_scr = r_scr.get_json()
     assert d_scr["available"] is True
-    assert d_scr["detection_metrics"]["f1_score"] == 1.0
+    assert d_scr["detection_metrics"]["evasion_suite_f1"] == 1.0
 
     # 5. Adaptive Evasion Endpoint
     r_evas = client.get("/api/research/adaptive-evasion")

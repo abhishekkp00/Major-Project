@@ -74,6 +74,8 @@ def _unavailable(reason: str):
 def research_summary():
     """Returns full pipeline research summary from aggregated statistics, privacy benchmark, and runs."""
     stats_data, err_stats = _load_json("b8_summary")
+    if err_stats:
+        return _unavailable(err_stats)
     priv_data, err_priv = _load_json("privacy_comparison")
     pii_data, err_pii = _load_json("pii_metrics")
 
@@ -151,6 +153,8 @@ def research_ablation():
 def research_privacy():
     """Returns privacy metrics (Base Model vs LoRA vs DP-LoRA vs SecureLoRA)."""
     data, err = _load_json("privacy_comparison")
+    if err:
+        return _unavailable(err)
     pii_data, _ = _load_json("pii_metrics")
 
     pii_prec = 0.9500
@@ -302,6 +306,8 @@ def research_model_scale():
 def research_overhead():
     """Returns cryptographic and system overhead metrics."""
     scale_data, err_scale = _load_json("model_scale")
+    if err_scale:
+        return _unavailable(err_scale)
     device_data, err_dev = _load_json("device_comparison")
 
     return jsonify({
