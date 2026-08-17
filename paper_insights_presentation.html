@@ -245,7 +245,7 @@ const papers = [
       { label: "Hardware requirement", val: "Custom silicon", sub: "Not deployable on GPUs" }
     ],
     gap: "The fatal limitation: it requires custom MAC hardware. You cannot run HPNN on NVIDIA GPUs, TPUs, or any commodity hardware. It is theoretically elegant but practically impossible for anyone without chip fabrication access.",
-    connect: "Our framework achieves the same security goal — 100% failure on unauthorized hardware — but using pure software: SHA-256 key derivation from CPU/OS/disk fingerprints + AES-256-GCM. No hardware modification needed. This is explicitly our improvement over HPNN.",
+    connect: "Our framework achieves a similar operational security goal — 100.0% empirical rejection rate against unauthorized device fingerprints on evaluated test sets — using pure software: SHA-256 key derivation from CPU/OS/disk fingerprints + AES-256-GCM. No custom hardware MAC modification needed. This is explicitly our improvement over HPNN.",
     quote: "Only an authorized end-user possessing a trustworthy hardware device with the secret key embedded on-chip can run intended deep learning applications.",
     tags: ["Hardware Security", "IP Protection", "HPNN", "MAC Units", "Model Binding"]
   },
@@ -254,16 +254,16 @@ const papers = [
     badge: "IEEE CSF 2017", bClass: "b-purple",
     title: "Rényi Differential Privacy",
     authors: "Mironov — Google Brain",
-    core: "Standard (ε,δ)-DP composition gives loose, overly pessimistic bounds when you run many training steps. Mironov proposed Rényi DP (RDP): instead of tracking worst-case privacy loss, track the Rényi divergence of order α between the output distributions on adjacent inputs. RDP composes exactly linearly, allows conversion back to (ε,δ)-DP, and gives tighter results — meaning you can use less noise for the same guarantee.",
+    core: "Standard (ε,δ)-DP composition gives loose, overly pessimistic bounds when you run many training steps. Mironov proposed Rényi DP (RDP): instead of tracking worst-case privacy loss, track the Rényi divergence of order α between the output distributions on adjacent inputs. RDP composes exactly linearly, allows conversion back to (ε,δ)-DP, and gives tighter results — meaning you can use less noise for the same privacy bound.",
     hypothesis: "The privacy loss of a sequence of mechanisms can be tracked more tightly using Rényi divergence than using standard DP composition — leading to better privacy-utility tradeoffs in multi-step training.",
     nums: [
       { label: "Composition tightness", val: "~10×", sub: "Tighter than naive advanced composition" },
       { label: "Rényi order α", val: "Tunable", sub: "Higher α = tighter for Gaussian mechanisms" },
-      { label: "Conversion formula", val: "ε = εα + ln(1/δ)/(α-1)", sub: "Exact (ε,δ)-DP recovery" },
+      { label: "Conversion formula", val: "ε = εα + ln(1/delta)/(α-1)", sub: "Exact (ε,δ)-DP recovery" },
       { label: "Underpins", val: "All modern DP-SGD", sub: "PyTorch Opacus, TF Privacy, etc." }
     ],
     gap: "RDP works per-step but the bound still grows with the number of training steps T. Very long training runs can exhaust the budget. Also, the optimal α differs per mechanism — there is no single α that works best for all settings.",
-    connect: "Equations 8 and 9 in our paper are RDP. Our Opacus implementation tracks εα at each training step and converts it to the final (ε < 8, δ = 10⁻⁵) guarantee we claim. Without RDP, we could not make a tight ε < 8 claim.",
+    connect: "Equations 8 and 9 in our paper are RDP. Our Opacus implementation tracks εα at each training step and converts it to the final (ε < 8, δ = 10⁻⁵) privacy bound we claim. Without RDP, we could not make a tight ε < 8 claim.",
     quote: "RDP allows tighter analysis of composite heterogeneous mechanisms — the new definition shares important properties with standard DP while allowing more accurate composition.",
     tags: ["Rényi Divergence", "Privacy Accounting", "Composition", "Gaussian Mechanism", "IEEE CSF"]
   },
@@ -298,8 +298,8 @@ const papers = [
       { label: "Model architectures", val: "5", sub: "CNNs, LSTMs, 2-layer NNs" },
       { label: "Data assumption", val: "Non-IID", sub: "Robust to unbalanced distributions" }
     ],
-    gap: "FedAvg has no built-in privacy guarantee — gradients still leak information about local data. Also, it assumes symmetric updates from all clients, which conflicts with LA-LoRA's alternating freeze schedule. This is our open research gap.",
-    connect: "Our Future Scope proposes device-bound LoRA + FedAvg: each node trains a hardware-locked adapter locally, and only the adapter deltas are aggregated. This would extend our security guarantees to the full distributed setting. FedAvg is the base aggregation equation (Eq. 14–15 in our paper).",
+    gap: "FedAvg has no built-in formal privacy bounds — gradients still leak information about local data. Also, it assumes symmetric updates from all clients, which conflicts with LA-LoRA's alternating freeze schedule. This is our open research gap.",
+    connect: "Our Future Scope proposes device-bound LoRA + FedAvg: each node trains a hardware-locked adapter locally, and only the adapter deltas are aggregated. This would extend our security controls to the full distributed setting. FedAvg is the base aggregation equation (Eq. 14–15 in our paper).",
     quote: "We term this decentralized approach Federated Learning — leaving training data distributed on mobile devices while learning a shared model by aggregating locally-computed updates.",
     tags: ["Federated Learning", "FedAvg", "Decentralized Training", "Communication Efficiency", "Non-IID Data"]
   }

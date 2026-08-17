@@ -24,7 +24,7 @@ The system addresses five fundamental threat vectors in open-source fine-tuning 
              │                     SECURELORA PIPELINE                       │
              └───────────────────────────────┬───────────────────────────────┘
                                              │
-     [ Gate 1: Hybrid PII Engine ] ──────────┼──> Eliminates Sensitive Entities in RAM
+     [ Gate 1: Hybrid PII Engine ] ──────────┼──> Redacts Sensitive Entities in RAM
                                              │
      [ Gate 2: DP-LoRA Privacy Guard ] ──────┼──> Enforces (ε, δ)-Differential Privacy
                                              │
