@@ -19,8 +19,8 @@ MAJOR_PROJECT/
 │   ├── security/                       # Cryptographic & Privacy Bedrock
 │   │   ├── pii_engine.py               # HybridPIIEngine (SpaCy/Presidio NER + ISO/RFC regex patterns)
 │   │   ├── crypto.py                   # Streaming AES-256-GCM encryption & decryption
-│   │   ├── fingerprint.py              # Hardware identification & HKDF salt generation
-│   │   ├── key_derivation.py           # Hardware-bound key derivation (RAM-only)
+│   │   ├── fingerprint.py              # Device identification & HKDF salt generation
+│   │   ├── key_derivation.py           # Software-derived device-bound key derivation (RAM-only)
 │   │   ├── signature.py                # RSA-2048-PSS digital signing & verification
 │   │   └── shred.py                    # Multi-pass DoD 5220.22-M secure file shredding
 │   │
@@ -32,14 +32,14 @@ MAJOR_PROJECT/
 │   ├── phase2/                         # In-Memory LoRA Fine-Tuning
 │   │   └── train_lora.py               # PyTorch + HuggingFace PEFT training loop
 │   │
-│   ├── phase3/                         # Hardware Binding & Package Generation
+│   ├── phase3/                         # Device Binding & Package Generation
 │   │   ├── package_builder.py          # Builds signed deployment archive
-│   │   ├── adapter_encryptor.py        # Hardware-bound adapter weight encryption
+│   │   ├── adapter_encryptor.py        # Device-bound adapter weight encryption
 │   │   └── verifier.py                 # Pre-packaging security verification
 │   │
 │   ├── phase4/                         # Secure Deployment Gateway
 │   │   ├── package_validator.py        # 8-step cryptographic gate verifier
-│   │   ├── device_auth.py              # Hardware fingerprint authorization
+│   │   ├── device_auth.py              # Software-derived device authorization
 │   │   ├── decryptor.py                # In-RAM adapter weight decryption context
 │   │   ├── adapter_loader.py           # Loads PEFT adapter into base LLM
 │   │   └── inference_runner.py         # Side-by-side inference engine
@@ -65,7 +65,7 @@ MAJOR_PROJECT/
 ├── 🧪 tests/                           # Pytest Test Suite
 │   ├── unit/                           # Unit tests for crypto, PII, and config
 │   ├── integration/                    # End-to-end pipeline phase tests
-│   └── security/                       # Hardware-binding & attack tests
+│   └── security/                       # Device-binding & attack tests
 │
 ├── 📂 samples/                         # Demonstration Datasets
 │   ├── sample_medical_phi.jsonl        # Clinical health notes with PHI
@@ -83,3 +83,4 @@ MAJOR_PROJECT/
 ├── 🐍 requirements.txt                 # Project Dependencies
 └── ⚙️ .env.example                     # Environment Template
 ```
+

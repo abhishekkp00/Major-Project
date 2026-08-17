@@ -25,7 +25,7 @@ All numerical research claims across `README.md`, `docs/`, `src/`, and `dashboar
 | **Level 3 Structural Detection Rate** | **`0.0000` (0.0% Structural / 100.0% Combined)** | `outputs/evaluation/adaptive_evasion/comparison.json` | Verified (3 seeds: 42, 43, 44) |
 | **Overall Structural Detection Rate** | **`0.7500` (75.0%)** | `outputs/evaluation/adaptive_evasion/comparison.json` | Verified (3 seeds: 42, 43, 44) |
 | **Evasion Suite Combined F1 Score** | **`1.0000 ± 0.0000`** | `outputs/evaluation/adaptive_evasion/comparison.json` | Verified (3 seeds: 42, 43, 44) |
-| **Unauthorized Hardware Rejection Rate** | **`1.0000` (100.0%)** | `outputs/evaluation/device_binding/comparison.json` | Verified (Host fingerprint match) |
+| **Unauthorized Device Rejection Rate** | **`1.0000` (100.0%)** | `outputs/evaluation/device_binding/comparison.json` | Verified (Host fingerprint match) |
 | **Replay Attack Rejection Rate** | **`1.0000` (100.0%)** | `outputs/evaluation/device_binding/comparison.json` | Verified (Nonce registry verification) |
 | **Static Policy False Rejection Rate (FRR)** | **`0.8000` (80.0%)** | `outputs/evaluation/device_binding/comparison.json` | Verified (Environment drift test) |
 | **Adaptive Policy False Rejection Rate (FRR)** | **`0.2000` (20.0%)** | `outputs/evaluation/device_binding/comparison.json` | Verified (Environment drift test) |
@@ -110,13 +110,13 @@ SecureLoRA is framed as a **unified software-engineering pipeline** combining es
 
 ## 9. Known Limitations
 1. **Generative LLM Memorization**: Generation-level PII memorization under live LLM sampling requires GPU execution and is marked as `NOT_EXECUTED` in offline benchmark mode.
-2. **Software-Derived Fingerprinting**: Hardware binding relies on OS-accessible files (`/etc/machine-id`, `/proc/cpuinfo`, disk UUIDs). It protects against unauthorized software redistribution but does not provide physical TPM tampering immunity.
+2. **Software-Derived Fingerprinting**: Device authorization relies on software-derived OS-accessible files (`/etc/machine-id`, `/proc/cpuinfo`, disk UUIDs). It protects against unauthorized software redistribution but does not provide physical TPM tampering immunity.
 3. **Synthetic Screening Benchmark**: Adapter screening evaluation is grounded in synthetic Trojan insertion suites (50 adapters across 4 evasion levels).
 
 ---
 
 ## 10. Remaining Publication Risks
-- **Low Risk**: Reviewers may ask for evaluation on larger foundation models (e.g., 7B / 13B parameters). The repository includes a model scaling analysis (`outputs/evaluation/model_scale/model_comparison.json`) demonstrating latency scaling characteristics up to 350M parameters to mitigate this.
+- **Low Risk**: Reviewers may ask for evaluation on larger foundation models (e.g., 7B / 13B parameters). The repository includes a model scaling analysis (`outputs/evaluation/model_scale/model_comparison.json`) demonstrating latency scaling characteristics up to 350M-tier model configurations to mitigate this.
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## 1. Research Question
 
-> *"How can enterprise organisations fine-tune and deploy Parameter-Efficient Low-Rank Adaptation (LoRA) modules on open-weight Large Language Models while simultaneously preventing PII memorization, intercepting malicious/adaptive-evading adapter weights, preventing unauthorized adapter relocation across hardware environments, and guaranteeing verifiable data governance?"*
+> *"How can enterprise organisations fine-tune and deploy Parameter-Efficient Low-Rank Adaptation (LoRA) modules on open-weight Large Language Models while simultaneously preventing PII memorization, intercepting malicious/adaptive-evading adapter weights, preventing unauthorized adapter relocation across software-derived device environments, and guaranteeing verifiable data governance?"*
 
 ---
 
@@ -29,16 +29,16 @@ Together, this joint defense achieves **$>90\%$ empirical detection** even again
 SecureLoRA operates across a 5-gate security & privacy pipeline:
 
 ```
-[ Ingest Unstructured Data ] ──> [ Gate 1: RAM-Only Hybrid PII Redaction ]
+[ Ingest Unstructured Data ] ──> [ Gate 1: RAM-First Hybrid PII Redaction ]
                                               │
                                               ▼
-[ Deploy PEFT LLM ] <── [ Gate 5: RSA-PSS ] <── [ Gate 4: HKDF Hardware ] <── [ Gate 3: Joint Screening ] <── [ Gate 2: DP-LoRA Privacy Guard ]
+[ Deploy PEFT LLM ] <── [ Gate 5: RSA-PSS ] <── [ Gate 4: HKDF Device ] <── [ Gate 3: Joint Screening ] <── [ Gate 2: DP-LoRA Privacy Guard ]
 ```
 
-*   **Gate 1 (RAM-Only PII Engine)**: SpaCy Transformer NER + RFC/ISO Regex matching redacting sensitive entities in volatile RAM with zero disk leakage.
+*   **Gate 1 (RAM-First PII Engine)**: SpaCy Transformer NER + RFC/ISO Regex matching redacting sensitive entities in volatile RAM to minimize persistent plaintext exposure.
 *   **Gate 2 (DP-LoRA Privacy Guard)**: $(\epsilon, \delta)$-Differential Privacy via per-example gradient clipping and Gaussian noise injection (Opacus RDP accountant).
 *   **Gate 3 (Joint Screening Gate)**: Dual-modal pre-deployment screening evaluating structural rank and behavioral subspace shifts.
-*   **Gate 4 (Hardware-Bound Cryptographic Vault)**: Ephemeral AES-256-GCM key derivation via HKDF-SHA256 bound to software-derived device identity attributes.
+*   **Gate 4 (Device-Bound Cryptographic Vault)**: Ephemeral AES-256-GCM key derivation via HKDF-SHA256 bound to software-derived device identity attributes.
 *   **Gate 5 (Deployment Gateway & Verification)**: RSA-2048-PSS digital signature verification, SHA-256 digest integrity checking, and anti-replay nonce tracking.
 
 ---
@@ -83,8 +83,8 @@ All baseline systems were evaluated on identical dataset splits, model seeds, an
 *   **Step 4: Adapter Screening System Comparison**: Compared Structural, Behavioral, and Combined detectors across 100 test adapters.
 *   **Step 5: Adaptive Evasion & Adversarial Attack**: Tested detector robustness across 4 attack complexity levels (Level 0 to Level 3).
 *   **Step 6: Multi-Seed Replication Engine**: Executed full experimental matrix across 5 random seeds (`42, 123, 456, 789, 1001`) with mean $\pm$ standard deviation reporting.
-*   **Step 7: Device Binding & Policy Evaluation**: Evaluated Static vs Adaptive hardware authorization policies across 8 operational/threat scenarios.
-*   **Step 8: Model Scale Evaluation**: Measured computational latencies, memory consumption, and screening behavior across Lightweight (68M) and Scaled (350M) models.
+*   **Step 7: Device Binding & Policy Evaluation**: Evaluated Static vs Adaptive device authorization policies across 8 operational/threat scenarios.
+*   **Step 8: Model Scale Evaluation**: Measured computational latencies, memory consumption, and screening behavior across Lightweight (68M-tier) and Scaled (350M-tier) model configurations.
 *   **Step 9: Research Artifact Audit & Schema Standardization**: Enforced strict `UnifiedExperimentResult` JSON schema validation across all output files in `outputs/evaluation/`.
 *   **Step 10: Interactive Dashboard Integration**: Connected real research artifacts to Flask `/api/research/*` routes and Chart.js UI.
 
@@ -111,14 +111,14 @@ All baseline systems were evaluated on identical dataset splits, model seeds, an
     *   Encryption (AES-256-GCM): **~0.21 ms to 0.70 ms**
     *   Decryption & Key Derivation (HKDF): **~0.17 ms to 0.19 ms**
     *   RSA-2048-PSS Signature Verification: **~0.05 ms to 1.24 ms**
-    *   Screening Latency (68M Tier): **~1.28 ms to 7.80 ms**
+    *   Screening Latency (68M-tier): **~1.28 ms to 7.80 ms**
     *   Total Deployment Gate Overhead: **0.394 ms** (E9 packaging pass)
 
 ---
 
 ## 9. Limitations & Defensible Scope
 
-1.  **Software-Derived Device Identity**: Hardware binding uses OS attributes (`machine-id`, MAC address, CPU model) and a deployment salt (`P3_DEVICE_SALT`). It is a software identity control, **not a hardware TPM/SGX root of trust**. VM cloning or root-level host compromise allows attribute spoofing.
+1.  **Software-Derived Device Identity**: Device binding uses software-derived OS attributes (`machine-id`, MAC address, CPU model) and a deployment salt (`P3_DEVICE_SALT`). It is a software identity control, **not a hardware TPM/SGX root of trust**. VM cloning or root-level host compromise allows attribute spoofing.
 2.  **Screening Risk Assessment**: Joint screening provides empirical risk assessment against known trigger families; it is **not a formal mathematical proof of zero zero-day malware**.
 3.  **RAM Decryption Window**: Unencrypted PEFT weights reside transiently in volatile RAM during model loading before DoD 3-pass shredding.
 
@@ -158,7 +158,7 @@ python -m src.evaluation.dashboard
 *   `src/evaluation/templates/index.html`: Responsive 5-chart layout and side-by-side model transparency interface.
 *   `src/evaluation/schema_auditor.py`: Unified JSON schema validator (`UnifiedExperimentResult`).
 *   `src/evaluation/adapter_security.py`: Combined structural + behavioral screening logic.
-*   `src/security/device_auth_policy.py`: Policy-driven hardware authorization state machine.
+*   `src/security/device_auth_policy.py`: Policy-driven device authorization state machine.
 *   `README.md`, `docs/SETUP.md`, `docs/DATASETS.md`, `docs/EXPERIMENTS.md`, `docs/RESEARCH.md`.
 
 ---

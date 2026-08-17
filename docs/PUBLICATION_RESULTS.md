@@ -40,7 +40,7 @@ Every metric listed below is directly traceable to a raw source artifact in `out
 
 | Metric | Verified Value | Experiment | Dataset | Model | Sample Count | Seed | Artifact Path |
 |---|---|---|---|---|---|---|---|
-| Unauthorized Hardware Rejection | **1.0000 (100.0%)** | Device Binding Benchmark | `ai4privacy_synthetic_hybrid` | `JackFram/llama-68m` | 100 | 42 | `outputs/evaluation/device_binding/comparison.json` |
+| Unauthorized Device Rejection | **1.0000 (100.0%)** | Device Binding Benchmark | `ai4privacy_synthetic_hybrid` | `JackFram/llama-68m` | 100 | 42 | `outputs/evaluation/device_binding/comparison.json` |
 | Replay Attack Rejection Rate | **1.0000 (100.0%)** | Device Binding Benchmark | `ai4privacy_synthetic_hybrid` | `JackFram/llama-68m` | 100 | 42 | `outputs/evaluation/device_binding/comparison.json` |
 | Adaptive Policy False Rejection Rate | **0.2000 (20.0%)** | Device Binding Benchmark | `ai4privacy_synthetic_hybrid` | `JackFram/llama-68m` | 100 | 42 | `outputs/evaluation/device_binding/comparison.json` |
 | Static Policy False Rejection Rate | **0.8000 (80.0%)** | Device Binding Benchmark | `ai4privacy_synthetic_hybrid` | `JackFram/llama-68m` | 100 | 42 | `outputs/evaluation/device_binding/comparison.json` |
@@ -56,10 +56,10 @@ Every metric listed below is directly traceable to a raw source artifact in `out
 
 | Metric | Verified Value | Experiment | Dataset | Model Tier | Sample Count | Seed | Artifact Path |
 |---|---|---|---|---|---|---|---|
-| Lightweight Tier Parameters | **22,703,744** (~22.7M) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Lightweight (68M tier) | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
-| Scaled Tier Parameters | **267,017,472** (~267.0M) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Scaled (350M tier) | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
-| Screening Latency Scaling (68M $\rightarrow$ 350M) | **+68.771 ms** (7.801ms $\rightarrow$ 76.572ms) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Lightweight vs Scaled | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
-| Encryption/Decryption Scaling (68M $\rightarrow$ 350M) | **+9.017 ms** (0.770ms $\rightarrow$ 9.787ms) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Lightweight vs Scaled | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
+| Lightweight Tier Parameters | **22,703,744** (22.7M instantiated) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | 68M-tier model configuration | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
+| Scaled Tier Parameters | **267,017,472** (267.0M instantiated) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | 350M-tier model configuration | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
+| Screening Latency Scaling (68M-tier $\rightarrow$ 350M-tier) | **+68.771 ms** (7.801ms $\rightarrow$ 76.572ms) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Lightweight vs Scaled | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
+| Encryption/Decryption Scaling (68M-tier $\rightarrow$ 350M-tier) | **+9.017 ms** (0.770ms $\rightarrow$ 9.787ms) | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Lightweight vs Scaled | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
 | Total Security Latency Scaling | **+77.788 ms** | Model Scaling Benchmark | `ai4privacy_synthetic_hybrid` | Lightweight vs Scaled | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
 
 ---
