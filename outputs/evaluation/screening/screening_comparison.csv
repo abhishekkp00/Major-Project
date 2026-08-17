@@ -1,4 +1,4 @@
 system,selected_threshold,precision,recall,f1,accuracy,false_positive_rate,false_negative_rate,mean_latency_ms,tp,tn,fp,fn
-structural_only,0.1,1.0,0.75,0.8571,0.8,0.0,0.25,1.419,30,10,0,10
-behavioral_only,0.1,1.0,0.0,0.0,0.2,0.0,1.0,1.411,0,10,0,40
-combined,0.1,1.0,0.75,0.8571,0.8,0.0,0.25,1.412,30,10,0,10
+structural_only,0.1,1.0,0.75,0.8571,0.8,0.0,0.25,1.929,30,10,0,10
+behavioral_only,0.1,1.0,0.0,0.0,0.2,0.0,1.0,1.882,0,10,0,40
+combined,0.1,1.0,0.75,0.8571,0.8,0.0,0.25,1.955,30,10,0,10
