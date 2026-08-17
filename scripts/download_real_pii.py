@@ -32,18 +32,19 @@ def main():
                 seen.add(source_clean)
                 rows.append({
                     "instruction": f"Redact Personally Identifiable Information (PII) from this text: {source_clean}",
-                    "output": f"Redact Personally Identifiable Information (PII) from this text: {target_clean}"
+                    "output": f"Redact Personally Identifiable Information (PII) from this text: {target_clean}",
+                    "synthetic": True
                 })
 
-    print(f"Filtered {len(rows)} high-quality real-world PII records.")
+    print(f"Filtered {len(rows)} high-quality synthetic benchmark PII records.")
     
     # We will write the first 10 rows for optimal CPU training speed in the demo
-    output_path = "real_world_pii.jsonl"
-    with open(output_path, "w", encoding="utf-8") as f:
-        for row in rows[:10]:
-            f.write(json.dumps(row) + "\n")
+    for output_path in ["synthetic_pii_benchmark.jsonl", "real_world_pii.jsonl"]:
+        with open(output_path, "w", encoding="utf-8") as f:
+            for row in rows[:10]:
+                f.write(json.dumps(row) + "\n")
             
-    print(f"Successfully saved to {output_path}")
+    print(f"Successfully saved to synthetic_pii_benchmark.jsonl")
 
 if __name__ == "__main__":
     main()

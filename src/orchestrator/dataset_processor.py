@@ -214,7 +214,7 @@ def preprocess_and_standardize(
     Standardizes Alpaca format (instruction/input/output) or Causal LM format (text).
     Strips control characters, normalizes whitespace.
     When mask_pii=True (default), runs the HybridPIIEngine on every text field
-    before returning — guaranteeing zero PII reaches the training loop.
+    before returning to reduce sensitive entity exposure.
     """
     masker = _get_pii_masker() if mask_pii else None
     pii_entity_counts: Dict[str, int] = {}

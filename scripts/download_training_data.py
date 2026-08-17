@@ -21,7 +21,8 @@ from datasets import load_dataset
 TARGET_RECORDS = 500
 DEMO_RECORDS   = 50   # shown in the dashboard demo panel
 OUTPUT_TRAIN   = Path("real_data_inputs/pii_training_data.jsonl")
-OUTPUT_DEMO    = Path("real_world_pii.jsonl")
+OUTPUT_DEMO    = Path("synthetic_pii_benchmark.jsonl")
+OUTPUT_LEGACY  = Path("real_world_pii.jsonl")
 
 # PII token normalisation map — maps ai4privacy tags → our project tokens
 TOKEN_MAP = {
@@ -105,7 +106,8 @@ def main():
 
         records.append({
             "instruction": f"Redact Personally Identifiable Information (PII) from this text: {source}",
-            "output":      f"Redact Personally Identifiable Information (PII) from this text: {target_normalized}"
+            "output":      f"Redact Personally Identifiable Information (PII) from this text: {target_normalized}",
+            "synthetic":   True
         })
 
         if len(records) % 50 == 0:
@@ -115,7 +117,7 @@ def main():
         print("ERROR: No records collected. Check your internet connection.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\nCollected {len(records)} real-world PII records.")
+    print(f"\nCollected {len(records)} synthetic benchmark PII records.")
 
     # Save full training set
     OUTPUT_TRAIN.parent.mkdir(parents=True, exist_ok=True)
@@ -125,9 +127,10 @@ def main():
     print(f"Saved {len(records)} training records → {OUTPUT_TRAIN}")
 
     # Save demo subset (first 50 diverse records)
-    with open(OUTPUT_DEMO, "w", encoding="utf-8") as f:
-        for rec in records[:DEMO_RECORDS]:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    for demo_path in [OUTPUT_DEMO, OUTPUT_LEGACY]:
+        with open(demo_path, "w", encoding="utf-8") as f:
+            for rec in records[:DEMO_RECORDS]:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     print(f"Saved {DEMO_RECORDS} demo records → {OUTPUT_DEMO}")
 
     # Print a few examples so the user can verify

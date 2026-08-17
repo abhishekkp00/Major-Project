@@ -57,6 +57,8 @@ class SyntheticDatasetAdapter(BaseDatasetAdapter):
 
         # 1. Search project root & samples for JSONL files
         sample_files = [
+            Path("synthetic_pii_benchmark.jsonl"),
+            Path("samples/synthetic_pii_benchmark.jsonl"),
             Path("real_world_pii.jsonl"),
             Path("samples/sample_pii_data.jsonl"),
             Path("samples/sample_medical_phi.jsonl"),

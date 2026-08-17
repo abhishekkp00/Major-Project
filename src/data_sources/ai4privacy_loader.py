@@ -150,9 +150,9 @@ class AI4PrivacyDatasetAdapter(BaseDatasetAdapter):
         return self._loaded_records
 
     def _load_local_or_generated_fallback(self, target_count: int) -> List[Dict[str, Any]]:
-        """Loads from local real_world_pii.jsonl or generates synthetic fallback records."""
+        """Loads from local synthetic_pii_benchmark.jsonl or generates synthetic fallback records."""
         records = []
-        for candidate in [Path("real_world_pii.jsonl"), Path("samples/real_world_pii.jsonl")]:
+        for candidate in [Path("synthetic_pii_benchmark.jsonl"), Path("samples/synthetic_pii_benchmark.jsonl"), Path("real_world_pii.jsonl"), Path("samples/real_world_pii.jsonl")]:
             if candidate.exists():
                 try:
                     with open(candidate, "r", encoding="utf-8") as f:
