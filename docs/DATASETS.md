@@ -36,7 +36,10 @@ SecureLoRA implements a standardized **Dataset Adapter Architecture** (`src/data
   3. Qualitative & structural statistics (avg narrative length, clinical event distribution).
 
 ### 3.3 SecureLoRA Synthetic Benchmark
-- **Primary Source**: Internal SecureLoRA synthetic dataset generator and sample benchmarks (`samples/sample_pii_data.jsonl`, `samples/sample_medical_phi.jsonl`, `real_world_pii.jsonl`).
+> **Dataset Safety Statement**:  
+> "This dataset contains synthetic fictional identities and is not derived from real individuals."
+
+- **Primary Source**: Internal SecureLoRA synthetic dataset generator and sample benchmarks (`samples/sample_pii_data.jsonl`, `samples/sample_medical_phi.jsonl`, `synthetic_pii_benchmark.jsonl`).
 - **License**: MIT License.
 - **Ground Truth Annotations**: Includes exact ground-truth entity spans generated alongside prompt templates.
 - **Evaluation Scope**: Unit testing, adversarial security verification, reproducible regression tests, and exact PII detection metric computation.

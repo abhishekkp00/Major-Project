@@ -56,21 +56,21 @@ The attacker **does not** have access to:
 
 ### 3.1 Hybrid PII Redaction Engine (`src/phase1/`)
 *   **Methodology**: Integrates RFC/ISO pattern matching (Luhn checksums, IBAN, SSN, Credit Card) with ML-based Named Entity Recognition (SpaCy / Presidio transformers).
-*   **Zero-Disk-Leakage Guarantee**: Redaction occurs entirely within volatile RAM prior to tokenization. Unredacted text is never flushed to persistent storage or swap space.
+*   **Zero-Disk-Leakage Architecture**: Redaction occurs within volatile RAM prior to tokenization. Unredacted text is not flushed to persistent storage or swap space during normal execution.
 
 ### 3.2 Differentially Private LoRA (`src/phase2/`)
-*   **Privacy Model**: $(\epsilon, \delta)$-Differential Privacy implemented via RénYi Differential Privacy (RDP) accountant.
+*   **Privacy Model**: $(\epsilon, \delta)$-Differential Privacy implemented via Rényi Differential Privacy (RDP) accountant.
 *   **Mechanism**: Per-sample gradient clipping ($\|g_i\|_2 \le C$) and Gaussian noise injection ($z \sim \mathcal{N}(0, \sigma^2 C^2 \mathbf{I})$) applied exclusively to LoRA trainable matrices ($A$ and $B$).
 *   **Empirical Target**: $\epsilon \le 2.5, \delta = 10^{-5}$.
 
 ### 3.3 Comparative Adapter Screening System (`src/security/adapter_screening/`)
 *   **Structural-Only Screen**: Computes singular value decomposition (SVD) on adapter weight matrices $W = B \times A$. Detects spectral rank anomalies and Frobenius norm deviations.
 *   **Behavioral-Only Screen**: Measures activation shift and output perplexity divergence on standard probe inputs.
-*   **Combined (SecureLoRA) Screen**: Jointly evaluates structural spectral bounds and behavioral activation subspace projections. Proves $100\%$ interception rate against adaptive evasion attacks (F1 = 0.98+).
+*   **Combined (SecureLoRA) Screen**: Jointly evaluates structural spectral bounds and behavioral activation subspace projections. Achieved a **1.0000 F1 score ($\tau=0.35$)** on the evaluated multi-seed adaptive evasion suite.
 
-### 3.4 Hardware-Bound Key Derivation & Encryption (`src/phase3/` & `src/security/`)
-*   **Key Derivation**: Uses HKDF-SHA256 over stable hardware attributes (CPU model, machine ID, primary MAC address) concatenated with deployment salt $S_{\text{device}}$:
-    $$\text{Key}_{\text{AES}} = \text{HKDF-SHA256}(\text{Fingerprint}(\text{Hardware}) \parallel S_{\text{device}})$$
+### 3.4 Software-Derived Device Authorization & Encryption (`src/phase3/` & `src/security/`)
+*   **Key Derivation**: Uses HKDF-SHA256 over software-derived device identity attributes (CPU model, system machine ID, disk UUID) concatenated with deployment salt $S_{\text{device}}$:
+    $$\text{Key}_{\text{AES}} = \text{HKDF-SHA256}(\text{SoftwareDeviceIdentity} \parallel S_{\text{device}})$$
 *   **Encryption**: AES-256-GCM authenticated encryption.
 *   **Digital Signature**: RSA-PSS 2048-bit signature with SHA-256 digest over the manifest and encrypted archive.
 *   **Anti-Replay Tracker**: Monotonically increasing sequence number and expiration nonce verification.
@@ -79,7 +79,7 @@ The attacker **does not** have access to:
 
 ## 4. Key Empirical Findings
 
-1.  **PII Leakage Reduction**: SecureLoRA achieves a **0.0% PII leakage rate** compared to **42.3% in un-protected Base Models** and **18.7% in standard LoRA**.
-2.  **Adaptive Evasion Robustness**: While single-modal screening degrades to 64.2% detection against adaptive attackers, SecureLoRA's combined screening maintains **>90% detection rate** even at Level-3 evasion complexity.
-3.  **Sub-Linear Scalability**: Cryptographic encryption and screening overhead scale sub-linearly with model parameter count (68M $\rightarrow$ 350M parameters adds <50ms overhead).
-4.  **Device Authorization Availability**: Adaptive device authorization eliminates false rejections during legitimate system reboots/updates while maintaining a 100% rejection rate against foreign hardware clones.
+1.  **PII Redaction Performance**: The hybrid PII redaction engine achieved a **0.9620 micro-average F1 score** (0.9500 Precision, 0.9744 Recall) on the evaluated synthetic benchmark. (Generation-level memorization leakage rates were *Not experimentally verified* due to offline evaluation without live LLM weights loaded.)
+2.  **Adaptive Evasion Robustness**: Single-modal structural screening degrades to **0.0% detection (100% FNR)** against Level-2 and Level-3 adaptive evasion attacks (averaging 75.0% across all levels), while SecureLoRA's joint Structural + Behavioral screen achieved a **1.0000 F1 score ($\tau=0.35$)** on the evaluated multi-seed evasion suite.
+3.  **Sub-Linear Scalability**: Cryptographic encryption/decryption overhead scaled sub-linearly with model size (+9.02 ms from 68M to 350M parameters), while full security screening pass latency scaled by +68.77 ms (+77.79 ms total security latency increase across tiers).
+4.  **Device Authorization Availability**: Adaptive device authorization achieved a **60.0% reduction in false rejections** (reducing legitimate FRR from 80.0% static down to 20.0% adaptive) while maintaining a **100.0% rejection rate** against foreign hardware clones on the evaluated test set.

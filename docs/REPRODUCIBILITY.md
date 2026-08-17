@@ -113,7 +113,7 @@ PYTHONPATH=. ./venv/bin/python -m src.evaluation.schema_auditor
 
 ## Full Test Suite Execution
 
-To run the complete automated test suite (240+ unit & integration tests):
+To run the complete automated test suite (245 unit & integration tests):
 
 ```bash
 PYTHONPATH=. ./venv/bin/pytest tests/ -v

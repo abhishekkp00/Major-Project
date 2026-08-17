@@ -70,7 +70,7 @@ MAJOR_PROJECT/
 ├── 📂 samples/                         # Demonstration Datasets
 │   ├── sample_medical_phi.jsonl        # Clinical health notes with PHI
 │   ├── sample_pii_data.jsonl           # Corporate employee records
-│   └── real_world_pii.jsonl            # Real-world benchmark records
+│   └── synthetic_pii_benchmark.jsonl   # Synthetic PII benchmark records (ai4privacy generator)
 │
 ├── 📜 scripts/                         # Helper & Evaluation Executables
 │   ├── run_paper_evaluation.py         # Master evaluation runner

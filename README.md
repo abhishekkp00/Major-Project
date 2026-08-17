@@ -8,7 +8,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Encryption](https://img.shields.io/badge/Encryption-AES--256--GCM-critical)](#)
 [![Signature](https://img.shields.io/badge/Signature-RSA--PSS%202048-blue)](#)
-[![Tests](https://img.shields.io/badge/Tests-243%2F243%20PASS-success)](#)
+[![Tests](https://img.shields.io/badge/Tests-245%2F245%20PASS-success)](#)
 
 </div>
 
@@ -18,7 +18,7 @@
 
 **SecureLoRA** is an end-to-end framework for privacy-preserving, cryptographically protected, and security-screened Parameter-Efficient Fine-Tuning (PEFT) of Large Language Models (LLMs). It addresses five critical vulnerabilities in enterprise machine learning deployment:
 
-1. **Unsanitized PII Memorization**: Prevents LLMs from memorizing and leaking Personally Identifiable Information (PII/PHI) using a zero-disk-leakage hybrid redaction engine combined with $(\epsilon, \delta)$-Differential Privacy (DP-LoRA).
+1. **Unsanitized PII Memorization**: Reduces sensitive entity exposure using a zero-disk-leakage hybrid redaction engine combined with $(\epsilon, \delta)$-Differential Privacy (DP-LoRA).
 2. **Untrusted Third-Party LoRA Adapters**: Evaluates adapters prior to deployment using joint structural spectral rank screening and behavioral activation subspace probes.
 3. **Adaptive Adversarial Evasion**: Defends against stealthy adapters crafted to bypass static structural anomaly checks.
 4. **Adapter Theft & Illegal Relocation**: Cryptographically binds adapter execution to authorized target hardware identities via HKDF-SHA256 key derivation and AES-256-GCM authenticated encryption.
@@ -44,7 +44,7 @@ cp .env.example .env
 export SECURE_LORA_KEY_HEX=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 export P3_DEVICE_SALT=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 
-# 3. Verify Full System Test Suite (240+ Tests)
+# 3. Verify Full System Test Suite (245 Tests)
 PYTHONPATH=. ./venv/bin/pytest tests/ -v
 
 # 4. Run Baseline & SecureLoRA Evaluation Experiments
@@ -71,6 +71,7 @@ For in-depth research specifications, experiment protocols, and dataset details:
 *   📊 **[Dataset Governance Specification](docs/DATASETS.md)** — AI4Privacy, Synthea, and Synthetic dataset adapters, HF downloads, ground truth handling, and licensing.
 *   🔬 **[Experimental Reproducibility Matrix](docs/EXPERIMENTS.md)** — Complete step-by-step CLI commands, models, datasets, random seeds, and artifact paths for all 9 research steps.
 *   🛡️ **[Technical & Academic Research Specification](docs/RESEARCH.md)** — Mathematical formulations of DP-LoRA, HKDF hardware binding, structural/behavioral screening, threat models, and security proofs.
+*   📊 **[Verified Publication Results](docs/PUBLICATION_RESULTS.md)** — Complete table of verified numerical metrics, parameters, seeds, and source artifact paths.
 
 ---
 
@@ -110,10 +111,10 @@ Sanitized Training Data       (ε, δ)-DP Parameter Budget       Encrypted Packa
 
 ## 6. Key Empirical Findings
 
-*   **PII Leakage Reduction**: SecureLoRA achieves a **0.0% PII leakage rate** compared to **42.3% in un-protected Base Models** and **18.7% in standard LoRA**.
-*   **Adaptive Evasion Interception**: Single-modal structural screening degrades to 0% detection (100% FNR) against Level-3 adaptive evasion attacks, while SecureLoRA's joint Structural + Behavioral screen maintains **>90% detection rate**.
-*   **Sub-Linear Latency Scaling**: Cryptographic encryption and screening overhead scale sub-linearly with model size (adds <50ms overhead when scaling from 68M to 350M parameters).
-*   **Zero False Rejections**: Adaptive device authorization eliminates false rejections during legitimate environment changes while maintaining a **100% rejection rate** against unauthorized hardware clones.
+*   **PII Redaction Efficacy**: The hybrid PII redaction engine achieved a **0.9620 micro-average F1 score** (0.9500 Precision, 0.9744 Recall) on the evaluated synthetic benchmark. (Generation-level memorization leakage rates were *Not experimentally verified* due to offline evaluation without live LLM weights loaded.)
+*   **Adaptive Evasion Interception**: Single-modal structural screening degrades to **0.0% detection (100% FNR)** against Level-2 and Level-3 adaptive evasion attacks (averaging 75.0% across all levels), while SecureLoRA's joint Structural + Behavioral screen achieved a **1.0000 F1 score ($\tau=0.35$)** on the evaluated multi-seed evasion suite.
+*   **Sub-Linear Latency Scaling**: Cryptographic encryption/decryption overhead scaled sub-linearly with model size (+9.02 ms from 68M to 350M parameters), while full security screening pass latency scaled by +68.77 ms (+77.79 ms total security latency increase across tiers).
+*   **Device Authorization**: Adaptive device authorization achieved a **60.0% reduction in false rejections** (reducing legitimate FRR from 80.0% static down to 20.0% adaptive) while maintaining a **100.0% rejection rate** against unauthorized hardware clones on the evaluated test set.
 
 ---
 

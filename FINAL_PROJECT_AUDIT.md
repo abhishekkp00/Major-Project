@@ -105,14 +105,14 @@ All baseline systems were evaluated on identical dataset splits, model seeds, an
 
 ## 8. Verified Experimental Metrics
 
-*   **PII Leakage Rate**: Reduced from **42.3% (Base Model)** $\rightarrow$ **18.7% (Standard LoRA)** $\rightarrow$ **0.0% (SecureLoRA)**.
-*   **Screening Accuracy**: Combined F1-score of **0.98** across standard benchmarks.
+*   **PII Redaction Efficacy**: The hybrid PII redaction engine achieved a **0.9620 micro-average F1 score** (0.9500 Precision, 0.9744 Recall) on the evaluated synthetic benchmark. (Generation-level memorization leakage rates were *Not experimentally verified* due to offline evaluation without live LLM weights loaded.)
+*   **Screening Efficacy**: Combined screening F1-score of **1.0000 ± 0.0000** on the evaluated multi-seed evasion suite ($\tau=0.35$).
 *   **Cryptographic & Deployment Overhead**:
-    *   Encryption (AES-256-GCM): **~0.70 ms**
-    *   Decryption & Key Derivation (HKDF): **~0.17 ms**
-    *   RSA-2048-PSS Signature Verification: **~1.24 ms**
-    *   Screening Latency: **~18.4 ms**
-    *   Total Deployment Gate Overhead: **<25 ms**
+    *   Encryption (AES-256-GCM): **~0.21 ms to 0.70 ms**
+    *   Decryption & Key Derivation (HKDF): **~0.17 ms to 0.19 ms**
+    *   RSA-2048-PSS Signature Verification: **~0.05 ms to 1.24 ms**
+    *   Screening Latency (68M Tier): **~1.28 ms to 7.80 ms**
+    *   Total Deployment Gate Overhead: **0.394 ms** (E9 packaging pass)
 
 ---
 
