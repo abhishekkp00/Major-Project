@@ -251,7 +251,7 @@ def main():
     # ── Combine into consolidated report ────────────────────────────
     consolidated = {
         "metadata": {
-            "report_title": "SecureLoRA: Hardware-Bound LoRA Protection — Paper Evaluation Results",
+            "report_title": "SecureLoRA: Device-Bound LoRA Protection — Paper Evaluation Results",
             "evaluation_suite_version": "1.0.0",
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "system": {

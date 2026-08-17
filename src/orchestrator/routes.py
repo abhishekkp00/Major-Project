@@ -678,7 +678,7 @@ def get_pipeline_summary(job_id):
                 "cross_device_rejection": sec.get("cross_device_rejection_rate"),
                 "unauthorized_rejection": sec.get("unauthorized_deployment_rejection_rate"),
             },
-            "security_significance": "Hardware-bound HKDF key derivation: adapter cannot be decrypted on any unauthorized device. Cross-device rejection rate near 100% under evaluated fingerprint configurations.",
+            "security_significance": "Device-bound HKDF key derivation: adapter cannot be decrypted on any unauthorized device. Cross-device rejection rate near 100% under evaluated fingerprint configurations.",
             "result": _vstep("Step 4: Device Authorization") if vsteps else "N/A",
         },
         {

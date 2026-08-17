@@ -342,7 +342,7 @@ def security_demonstration():
         "authorization_state": "AUTHORIZED" if auth_ok else "REAUTHORIZATION_REQUIRED",
         "fingerprint_prefix": fp[:16] + "..." if fp else "UNKNOWN",
         "hardware_profile": f"{platform.system()} {platform.machine()}",
-        "binding_policy": "v2.0 (Adaptive Hardware-Bound Key)"
+        "binding_policy": "v2.0 (Adaptive Device-Bound Key)"
     }
 
     provenance_info = {
@@ -376,10 +376,10 @@ def security_demonstration():
         {
             "id": "unauthorized_device",
             "name": "Unauthorized Device Attack",
-            "target": "Hardware Binding Gate",
+            "target": "Device Binding Gate",
             "security_mechanism": "HKDF-SHA256 Fingerprint Key Derivation",
             "result": "BLOCKED",
-            "evidence": "Hardware fingerprint mismatch; HKDF key derivation rejected decryption."
+            "evidence": "Device fingerprint mismatch; HKDF key derivation rejected decryption."
         },
         {
             "id": "signature_forgery",

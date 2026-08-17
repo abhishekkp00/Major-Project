@@ -65,16 +65,20 @@ THREAT_CATALOG = [
         "id": "T-01",
         "stride_category": "I — Information Disclosure",
         "name": "Physical Storage Clone / Disk Theft",
+        "name": "Adapter Exfiltration / Theft",
         "description": (
             "An attacker with physical access to the edge device clones the filesystem "
             "or removes the storage medium. They attempt to load the cloned adapter files "
             "on their own machine."
         ),
         "attacker_capability": "Physical disk access, full filesystem clone",
+        "threat_id": "adapter_exfiltration",
+        "target": "Model Adapter Archive (.tar.gz)",
+        "attack_mechanism": "Attacker steals serialized PEFT weights from disk or transit.",
         "asset_at_risk": "LoRA adapter weights (.enc file)",
         "likelihood": "High (edge/field deployment scenario)",
         "impact": "Critical (full model IP exposure)",
-        "countermeasure": "AES-256-GCM encryption with hardware-bound key. The decryption key is derived from this device's hardware identifiers via HKDF. Cloned files yield only ciphertext on foreign hardware.",
+        "countermeasure": "AES-256-GCM encryption with device-bound key. The decryption key is derived from this device's software-derived identifiers via HKDF. Cloned files yield only ciphertext on foreign hardware.",
         "cryptographic_primitive": "AES-256-GCM + HKDF(fingerprint_hash, salt)",
         "testable": True,
         "test_id": "SIM-01",
@@ -534,7 +538,7 @@ def run_threat_model_analysis(verbose: bool = True) -> Dict[str, Any]:
         "threat_catalog": threats_with_results,
         "simulation_results": sim_results,
         "security_summary": {
-            "adapter_theft": "Prevented — hardware-bound key derivation rejects foreign device decryption",
+            "adapter_theft": "Prevented — device-bound key derivation rejects foreign device decryption",
             "tamper_evidence": "Enforced — SHA-256 hash + GCM auth tag detects any bit-level modification",
             "supply_chain": "Verified — RSA-PSS signature rejects unsigned or forged adapter packages",
             "pii_leakage": "Mitigated — Phase 1 PII scrubbing masks sensitive data before LLM tokenization",
