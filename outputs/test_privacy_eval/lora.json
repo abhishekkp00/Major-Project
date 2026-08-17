@@ -5,7 +5,7 @@
   "adapter": "secure_lora_adapter",
   "seed": 42,
   "sample_count": 5,
-  "timestamp": "2026-08-16T17:36:39.105560+00:00",
+  "timestamp": "2026-08-16T18:15:43.811166+00:00",
   "status": "NOT_EXECUTED",
   "reason": "Model or adapter instance for variant 'lora' was not loaded or executed.",
   "ground_truth_available": true,

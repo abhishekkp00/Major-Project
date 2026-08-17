@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-16T17:36:47.719554+00:00",
+  "timestamp": "2026-08-16T18:15:54.843261+00:00",
   "sample_count": 50,
   "seed": 123,
   "systems": {
@@ -8,7 +8,7 @@
       "description": "LoRA adapter security screening detector: structural_only",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-08-16T17:36:47.515564+00:00",
+      "timestamp": "2026-08-16T18:15:54.599547+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -161,8 +161,8 @@
         "accuracy": 0.8,
         "false_positive_rate": 0.0,
         "false_negative_rate": 0.25,
-        "mean_latency_ms": 1.241,
-        "stdev_latency_ms": 0.075
+        "mean_latency_ms": 1.62,
+        "stdev_latency_ms": 0.168
       }
     },
     "behavioral_only": {
@@ -170,7 +170,7 @@
       "description": "LoRA adapter security screening detector: behavioral_only",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-08-16T17:36:47.624312+00:00",
+      "timestamp": "2026-08-16T18:15:54.721079+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -323,8 +323,8 @@
         "accuracy": 0.2,
         "false_positive_rate": 0.0,
         "false_negative_rate": 1.0,
-        "mean_latency_ms": 1.537,
-        "stdev_latency_ms": 0.437
+        "mean_latency_ms": 1.611,
+        "stdev_latency_ms": 0.215
       }
     },
     "combined": {
@@ -332,7 +332,7 @@
       "description": "LoRA adapter security screening detector: combined",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-08-16T17:36:47.719166+00:00",
+      "timestamp": "2026-08-16T18:15:54.842850+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -485,8 +485,8 @@
         "accuracy": 0.8,
         "false_positive_rate": 0.0,
         "false_negative_rate": 0.25,
-        "mean_latency_ms": 1.231,
-        "stdev_latency_ms": 0.077
+        "mean_latency_ms": 1.598,
+        "stdev_latency_ms": 0.131
       }
     }
   },

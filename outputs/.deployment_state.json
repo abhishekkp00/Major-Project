@@ -1,7 +1,7 @@
 {
   "adapters": {
     "job_test_security_123": {
-      "last_sequence": 29,
+      "last_sequence": 32,
       "processed_packages": [
         "aa7107b2-1a3f-42b5-ba3a-21f095b47c75",
         "58317050-db0e-4c63-940c-1e0b01a71c98",
@@ -31,12 +31,15 @@
         "f2641e2f-7b4a-4632-9ac2-e29fc82cd1e5",
         "35afa7e9-1c2e-43ba-bdc5-fa105b2463f5",
         "e64a7fb6-00f5-42cd-a2a5-5ffe063c6148",
-        "efc3ed7e-731f-4c8b-8ef1-ebea1efc262b"
+        "efc3ed7e-731f-4c8b-8ef1-ebea1efc262b",
+        "0b1f0d18-ceac-495b-a440-a9abb9def450",
+        "79be9002-7df5-4469-8798-ee3477710245",
+        "97296aee-49b6-4b46-8634-13b7afcd9cc8"
       ],
-      "last_deployed_utc": "2026-08-16T17:38:27.343144+00:00"
+      "last_deployed_utc": "2026-08-16T18:17:33.168105+00:00"
     },
     "lora-adapter-v1": {
-      "last_sequence": 26,
+      "last_sequence": 32,
       "processed_packages": [
         "c335f061-1c8b-4416-b0e4-5c4fca3ad1ad",
         "acaa83d5-e84b-4d9c-b902-20d5cd1b4b25",
@@ -63,9 +66,15 @@
         "536f9e0e-5f16-4670-8776-61e1ccd057e6",
         "87f226b8-41dd-4479-8b6e-9d3c623fb695",
         "37436e78-9ceb-46d2-843d-0bda86760e6a",
-        "0c191018-d33e-4eaf-8c47-9186f71d5c8c"
+        "0c191018-d33e-4eaf-8c47-9186f71d5c8c",
+        "c3ea57a9-2f87-498c-9fa2-6abd989e0a2e",
+        "adcd97dd-d1c5-4e7b-988e-cc79e7f40377",
+        "5a56db84-8e3f-4470-8bdf-093ce0aaa19e",
+        "cc07f17f-7222-47cf-b609-796f57b25ea6",
+        "c2014ae3-8765-4912-bb81-e26b3b8f4378",
+        "e11e6542-e2e8-47a4-97cf-4ab8a302c7b8"
       ],
-      "last_deployed_utc": "2026-08-16T17:36:18.372798+00:00"
+      "last_deployed_utc": "2026-08-16T18:15:20.486635+00:00"
     },
     "job_1786882160_9540133a": {
       "last_sequence": 1,
