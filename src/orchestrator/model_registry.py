@@ -32,11 +32,13 @@ class ModelRegistry:
         peft_model: Any,
         tokenizer: Any,
         base_model_name: str,
-        adapter_id: str = "secure_lora_adapter",
+        adapter_id: Optional[str] = None,
         deployment_id: str = "verified_deployment",
-        deployment_status: str = "VERIFIED"
+        deployment_status: str = "VERIFIED",
+        **kwargs
     ) -> None:
         """Registers the verified base model, PEFT adapter, tokenizer, and deployment metadata in memory."""
+        eff_adapter_id = adapter_id or kwargs.get("adapter_name") or "secure_lora_adapter"
         with self._lock:
             # Tokenizer / Model compatibility check
             if tokenizer is not None and getattr(tokenizer, "pad_token", None) is None:
@@ -49,14 +51,14 @@ class ModelRegistry:
             self.peft_model = peft_model
             self.tokenizer = tokenizer
             self.base_model_name = base_model_name
-            self.adapter_id = adapter_id
+            self.adapter_id = eff_adapter_id
             self.deployment_id = deployment_id
             self.deployment_status = deployment_status
             self.adapter_loaded = (peft_model is not None or base_model is not None)
 
         logger.info(
             "ModelRegistry: Successfully registered model (base=%s, adapter_id=%s, deployment_id=%s, loaded=%s)",
-            base_model_name, adapter_id, deployment_id, self.adapter_loaded
+            base_model_name, eff_adapter_id, deployment_id, self.adapter_loaded
         )
 
     def is_verified(self) -> bool:

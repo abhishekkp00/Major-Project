@@ -196,8 +196,9 @@ def run_deployment_pipeline(
                                     peft_model=peft_model,
                                     tokenizer=tokenizer,
                                     base_model_name=base_model_name,
-                                    adapter_name=adapter_id,
-                                    deployment_id=pkg_id
+                                    adapter_id=adapter_id,
+                                    deployment_id=pkg_id,
+                                    deployment_status="VERIFIED"
                                 )
                             except Exception as reg_err:
                                 logger.warning("Could not register model in model_registry: %s", reg_err)
