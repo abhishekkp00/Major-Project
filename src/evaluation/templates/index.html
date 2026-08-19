@@ -37,10 +37,10 @@
 
         <div style="display:flex; align-items:center; gap:0.5rem;">
             <button class="btn btn-secondary btn-sm" onclick="switchTab(this,'security')" id="tabSecurity" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
-                🛡️ SECURITY
+                 SECURITY
             </button>
             <button class="btn btn-secondary btn-sm" onclick="switchTab(this,'model')" id="tabModel" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
-                🤖 MODEL
+                 MODEL
             </button>
             <div id="deployment-badge" class="badge badge-unverified" style="margin-left:0.3rem;">● Session Locked</div>
         </div>
@@ -124,7 +124,7 @@
 
                     <div style="margin-top: 1.5rem;">
                         <button class="btn btn-primary btn-large" id="btn-start-pipeline" onclick="startSecurePipeline()">
-                            ⚡ Start Secure Pipeline
+                             Start Secure Pipeline
                         </button>
                     </div>
                 </div>
@@ -204,7 +204,7 @@
 
                 <!-- LOGS TOGGLE -->
                 <div style="margin-top: 1rem; display:flex; justify-content:space-between; align-items:center;">
-                    <button class="btn btn-secondary btn-sm" onclick="toggleLogsView()">📄 View Logs</button>
+                    <button class="btn btn-secondary btn-sm" onclick="toggleLogsView()"> View Logs</button>
                     <span id="exec-status-badge" class="badge badge-unverified">IN PROGRESS</span>
                 </div>
 
@@ -215,21 +215,24 @@
 
             <!-- POST-TRAINING RESULT STATE -->
             <div class="card" id="post-training-card" style="display:none; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.02);">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                     <div>
                         <div style="font-size:1.1rem; font-weight:800; color:#34d399; display:flex; align-items:center; gap:0.5rem;">
-                            <span>✓ SECURE DEPLOYMENT READY</span>
+                            <span> SECURE PIPELINE COMPLETE & DEPLOYED</span>
                         </div>
-                        <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary); display:flex; gap:1.5rem;">
+                        <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary); display:flex; gap:1.5rem; flex-wrap:wrap;">
                             <span><strong>Base Model:</strong> JackFram/llama-68m</span>
                             <span><strong>Adapter:</strong> <span id="res-adapter-name">SecureLoRA-Adapter</span></span>
-                            <span><strong>Device:</strong> Authorized</span>
-                            <span><strong>Security:</strong> <span class="badge badge-passed">VERIFIED</span></span>
+                            <span><strong>Device:</strong> Authorized Hardware</span>
+                            <span><strong>Security Gate:</strong> <span class="badge badge-passed">VERIFIED</span></span>
                         </div>
                     </div>
-                    <div>
+                    <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-large" onclick="inspectJobMetrics(activeJobId)">
+                             VIEW METRICS & GRAPHS
+                        </button>
                         <button class="btn btn-primary btn-large" onclick="openSecureModelView()">
-                            🤖 OPEN SECURE MODEL
+                             OPEN SECURE MODEL
                         </button>
                     </div>
                 </div>
@@ -321,57 +324,69 @@
 
             </div>
 
-            <!-- EXPERIMENTAL CHARTS GRID (STEP 10) -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
-                <!-- 1. BASE VS SECURELORA PII LEAKAGE -->
-                <div class="card">
-                    <div class="card-header"><div class="card-title">1. BASE VS SECURELORA PII LEAKAGE RATE</div></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="chart-pii-leakage"></canvas>
-                    </div>
+            <!-- EMPTY STATE WHEN NO RUN IS AVAILABLE -->
+            <div id="metrics-empty-state" class="card" style="display:none; text-align:center; padding:3rem 1.5rem; margin-top:1rem;">
+                <div style="font-size:2.5rem; margin-bottom:0.75rem;"></div>
+                <div style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:0.5rem;">No Completed Pipeline Execution Selected</div>
+                <div style="font-size:0.875rem; color:var(--text-muted); max-width:550px; margin:0 auto 1.5rem auto;">
+                    Go to the <strong>RUN</strong> tab, select your dataset (e.g. AI4Privacy, Synthea, Synthetic), and click <strong>Start Pipeline Execution</strong>. Once the training and screening pipeline completes, real-time loss curves, dataset-specific PII charts, and security evaluations will be generated here.
                 </div>
-                <!-- 2. STRUCTURAL VS BEHAVIORAL VS COMBINED F1 -->
-                <div class="card">
-                    <div class="card-header"><div class="card-title">2. SCREENING PERFORMANCE (STRUCTURAL vs BEHAVIORAL vs COMBINED F1)</div></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="chart-screening-f1"></canvas>
-                    </div>
-                </div>
+                <button class="btn btn-primary" onclick="switchTab(document.getElementById('tabRun'), 'run')">Go to RUN Tab</button>
             </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
-                <!-- 3. ADAPTIVE ATTACK ITERATIONS -->
-                <div class="card">
-                    <div class="card-header"><div class="card-title">3. ADAPTIVE ATTACK EVASION TRAJECTORY</div></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="chart-evasion-iterations"></canvas>
-                    </div>
-                </div>
-                <!-- 4. PRIVACY VS UTILITY TRADE-OFF -->
-                <div class="card">
-                    <div class="card-header"><div class="card-title">4. PRIVACY VS UTILITY TRADE-OFF (EPSILON vs PERPLEXITY)</div></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="chart-privacy-utility"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 5. DEPLOYMENT DURATIONS & OVERHEAD CHART -->
-            <div class="card" style="margin-top: 1rem;">
-                <div class="card-header"><div class="card-title">5. SECURITY & DEPLOYMENT OVERHEAD ANALYSIS</div></div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                    <div>
-                        <div class="metrics-stats-grid">
-                            <div class="mstat"><span class="mstat-lbl">Encryption Time</span><span id="dm-encrypt-time" class="mstat-val">N/A</span></div>
-                            <div class="mstat"><span class="mstat-lbl">Signing Time</span><span id="dm-sign-time" class="mstat-val">N/A</span></div>
-                            <div class="mstat"><span class="mstat-lbl">Verification Time</span><span id="dm-verify-time" class="mstat-val">N/A</span></div>
-                            <div class="mstat"><span class="mstat-lbl">Decryption Time</span><span id="dm-decrypt-time" class="mstat-val">N/A</span></div>
-                            <div class="mstat"><span class="mstat-lbl">Deployment Latency</span><span id="dm-deploy-time" class="mstat-val">N/A</span></div>
-                            <div class="mstat"><span class="mstat-lbl">Inference Overhead</span><span id="dm-inf-overhead" class="mstat-val">N/A</span></div>
+            <!-- DYNAMIC CHARTS GRID (SHOWN AFTER PIPELINE EXECUTION) -->
+            <div id="metrics-charts-container">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
+                    <!-- 1. BASE VS SECURELORA PII LEAKAGE -->
+                    <div class="card">
+                        <div class="card-header"><div id="chart-title-1" class="card-title">1. PII REDACTION & LEAKAGE BREAKDOWN</div></div>
+                        <div style="position:relative; height:200px;">
+                            <canvas id="chart-pii-leakage"></canvas>
                         </div>
                     </div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="chart-overhead"></canvas>
+                    <!-- 2. STRUCTURAL VS BEHAVIORAL VS COMBINED F1 -->
+                    <div class="card">
+                        <div class="card-header"><div id="chart-title-2" class="card-title">2. SCREENING PERFORMANCE (STRUCTURAL vs BEHAVIORAL vs COMBINED)</div></div>
+                        <div style="position:relative; height:200px;">
+                            <canvas id="chart-screening-f1"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
+                    <!-- 3. ADAPTIVE ATTACK ITERATIONS -->
+                    <div class="card">
+                        <div class="card-header"><div id="chart-title-3" class="card-title">3. ADAPTIVE ATTACK EVASION TRAJECTORY (MULTI-LEVEL THREAT)</div></div>
+                        <div style="position:relative; height:200px;">
+                            <canvas id="chart-evasion-iterations"></canvas>
+                        </div>
+                    </div>
+                    <!-- 4. PRIVACY VS UTILITY TRADE-OFF -->
+                    <div class="card">
+                        <div class="card-header"><div id="chart-title-4" class="card-title">4. TRAINING CONVERGENCE & PRIVACY-UTILITY TRADE-OFF</div></div>
+                        <div style="position:relative; height:200px;">
+                            <canvas id="chart-privacy-utility"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. DEPLOYMENT DURATIONS & OVERHEAD CHART -->
+                <div class="card" style="margin-top: 1rem;">
+                    <div class="card-header"><div id="chart-title-5" class="card-title">5. SECURITY & DEPLOYMENT OVERHEAD ANALYSIS</div></div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div>
+                            <div class="metrics-stats-grid">
+                                <div class="mstat"><span class="mstat-lbl">Encryption Time</span><span id="dm-encrypt-time" class="mstat-val">N/A</span></div>
+                                <div class="mstat"><span class="mstat-lbl">Signing Time</span><span id="dm-sign-time" class="mstat-val">N/A</span></div>
+                                <div class="mstat"><span class="mstat-lbl">Verification Time</span><span id="dm-verify-time" class="mstat-val">N/A</span></div>
+                                <div class="mstat"><span class="mstat-lbl">Decryption Time</span><span id="dm-decrypt-time" class="mstat-val">N/A</span></div>
+                                <div class="mstat"><span class="mstat-lbl">Deployment Latency</span><span id="dm-deploy-time" class="mstat-val">N/A</span></div>
+                                <div class="mstat"><span class="mstat-lbl">Inference Overhead</span><span id="dm-inf-overhead" class="mstat-val">N/A</span></div>
+                            </div>
+                        </div>
+                        <div style="position:relative; height:200px;">
+                            <canvas id="chart-overhead"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -428,7 +443,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
-                        🤖 SECURE MODEL INTERACTION
+                         SECURE MODEL INTERACTION
                     </div>
                     <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-muted);">
                         <span>Model: <strong id="model-status-base" style="color:var(--text-main);">Unloaded</strong></span>
@@ -440,17 +455,17 @@
                 <div class="form-group">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
                         <label class="form-label" style="margin:0;">Input Prompt</label>
-                        <span style="font-size:0.75rem; color:var(--text-muted);">💡 Model trained on <strong>PII Redaction & Privacy Preservation</strong></span>
+                        <span style="font-size:0.75rem; color:var(--text-muted);"> Model trained on <strong>PII Redaction & Privacy Preservation</strong></span>
                     </div>
                     <textarea id="model-prompt-input" class="form-input" rows="3" placeholder="Enter text containing sensitive data or click a preset sample below to test PII redaction..."></textarea>
                     
                     <!-- Quick Sample Prompt Chips -->
                     <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.6rem; align-items:center;">
                         <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Sample Prompts:</span>
-                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('medical')">🏥 Clinical Record (SSN & Name)</button>
-                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('customer')">💳 Customer Support (Email & Card)</button>
-                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('profile')">🏢 Executive Profile (Phone & Address)</button>
-                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('redaction')">🔒 Direct PII Masking Task</button>
+                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('medical')">Clinical Record (SSN & Name)</button>
+                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('customer')">Customer Support (Email & Card)</button>
+                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('profile')">Executive Profile (Phone & Address)</button>
+                        <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer; border-radius:4px;" onclick="setPromptExample('redaction')">Direct PII Masking Task</button>
                     </div>
                 </div>
 
@@ -466,7 +481,7 @@
                 </div>
 
                 <button class="btn btn-primary" onclick="generateModelResponse()" id="btn-generate-model">
-                    ⚡ Generate Response
+                    Generate Response
                 </button>
 
                 <div class="model-outputs-grid" style="margin-top: 1.5rem; display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -500,7 +515,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
-                        🛡️ OPTIONAL SECURITY ACTIONS & THREAT TESTING
+                        OPTIONAL SECURITY ACTIONS & THREAT TESTING
                     </div>
                     <div style="font-size:0.8rem; color:var(--text-muted);">
                         Interactive attack triggers to audit cryptographic fail-fast logic.
@@ -508,10 +523,10 @@
                 </div>
 
                 <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom: 1.5rem;">
-                    <button class="btn btn-danger" onclick="triggerSecurityTest('tampering')">💥 Tamper Package</button>
-                    <button class="btn btn-danger" onclick="triggerSecurityTest('unauthorized_device')">🚫 Wrong Device</button>
-                    <button class="btn btn-danger" onclick="triggerSecurityTest('replay')">🔄 Replay Nonce</button>
-                    <button class="btn btn-danger" onclick="triggerSecurityTest('suspicious_adapter')">⚠️ Suspicious Adapter</button>
+                    <button class="btn btn-danger" onclick="triggerSecurityTest('tampering')">Tamper Package</button>
+                    <button class="btn btn-danger" onclick="triggerSecurityTest('unauthorized_device')">Wrong Device</button>
+                    <button class="btn btn-danger" onclick="triggerSecurityTest('replay')">Replay Nonce</button>
+                    <button class="btn btn-danger" onclick="triggerSecurityTest('suspicious_adapter')">Suspicious Adapter</button>
                 </div>
 
                 <div style="overflow-x:auto;">
