@@ -26,8 +26,8 @@ class AI4PrivacyDatasetAdapter(BaseDatasetAdapter):
     """Adapter for HF dataset: ai4privacy/pii-masking-300k"""
 
     HF_DATASET_NAME = "ai4privacy/pii-masking-300k"
-    DEFAULT_SUBSET_SIZE = 10000
-    VALID_SUBSETS = [1000, 5000, 10000, 25000, 50000]
+    DEFAULT_SUBSET_SIZE = 100
+    VALID_SUBSETS = [50, 100, 500, 1000, 5000, 10000]
 
     def __init__(self):
         super().__init__(
@@ -68,7 +68,7 @@ class AI4PrivacyDatasetAdapter(BaseDatasetAdapter):
                 logger.info("Attempting load of %s from Hugging Face (split=%s)...", self.HF_DATASET_NAME, split)
                 ds = hf_load_dataset(self.HF_DATASET_NAME, split=split, streaming=True)
                 count = 0
-                max_read = max(eff_subset_size, 5000)
+                max_read = eff_subset_size
                 for sample in ds:
                     raw_records.append(sample)
                     count += 1

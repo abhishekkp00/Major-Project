@@ -24,7 +24,7 @@ logger = logging.getLogger("secure_lora.data_sources.synthetic")
 class SyntheticDatasetAdapter(BaseDatasetAdapter):
     """Adapter for existing SecureLoRA synthetic PII/PHI benchmark."""
 
-    DEFAULT_SUBSET_SIZE = 10000
+    DEFAULT_SUBSET_SIZE = 100
 
     def __init__(self):
         super().__init__(

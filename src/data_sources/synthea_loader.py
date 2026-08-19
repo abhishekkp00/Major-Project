@@ -26,7 +26,7 @@ logger = logging.getLogger("secure_lora.data_sources.synthea")
 class SyntheaDatasetAdapter(BaseDatasetAdapter):
     """Adapter for Synthea / SyntheticMass synthetic clinical records."""
 
-    DEFAULT_SUBSET_SIZE = 5000
+    DEFAULT_SUBSET_SIZE = 100
     CITATION = "Synthea™ Synthetic Patient Generator, MITRE Corporation (https://github.com/synthetichealth/synthea)"
 
     def __init__(self, custom_source_path: Optional[Union[str, Path]] = None):

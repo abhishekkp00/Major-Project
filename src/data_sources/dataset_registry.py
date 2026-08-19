@@ -76,8 +76,8 @@ class DatasetRegistry:
                 "ground_truth_available": adapter.ground_truth_available,
                 "synthetic_source": adapter.synthetic_source,
                 "redistribution_permitted": adapter.redistribution_permitted,
-                "default_subset_size": getattr(adapter, "DEFAULT_SUBSET_SIZE", 10000),
-                "subset_options": [1000, 5000, 10000, 25000],
+                "default_subset_size": getattr(adapter, "DEFAULT_SUBSET_SIZE", 100),
+                "subset_options": [50, 100, 500, 1000, 5000, 10000],
                 "version": adapter.version,
                 "revision": meta.get("revision", "main")
             })
