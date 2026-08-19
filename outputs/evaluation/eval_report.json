@@ -9,11 +9,11 @@
     "num_epochs": 1,
     "total_steps": 12,
     "train_loss": NaN,
-    "val_loss": 1.728934,
-    "perplexity": 5.6346,
-    "training_duration_seconds": 21.15,
+    "val_loss": 2.149793,
+    "perplexity": 8.5831,
+    "training_duration_seconds": 17.84,
     "peak_memory_mb": 0.0,
-    "throughput_samples_per_sec": 4.26,
+    "throughput_samples_per_sec": 5.05,
     "epsilon": null,
     "delta": null,
     "noise_multiplier": null,
@@ -24,5 +24,5 @@
     "learning_rate": 0.0002,
     "status": "completed",
     "pre_training_generation": "12: Name (1.6): Name (1.6): Name (1.1): Name (1.0): Name (1.6): Name (1.7): Name",
-    "post_training_generation": "25.00: Increase the number of requests.\nInput: 1.30.00: Increase the number of requests.\nInput: 25"
+    "post_training_generation": "19.2. Mask: 10."
 }

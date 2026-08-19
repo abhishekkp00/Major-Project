@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-17T10:30:45.487305+00:00",
+  "timestamp": "2026-08-19T10:11:25.447091+00:00",
   "sample_count": 50,
   "seed": 123,
   "systems": {
@@ -8,7 +8,7 @@
       "description": "LoRA adapter security screening detector: structural_only",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-08-17T10:30:45.202304+00:00",
+      "timestamp": "2026-08-19T10:11:25.176986+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -161,8 +161,8 @@
         "accuracy": 0.8,
         "false_positive_rate": 0.0,
         "false_negative_rate": 0.25,
-        "mean_latency_ms": 1.929,
-        "stdev_latency_ms": 0.369
+        "mean_latency_ms": 1.782,
+        "stdev_latency_ms": 0.068
       }
     },
     "behavioral_only": {
@@ -170,7 +170,7 @@
       "description": "LoRA adapter security screening detector: behavioral_only",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-08-17T10:30:45.346570+00:00",
+      "timestamp": "2026-08-19T10:11:25.312879+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -323,8 +323,8 @@
         "accuracy": 0.2,
         "false_positive_rate": 0.0,
         "false_negative_rate": 1.0,
-        "mean_latency_ms": 1.882,
-        "stdev_latency_ms": 0.333
+        "mean_latency_ms": 1.793,
+        "stdev_latency_ms": 0.066
       }
     },
     "combined": {
@@ -332,7 +332,7 @@
       "description": "LoRA adapter security screening detector: combined",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-08-17T10:30:45.486837+00:00",
+      "timestamp": "2026-08-19T10:11:25.446543+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -485,8 +485,8 @@
         "accuracy": 0.8,
         "false_positive_rate": 0.0,
         "false_negative_rate": 0.25,
-        "mean_latency_ms": 1.955,
-        "stdev_latency_ms": 0.405
+        "mean_latency_ms": 1.754,
+        "stdev_latency_ms": 0.088
       }
     }
   },

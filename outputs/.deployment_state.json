@@ -1,7 +1,7 @@
 {
   "adapters": {
     "job_test_security_123": {
-      "last_sequence": 38,
+      "last_sequence": 41,
       "processed_packages": [
         "aa7107b2-1a3f-42b5-ba3a-21f095b47c75",
         "58317050-db0e-4c63-940c-1e0b01a71c98",
@@ -40,12 +40,15 @@
         "3c3b60bd-6684-441b-8954-01e5ae9fd609",
         "abca69a8-db1f-48da-8815-39cf28861b42",
         "8c8de5eb-dba1-468a-b4f8-afeb69e1c30d",
-        "51cfaec0-3b56-496b-b8b6-4ffaa18902bd"
+        "51cfaec0-3b56-496b-b8b6-4ffaa18902bd",
+        "c343779a-eda7-4e76-b53b-520a4c677fad",
+        "9ae6413b-1b50-4bac-8cbb-d3c6a12b4437",
+        "82b177e4-6bd5-400a-bef1-4fa976ca5361"
       ],
-      "last_deployed_utc": "2026-08-17T10:32:33.972300+00:00"
+      "last_deployed_utc": "2026-08-19T10:11:36.356689+00:00"
     },
     "lora-adapter-v1": {
-      "last_sequence": 44,
+      "last_sequence": 50,
       "processed_packages": [
         "c335f061-1c8b-4416-b0e4-5c4fca3ad1ad",
         "acaa83d5-e84b-4d9c-b902-20d5cd1b4b25",
@@ -90,9 +93,15 @@
         "e374e7a6-aa9c-4af8-87b7-4c7aa251a070",
         "75b36520-e530-42ef-8570-e0f1ab1a7aa6",
         "e1a2ec67-4dcf-4d42-911a-2f00a422e80b",
-        "a23d7374-ec26-47b0-b268-fa3f6ef6dbba"
+        "a23d7374-ec26-47b0-b268-fa3f6ef6dbba",
+        "353006de-b94f-41bb-b023-0e29ce531cc4",
+        "9a774a50-7422-4f80-bfa5-7879fec7e544",
+        "bcca4c8f-520b-4090-a649-ca17fecf939d",
+        "76ac98f2-3ae8-4ae0-8fd2-4fdfa9cf9d15",
+        "46b5661b-2d81-4133-8cac-c0b370b02d3e",
+        "c99ef9bc-18f3-4d13-be22-a8ef6a91be64"
       ],
-      "last_deployed_utc": "2026-08-17T10:30:02.841201+00:00"
+      "last_deployed_utc": "2026-08-19T10:10:41.382024+00:00"
     },
     "job_1786882160_9540133a": {
       "last_sequence": 1,
@@ -170,6 +179,20 @@
         "498603c2-cb96-4a03-a5f9-a3fecc6b00ee"
       ],
       "last_deployed_utc": "2026-08-18T12:46:53.070439+00:00"
+    },
+    "job_1787132915_d95b21aa": {
+      "last_sequence": 1,
+      "processed_packages": [
+        "18e9fd7b-4729-4671-8295-126fc1bcb7bc"
+      ],
+      "last_deployed_utc": "2026-08-19T09:50:01.602685+00:00"
+    },
+    "job_1787135911_cabc125f": {
+      "last_sequence": 1,
+      "processed_packages": [
+        "a56b02db-740c-402f-8759-3451c0b88fa7"
+      ],
+      "last_deployed_utc": "2026-08-19T10:39:17.740085+00:00"
     }
   }
 }
