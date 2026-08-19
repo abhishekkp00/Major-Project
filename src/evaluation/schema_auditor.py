@@ -194,7 +194,7 @@ def main():
 
     args = parser.parse_args()
     res = audit_and_standardize_research_outputs(base_dir=Path(args.eval_dir))
-    print(f"\n✅ Research artifact audit & schema standardization completed. Result: {res}")
+    print(f"\n Research artifact audit & schema standardization completed. Result: {res}")
 
 
 if __name__ == "__main__":

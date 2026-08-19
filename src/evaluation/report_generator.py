@@ -386,7 +386,7 @@ def _generate_markdown_reports(
         res = aggregated_results.get(k)
         if res:
             p = res.privacy_summary
-            s_str = "✅ COMPLETED" if res.execution_status == "COMPLETED" else f"❌ {res.execution_status}"
+            s_str = " COMPLETED" if res.execution_status == "COMPLETED" else f" {res.execution_status}"
             md.append(f"| **{k}** | {res.baseline_name} | {'yes' if p.get('pii_f1') else 'no'} | {'yes' if p.get('dp_enabled') else 'no'} | yes | yes | yes | yes | {s_str} |")
 
     md += [

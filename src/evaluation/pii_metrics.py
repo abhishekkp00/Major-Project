@@ -306,7 +306,7 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
-    print(f"\n✅  PII metrics report saved → {out_path}")
+    print(f"\n  PII metrics report saved → {out_path}")
     return metrics
 
 

@@ -439,7 +439,7 @@ def main():
     args = parser.parse_args()
 
     res = run_device_binding_evaluation(output_dir=Path(args.output_dir))
-    print(f"\n✅ Device binding evaluation completed. Output generated at -> {args.output_dir}")
+    print(f"\n Device binding evaluation completed. Output generated at -> {args.output_dir}")
     return res
 
 

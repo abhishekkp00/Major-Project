@@ -294,7 +294,7 @@ def main():
         seeds=args.seeds,
         output_dir=Path(args.output_dir)
     )
-    print(f"\n✅ Multi-seed statistical evaluations completed. Output generated at -> {args.output_dir}")
+    print(f"\n Multi-seed statistical evaluations completed. Output generated at -> {args.output_dir}")
     return res
 
 

@@ -502,7 +502,7 @@ def run_threat_model_analysis(verbose: bool = True) -> Dict[str, Any]:
         print(f"  ▶  {fn.__name__}...", end=" ", flush=True)
         r = fn()
         sim_results.append(r.to_dict())
-        status = "✅ PASS" if r.passed else "❌ FAIL"
+        status = " PASS" if r.passed else " FAIL"
         print(f"{status}  ({r.duration_ms:.1f} ms)")
         if r.passed:
             passed_count += 1
@@ -568,7 +568,7 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    print(f"\n✅  Threat model report saved → {out_path}")
+    print(f"\n  Threat model report saved → {out_path}")
     return report
 
 

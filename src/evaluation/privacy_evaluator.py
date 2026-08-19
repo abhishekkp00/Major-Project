@@ -325,7 +325,7 @@ def main():
         adapter_id=args.adapter,
         output_dir=Path(args.output_dir)
     )
-    print(f"\n✅ Privacy evaluation completed. Reports generated at -> {args.output_dir}")
+    print(f"\n Privacy evaluation completed. Reports generated at -> {args.output_dir}")
     return results
 
 

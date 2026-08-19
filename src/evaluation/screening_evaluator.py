@@ -276,7 +276,7 @@ def main():
         seed=args.seed,
         output_dir=Path(args.output_dir)
     )
-    print(f"\n✅ Security screening comparison completed. Output generated at -> {args.output_dir}")
+    print(f"\n Security screening comparison completed. Output generated at -> {args.output_dir}")
     return res
 
 

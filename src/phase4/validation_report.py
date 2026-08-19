@@ -59,11 +59,11 @@ def generate_validation_reports(
     logger.info("Machine-readable validation report written → %s", json_path.name)
 
     # 2. Construct Human-readable Markdown Report
-    status_emoji = "✅ SUCCESS" if verification_success else "❌ FAILED"
+    status_emoji = " SUCCESS" if verification_success else " FAILED"
 
     steps_rows = ""
     for step_name, status in steps_status.items():
-        emoji = "🟩" if status == "PASSED" else "🟥" if status == "FAILED" else "⬜"
+        emoji = "" if status == "PASSED" else "" if status == "FAILED" else ""
         steps_rows += f"| {step_name} | {emoji} {status} |\n"
 
     md_content = f"""# Secure Device-Bound LoRA Fine-Tuning Framework
@@ -71,7 +71,7 @@ def generate_validation_reports(
 
 ---
 
-### 📋 Overview
+###  Overview
 - **Deployment Status:** {status_emoji}
 - **Generated At (UTC):** `{timestamp}`
 - **Framework Schema Version:** `4.0.0`
@@ -81,7 +81,7 @@ def generate_validation_reports(
 
 ---
 
-### 🛡️ Pipeline Verification Checklist
+###  Pipeline Verification Checklist
 The pipeline enforces six consecutive verification stages. The system fails closed if any stage fails.
 
 | Verification Stage | Status |
@@ -90,7 +90,7 @@ The pipeline enforces six consecutive verification stages. The system fails clos
 
 ---
 
-### 🧠 Inference Validation Results
+###  Inference Validation Results
 A side-by-side generation test was performed to verify if the fine-tuned adapter is functional and actively altering target outputs.
 
 #### **Input Prompt:**
@@ -111,7 +111,7 @@ A side-by-side generation test was performed to verify if the fine-tuned adapter
 
 ---
 
-### 🔒 Post-Deployment Security Guarantees
+###  Post-Deployment Security Guarantees
 - **Zero-Plaintext-at-Rest:** Verified. Decrypted adapter weights and configurations existed exclusively in a temporary workspace and were cryptographically shredded with 3 overwrite passes upon model loading.
 - **Device-Bound Protection:** Verified. Decryption key was derived dynamically in-memory using local hardware attributes and a secret salt; no keys are stored.
 - **Diagnostics Masking:** Verified. All sensitive patterns (PII, credentials, etc.) are masked automatically in diagnostic reports and log streams.

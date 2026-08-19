@@ -381,7 +381,7 @@ def main():
         threshold=args.threshold,
         output_dir=Path(args.output_dir)
     )
-    print(f"\n✅ Adaptive evasion evaluation completed. Output generated at -> {args.output_dir}")
+    print(f"\n Adaptive evasion evaluation completed. Output generated at -> {args.output_dir}")
     return res
 
 
