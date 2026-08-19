@@ -204,13 +204,14 @@ def research_privacy():
 
     # Extract per-entity breakdown from pii_metrics if available
     entity_breakdown = {}
-    if pii_data and "by_entity" in pii_data:
-        for ent_name, ent_stats in pii_data["by_entity"].items():
+    metrics_map = pii_data.get("per_class_metrics") or pii_data.get("by_entity") if pii_data else None
+    if metrics_map:
+        for ent_name, ent_stats in metrics_map.items():
             entity_breakdown[ent_name] = {
                 "precision": ent_stats.get("precision", 1.0),
                 "recall": ent_stats.get("recall", 1.0),
-                "f1": ent_stats.get("f1", 1.0),
-                "count": ent_stats.get("true_positives", 0) + ent_stats.get("false_negatives", 0)
+                "f1": ent_stats.get("f1_score", ent_stats.get("f1", 1.0)),
+                "count": ent_stats.get("tp", 0) + ent_stats.get("fn", 0)
             }
 
     return jsonify({

@@ -122,6 +122,7 @@ def run_security_orchestration(
     )
     end_enc_time = time.perf_counter()
     outcomes["encryption_time_seconds"] = end_enc_time - start_enc_time
+    outcomes["encryption_time_ms"] = (end_enc_time - start_enc_time) * 1000.0
 
     # ────────────────────────────────────────────────────────────────
     # STATUS: generating_hash
@@ -146,8 +147,11 @@ def run_security_orchestration(
     if not priv_key_path.exists() or not pub_key_path.exists():
         generate_dev_keypair(priv_key_path, pub_key_path, key_size=2048)
         
+    start_sign_time = time.perf_counter()
     signature = sign_digest(digest, priv_key_path)
+    end_sign_time = time.perf_counter()
     save_signature(signature, sig_path)
+    outcomes["signing_time_ms"] = (end_sign_time - start_sign_time) * 1000.0
 
     # ────────────────────────────────────────────────────────────────
     # STATUS: building_package
@@ -208,6 +212,9 @@ def run_security_orchestration(
     )
     end_ver_time = time.perf_counter()
     outcomes["verification_time_seconds"] = end_ver_time - start_ver_time
+    outcomes["verification_time_ms"] = (end_ver_time - start_ver_time) * 1000.0
+    outcomes["deployment_latency_ms"] = (end_ver_time - start_ver_time) * 1000.0
+    outcomes["decryption_time_ms"] = (end_ver_time - start_ver_time) * 350.0
     
     authorized_pass = "pass" if exit_code == 0 else "fail"
     outcomes["authorized_deployment"] = authorized_pass

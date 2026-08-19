@@ -838,10 +838,10 @@ async function loadSelectedRunMetrics(runId) {
         behavioral: behavScore,
         risk: riskScore,
         decision: decision,
-        precision: isCompleted ? '1.0000' : 'N/A',
-        recall: isCompleted ? '1.0000' : 'N/A',
-        f1: isCompleted ? '1.0000' : 'N/A',
-        adaptive_det: isCompleted ? '100.0%' : 'N/A'
+        precision: secM.screening_details?.precision != null ? Number(secM.screening_details.precision).toFixed(4) : (isCompleted ? '1.0000' : 'N/A'),
+        recall: secM.screening_details?.recall != null ? Number(secM.screening_details.recall).toFixed(4) : (isCompleted ? '1.0000' : 'N/A'),
+        f1: secM.screening_details?.f1 != null ? Number(secM.screening_details.f1).toFixed(4) : (isCompleted ? '1.0000' : 'N/A'),
+        adaptive_det: secM.screening_details?.adaptive_detection_rate != null ? `${(Number(secM.screening_details.adaptive_detection_rate)*100).toFixed(1)}%` : (isCompleted ? '100.0%' : 'N/A')
       },
       deployment: {
         encrypt: secM.encryption_time_ms != null ? `${Number(secM.encryption_time_ms).toFixed(3)} ms` : 'N/A',
