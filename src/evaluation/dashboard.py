@@ -576,12 +576,12 @@ def tamper_simulate():
         chain[2]["verified"] = False
         chain[3]["verified"] = False
         corrupted_text = (
-            "🚨 [ADAPTER THEFT DETECTED — HARDWARE BINDING VIOLATION]\n\n"
+            "[ADAPTER THEFT DETECTED — HARDWARE BINDING VIOLATION]\n\n"
             f"  Attacker Machine Fingerprint: {bad_fp[:32]}...\n"
             f"  Authorized Hardware Reference: {auth_fp[:32]}...\n\n"
-            "  ❌ HKDF Key Derivation Failed → Key Mismatch\n"
-            "  ❌ AES-256-GCM Tag Authentication Failed\n"
-            "  🛑 PROCESS INSTANTLY TERMINATED — Adapter weights remain 100% encrypted ciphertext."
+            "  [FAIL] HKDF Key Derivation Failed → Key Mismatch\n"
+            "  [FAIL] AES-256-GCM Tag Authentication Failed\n"
+            "  [BLOCKED] PROCESS INSTANTLY TERMINATED — Adapter weights remain 100% encrypted ciphertext."
         )
         rejected_at_stage = "Stage 04: Hardware Authorization Gate"
         rejection_reason = (
@@ -694,7 +694,7 @@ def secure_chat():
     if not has_pipeline_run or not records:
         return jsonify({
             "success": True,
-            "answer": "🔒 **Pipeline Execution Required**\n\nTo query dataset analytics or perform privacy-preserving Q&A, please first launch and complete the end-to-end processing pipeline in the **Pipeline** tab.",
+            "answer": "**Pipeline Execution Required**\n\nTo query dataset analytics or perform privacy-preserving Q&A, please first launch and complete the end-to-end processing pipeline in the **Pipeline** tab.",
             "privacy_status": "BLOCKED",
             "was_blocked": True,
             "num_records": 0
