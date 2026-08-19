@@ -613,6 +613,33 @@ def tamper_simulate():
     })
 
 
+def load_records_from_jsonl(text: str):
+    import json
+    records = []
+    for line in text.strip().splitlines():
+        if line.strip():
+            try:
+                records.append(json.loads(line.strip()))
+            except Exception:
+                pass
+    return records
+
+
+def load_records_from_job(job_dir: Path):
+    for cand in ["dataset.jsonl", "sanitized.jsonl", "input.jsonl", "raw_data.jsonl"]:
+        p = job_dir / cand
+        if p.exists():
+            try:
+                return load_records_from_jsonl(p.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+    return []
+
+
+def compute_dataset_analytics(records):
+    return {"total_records": len(records) if records else 0}
+
+
 @app.route('/api/chat', methods=['POST'])
 def secure_chat():
     """
@@ -803,6 +830,11 @@ def simulate_security_attack():
 
 
 if __name__ == '__main__':
+    try:
+        from src.orchestrator.inference_service import ensure_model_loaded
+        ensure_model_loaded()
+    except Exception as e:
+        logger.warning("Could not preload model at startup: %s", e)
 
     port = int(os.getenv("PORT", os.getenv("SECURE_LORA_DASHBOARD_PORT", 5005)))
     logger.info("Starting professional secure dashboard on port %d...", port)

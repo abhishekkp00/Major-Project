@@ -7,14 +7,23 @@ let activeDataset = null;
 let activeTrainingMode = 'Standard LoRA';
 let currentJobMetrics = null;
 let sseSource = null;
-let chartOverhead = null;
+let chartPiiLeakage = null;
+let chartScreeningF1 = null;
+let chartEvasionIterations = null;
 let chartPrivacyUtility = null;
+let chartOverhead = null;
 
-// On DOM load, initialize default dataset templates
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize default dataset templates & metrics
+function initDashboard() {
   initDatasetTemplates();
   initMetricsPage();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+  initDashboard();
+}
 
 /* ---------------------------------------------------------------------------
    NAVIGATION CONTROLLER
@@ -29,6 +38,8 @@ function switchTab(btn, id) {
 
   if (id === 'metrics') {
     initMetricsPage();
+  } else if (id === 'model') {
+    loadModelStatus();
   }
 }
 
@@ -69,10 +80,10 @@ async function initDatasetTemplates() {
   }
 }
 
-let selectedSubsetSize = 10000;
+let selectedSubsetSize = 100;
 
 function updateSelectedSubset(val) {
-  selectedSubsetSize = parseInt(val) || 10000;
+  selectedSubsetSize = parseInt(val) || 100;
 }
 
 function selectDatasetCard(tmpl) {
@@ -97,14 +108,19 @@ function selectDatasetCard(tmpl) {
 
   if (selectEl && tmpl.subset_options && Array.isArray(tmpl.subset_options)) {
     selectEl.innerHTML = '';
+    const preferredDefault = tmpl.record_count || 100;
     tmpl.subset_options.forEach(opt => {
       const option = document.createElement('option');
       option.value = opt;
-      option.textContent = `${opt.toLocaleString()} Records`;
-      if (opt === (tmpl.record_count || 10000)) option.selected = true;
+      let label = `${opt.toLocaleString()} Records`;
+      if (opt === 50) label += ' (Fast Demo ~15s)';
+      else if (opt === 100) label += ' (Standard ~40s)';
+      else if (opt === 500) label += ' (~1.5m)';
+      option.textContent = label;
+      if (opt === preferredDefault) option.selected = true;
       selectEl.appendChild(option);
     });
-    selectedSubsetSize = parseInt(selectEl.value) || 10000;
+    selectedSubsetSize = parseInt(selectEl.value) || 100;
   }
 }
 
@@ -382,12 +398,6 @@ function resetRunPage() {
   document.getElementById('post-training-card').style.display = 'none';
   document.getElementById('run-setup-card').style.display = 'block';
 }
-
-let chartPiiLeakage = null;
-let chartScreeningF1 = null;
-let chartEvasionIterations = null;
-let chartPrivacyUtility = null;
-let chartOverhead = null;
 
 /* ---------------------------------------------------------------------------
    MODE 2: METRICS PAGE CONTROLLER
@@ -789,6 +799,21 @@ async function loadModelStatus() {
   }
 }
 
+function setPromptExample(type) {
+  const input = document.getElementById('model-prompt-input');
+  if (!input) return;
+
+  const samples = {
+    medical: 'Patient John Doe (SSN: 123-45-6789, DOB: 05/12/1982) was admitted to Seattle General Hospital with acute chest pain and high blood pressure.',
+    customer: 'Customer Alice Smith (email: alice.smith@corp.com, card: 4532-1234-5678-9010) requested account verification for transaction #98421.',
+    profile: 'Executive Officer Robert Johnson, contact phone 415-555-0199, resides at 742 Evergreen Terrace, Springfield, OR 97477.',
+    redaction: 'Mask all Personally Identifiable Information (PII) in the text.\nInput: Contact Dr. Sarah Connor at sarah.connor@cyberdyne.org or call 555-0143.'
+  };
+
+  input.value = samples[type] || '';
+  input.focus();
+}
+
 function openSecureModelView() {
   switchTab(document.getElementById('tabModel'), 'model');
   loadModelStatus();
@@ -844,13 +869,16 @@ async function generateModelResponse() {
       if (baseOut) baseOut.textContent = data.base_output || '(Empty generation)';
       if (secOut) secOut.textContent = data.securelora_output || '(Empty generation)';
 
-      if (basePiiBadge && data.base_pii) {
-        basePiiBadge.textContent = `PII: ${data.base_pii.count} entities`;
-        basePiiBadge.className = data.base_pii.count > 0 ? 'badge badge-danger' : 'badge badge-passed';
+      const bCount = (data.base_pii && data.base_pii.count !== undefined) ? data.base_pii.count : (data.base_pii_count || 0);
+      if (basePiiBadge) {
+        basePiiBadge.textContent = bCount > 0 ? `⚠️ PII LEAKED: ${bCount} entities` : `🛡️ PII SAFE: 0 entities`;
+        basePiiBadge.className = bCount > 0 ? 'badge badge-danger' : 'badge badge-passed';
       }
-      if (secPiiBadge && data.securelora_pii) {
-        secPiiBadge.textContent = `PII: ${data.securelora_pii.count} entities`;
-        secPiiBadge.className = data.securelora_pii.count > 0 ? 'badge badge-danger' : 'badge badge-passed';
+
+      const sCount = (data.securelora_pii && data.securelora_pii.count !== undefined) ? data.securelora_pii.count : (data.securelora_pii_count || 0);
+      if (secPiiBadge) {
+        secPiiBadge.textContent = sCount > 0 ? `⚠️ PII LEAKED: ${sCount} entities` : `🛡️ PII PROTECTED: 0 leaked`;
+        secPiiBadge.className = sCount > 0 ? 'badge badge-danger' : 'badge badge-passed';
       }
 
       if (data.post_processed_output && data.post_processed_output !== data.securelora_output) {
