@@ -10,11 +10,25 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
+import math
 from src.phase1.pipeline import SecureDatasetPipeline
 from src.security import generate_key
 from src.common.config_loader import config
 
 logger = logging.getLogger("secure_lora.orchestrator.service")
+
+
+def _sanitize_json_values(obj: Any) -> Any:
+    """Recursively replaces NaN and Inf with None for strict JSON compatibility."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, dict):
+        return {k: _sanitize_json_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_sanitize_json_values(v) for v in obj]
+    return obj
 
 
 def _derive_device_salt() -> str:
@@ -63,7 +77,8 @@ class JobOrchestrator:
         with self.lock:
             if self.db_path.exists():
                 try:
-                    self.jobs = json.loads(self.db_path.read_text(encoding="utf-8"))
+                    raw = self.db_path.read_text(encoding="utf-8")
+                    self.jobs = _sanitize_json_values(json.loads(raw))
                     # Any training job that was interrupted on restart is marked as failed
                     for job_id, job in self.jobs.items():
                         if job.get("status") in ["INGESTING", "TRAINING", "PACKAGING", "DEPLOYING"]:
@@ -78,8 +93,9 @@ class JobOrchestrator:
     def _save_db(self):
         with self.lock:
             try:
+                sanitized_jobs = _sanitize_json_values(self.jobs)
                 temp_path = self.db_path.with_suffix(".tmp")
-                temp_path.write_text(json.dumps(self.jobs, indent=4), encoding="utf-8")
+                temp_path.write_text(json.dumps(sanitized_jobs, indent=4), encoding="utf-8")
                 temp_path.replace(self.db_path)
             except Exception as e:
                 logger.error("Failed to save jobs database: %s", e)
@@ -207,6 +223,7 @@ class JobOrchestrator:
                 try:
                     from src.data_sources.dataset_registry import dataset_registry
                     logger.info("[%s] Ingesting via DatasetAdapter '%s' (subset=%d)...", job_id, dataset_type, subset_size)
+                    self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=12)
                     adapter = dataset_registry.get_dataset_adapter(dataset_type)
                     records = adapter.load_dataset(subset_size=subset_size)
                     target_file = raw_dir / "dataset.jsonl"
@@ -233,8 +250,6 @@ class JobOrchestrator:
                     else:
                         raise RuntimeError("No uploaded files found in raw input directory.")
 
-
-            
             uploaded_file = uploaded_files[0]
             
             from src.orchestrator.dataset_processor import (
@@ -243,9 +258,13 @@ class JobOrchestrator:
                 encrypt_and_save_dataset
             )
 
+            self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=16)
             raw_records, file_meta = validate_dataset_file(uploaded_file)
+            
+            self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=20)
             processed_records = preprocess_and_standardize(raw_records)
             
+            self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=23)
             metadata = encrypt_and_save_dataset(
                 processed_records=processed_records,
                 key=key,

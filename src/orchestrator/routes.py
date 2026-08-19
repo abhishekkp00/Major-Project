@@ -855,6 +855,8 @@ def orchestrator_chat():
             "question": question,
             "base_output": res["base_output"],
             "securelora_output": res["securelora_output"],
+            "base_pii": {"count": res["base_pii_count"], "entities": res["base_pii_entities"]},
+            "securelora_pii": {"count": res["securelora_pii_count"], "entities": res["securelora_pii_entities"]},
             "base_pii_entities": res["base_pii_entities"],
             "securelora_pii_entities": res["securelora_pii_entities"],
             "base_pii_count": res["base_pii_count"],
@@ -886,6 +888,8 @@ def orchestrator_chat():
 def get_model_status():
     """Returns the backend ModelRegistry status."""
     from src.orchestrator.model_registry import model_registry
+    from src.orchestrator.inference_service import ensure_model_loaded
+    ensure_model_loaded()
     info = model_registry.get_info()
     verified = model_registry.is_verified()
     return jsonify({
@@ -893,6 +897,7 @@ def get_model_status():
         "model_verified": verified,
         "adapter_loaded": info["adapter_loaded"],
         "base_model_name": info["base_model_name"],
+        "adapter_name": info["adapter_id"],
         "adapter_id": info["adapter_id"],
         "deployment_id": info["deployment_id"],
         "deployment_status": info["deployment_status"],
