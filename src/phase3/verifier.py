@@ -84,8 +84,11 @@ def verify_and_decrypt(
         if hkdf_salt_bytes:
             from src.security.key_derivation import derive_key_for_device
             key = derive_key_for_device(local_fp_hash, hkdf_salt_bytes)
-        else:
+        elif salt:
             key = derive_key_from_env(local_fp_hash, salt)
+        else:
+            raise VerificationError("[Step 5] Key derivation failed: HKDF salt missing from package manifest and no salt provided.")
+
     except (ValueError, EnvironmentError) as exc:
         raise VerificationError(f"[Step 5] Key derivation failed: {exc}") from exc
     logger.info("[5/6] PASS — key derived.")

@@ -14,6 +14,11 @@ def tmp_dir(tmp_path: Path) -> Path:
 
 
 def test_phase3_cli_pipeline(tmp_dir, monkeypatch):
+    test_secret_file = tmp_dir / "securelora" / "device.secret"
+    monkeypatch.setenv("SECURELORA_SECRET_PATH", str(test_secret_file))
+    from src.security.device_secret import initialize_device_secret
+    initialize_device_secret()
+
     # Setup paths
     adapter_src = tmp_dir / "final_adapter"
     adapter_src.mkdir()

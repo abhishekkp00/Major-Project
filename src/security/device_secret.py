@@ -249,10 +249,11 @@ def device_secret_exists() -> bool:
     return _secret_path().exists()
 
 
-def get_device_secret(auto_initialize: bool = True) -> bytes:
+def get_device_secret(auto_initialize: bool = False) -> bytes:
     """
     High-level entry point: loads and returns the 32-byte device secret.
     If auto_initialize is True and the secret does not exist, initializes it.
+    Defaults to auto_initialize=False so operations fail closed if the device secret is missing.
     """
     if not device_secret_exists():
         if auto_initialize:
@@ -260,4 +261,5 @@ def get_device_secret(auto_initialize: bool = True) -> bytes:
         else:
             return load_device_secret()
     return load_device_secret()
+
 

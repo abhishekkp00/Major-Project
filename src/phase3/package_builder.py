@@ -138,7 +138,7 @@ def build_manifest(
         "nonce_metadata": {
             "iv_bytes": 12,
             "tag_bytes": 16,
-            "salt_reference": "P3_DEVICE_SALT",
+            "salt_reference": "hkdf_csprng_salt",
         },
         "deployment_policy": policy_dict,
         "sequence_number": sequence_number,
@@ -187,7 +187,8 @@ def build_package(
       3. Computes manifest with all 18 security fields
       4. Signs the canonical manifest authentication digest (manifest + ciphertext digest)
       5. Saves adapter.sig
-      6. Verifies package completeness
+      6. Ensures RSA private signing key is NEVER retained in package directory
+      7. Verifies package completeness
     """
     if enable_screening:
         from src.security.adapter_screening import pre_packaging_screening_gate
@@ -226,17 +227,41 @@ def build_package(
         manifest["artefact_hashes"]["adapter.sig"] = compute_sha256(package_dir / "adapter.sig")
         _atomic_write_json(package_dir / "package_manifest.json", manifest)
 
+    # Ensure RSA private signing key is NEVER retained inside the package directory
+    for priv_file in list(package_dir.glob("*private*.pem")) + list(package_dir.glob("*.secret")):
+        try:
+            priv_file.unlink()
+            logger.info("Removed private secret file '%s' from package directory.", priv_file.name)
+        except OSError:
+            pass
+
     verify_package_completeness(package_dir)
     return manifest
 
 
+def _exclude_secrets_filter(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
+    """Excludes private keys, secret keys, and device secrets from exported tar archives."""
+    name = Path(tarinfo.name).name.lower()
+    if (
+        "private" in name
+        or name.endswith(".key")
+        or name.endswith(".secret")
+        or name == "device.secret"
+        or name == "dev_private.pem"
+    ):
+        logger.warning("Excluding secret/private file '%s' from package archive.", tarinfo.name)
+        return None
+    return tarinfo
+
+
 def export_package_archive(package_dir: Path, archive_path: Optional[Path] = None) -> Path:
-    """Compresses package_dir into a tar.gz for secure transport."""
+    """Compresses package_dir into a tar.gz for secure transport, excluding private keys/secrets."""
     if archive_path is None:
         archive_path = package_dir.with_suffix(".tar.gz")
 
     with tarfile.open(archive_path, "w:gz") as tar:
-        tar.add(package_dir, arcname=package_dir.name)
+        tar.add(package_dir, arcname=package_dir.name, filter=_exclude_secrets_filter)
 
     logger.info("Package archive created → %s (%d bytes)", archive_path.name, archive_path.stat().st_size)
     return archive_path
+

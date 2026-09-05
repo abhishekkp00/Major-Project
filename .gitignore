@@ -8,6 +8,11 @@
 secrets.key
 real_data.key
 *.pem                          # Never commit private keys
+dev_private.pem
+*private*.pem
+*.secret
+device.secret
+
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/

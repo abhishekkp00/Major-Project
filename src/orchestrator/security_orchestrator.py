@@ -211,7 +211,7 @@ def run_security_orchestration(
     update_state_fn(job_id, status="PACKAGING", stage="generating_signature", progress=80)
     logger.info("[%s] Status: generating_signature", job_id)
     
-    priv_key_path = protected_output_dir / "dev_private.pem"
+    priv_key_path = job_dir / "dev_private.pem"
     pub_key_path = protected_output_dir / "public.pem"
     sig_path = protected_output_dir / "adapter.sig"
     

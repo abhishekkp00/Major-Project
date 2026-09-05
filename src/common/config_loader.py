@@ -288,9 +288,10 @@ class ConfigLoader:
 
     def validate_phase3(self) -> None:
         """Enforces conditions for Phase 3 (Adapter Protection)."""
-        if not self.device_salt:
+        from src.security.device_secret import device_secret_exists
+        if not device_secret_exists():
             raise ConfigError(
-                "P3_DEVICE_SALT is not set. Export it as an environment variable before running Phase 3."
+                "Device secret is missing. Run explicit initialization ('initialize_device_secret()') before running Phase 3."
             )
         # Check if phase 2 adapter dir exists
         adapter_input = Path(os.environ.get("P3_ADAPTER_INPUT_DIR", "outputs/final_adapter"))
@@ -307,15 +308,17 @@ class ConfigLoader:
 
     def validate_phase4(self) -> None:
         """Enforces conditions for Phase 4 (Deployment)."""
-        if not self.device_salt:
+        from src.security.device_secret import device_secret_exists
+        if not device_secret_exists():
             raise ConfigError(
-                "P3_DEVICE_SALT is not set. Export it as an environment variable before running Phase 4."
+                "Device secret is missing. Run explicit initialization ('initialize_device_secret()') before running Phase 4."
             )
         if not self.package_path.exists():
             raise FileNotFoundError(
                 f"Package path not found: {self.package_path}. Run Phase 3 first or set P4_PACKAGE_PATH."
             )
         self.deployment_output_dir.mkdir(parents=True, exist_ok=True)
+
 
 
 # Global configuration instance

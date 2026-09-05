@@ -141,7 +141,7 @@ class JobOrchestrator:
             "stage": "dataset_intake",
             "progress": 0,
             "epochs": epochs,
-            "salt": salt or os.environ.get("P3_DEVICE_SALT") or _derive_device_salt(),
+            "salt": salt or _derive_device_salt(),
             "loss_history": [],
             "eval_metrics": {},
             "verification_steps": {},
