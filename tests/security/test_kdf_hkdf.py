@@ -113,7 +113,7 @@ class TestKdfVersionGating:
 
     def test_kdf_version_constant_value(self):
         """Requirement 12: KDF_VERSION must be the expected string."""
-        assert KDF_VERSION == "hkdf-sha256-v1"
+        assert KDF_VERSION == "hkdf-sha256-v2"
 
     def test_check_kdf_version_passes_for_current(self):
         """Requirement 13: current version passes without error."""

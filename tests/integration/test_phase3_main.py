@@ -18,7 +18,16 @@ def test_phase3_cli_pipeline(tmp_dir, monkeypatch):
     adapter_src = tmp_dir / "final_adapter"
     adapter_src.mkdir()
     (adapter_src / "adapter_config.json").write_text('{"r": 8, "peft_type": "LORA"}')
-    (adapter_src / "adapter_model.safetensors").write_bytes(b"dummy-weights")
+    import torch
+    import numpy as np
+    rng = np.random.RandomState(42)
+    mock_weights = {}
+    for i in range(4):
+        a = rng.normal(0.0, 0.02, size=(8, 64)).astype(np.float32)
+        b = rng.normal(0.0, 0.001, size=(64, 8)).astype(np.float32)
+        mock_weights[f"base_model.model.encoder.layer.{i}.attention.self.query.lora_A.weight"] = torch.from_numpy(a)
+        mock_weights[f"base_model.model.encoder.layer.{i}.attention.self.query.lora_B.weight"] = torch.from_numpy(b)
+    torch.save(mock_weights, adapter_src / "adapter_model.bin")
 
     output_dir = tmp_dir / "protected"
     output_dir.mkdir()

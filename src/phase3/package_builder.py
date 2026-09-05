@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from src.security.key_derivation import KDF_VERSION
 from src.security import (
     compute_sha256,
     compute_canonical_manifest_digest,
@@ -129,7 +130,8 @@ def build_manifest(
         "created_at_utc": creation_time,
         "expiration_timestamp": expiration_timestamp,
         "binding_policy_version": binding_policy_version,
-        "kdf_version": (enc_metadata or {}).get("kdf_version", "hkdf-sha256-v1"),
+        "kdf_version": (enc_metadata or {}).get("kdf_version", KDF_VERSION),
+        "hkdf_salt_hex": (enc_metadata or {}).get("hkdf_salt_hex", ""),
         "encryption_version": "aes-256-gcm-v1",
         "signature_algorithm": "rsa-pss-2048-sha256",
         "digest_algorithm": "sha256",

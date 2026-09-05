@@ -170,7 +170,13 @@ def get_fingerprint_hash() -> str:
     High-level entry point: collects OS/hardware identifiers, builds the
     canonical string, and returns the SHA-256 hex digest.
 
-    Raises DeviceFingerprintError if all sources are unavailable (extremely rare).
+    Minimum required source: ``machine_id`` (/etc/machine-id).
+    If machine_id is UNAVAILABLE, raises DeviceFingerprintError regardless
+    of whether other sources are present.  This prevents silently binding to
+    a fingerprint that may change across reboots on atypical systems.
+
+    Raises DeviceFingerprintError if the minimum required identity cannot
+    be obtained.
     """
     ids = collect_identifiers()
 
@@ -178,14 +184,17 @@ def get_fingerprint_hash() -> str:
     availability = {k: (v != "UNAVAILABLE") for k, v in ids.items()}
     logger.debug("Fingerprint source availability: %s", availability)
 
-    if not any(availability.values()):
+    # machine_id is the minimum required source — it is stable, unique per
+    # OS installation, and written by systemd at install time.
+    if ids.get("machine_id", "UNAVAILABLE") == "UNAVAILABLE":
         raise DeviceFingerprintError(
-            "All fingerprint sources are UNAVAILABLE. "
-            "Cannot derive a device identity on this machine."
+            "Device fingerprint cannot be computed: /etc/machine-id is UNAVAILABLE. "
+            "This is the minimum required identity source. "
+            "Ensure the system has a valid /etc/machine-id before packaging or deploying."
         )
 
     canonical = build_canonical_string(ids)
     fp_hash = compute_fingerprint_hash(canonical)
 
-    logger.info("Device fingerprint computed. hash_prefix=%s…", fp_hash[:8])
+    logger.info("Device identity computed. hash_prefix=%s…", fp_hash[:8])
     return fp_hash

@@ -272,8 +272,19 @@ def encrypt_adapter(
     key: bytes,
     fingerprint_hash: str,
     metadata_path: Optional[Path] = None,
+    hkdf_salt: Optional[bytes] = None,
 ) -> dict:
-    """Encrypts the LoRA adapter (file or directory) and writes ciphertext to output_enc_path."""
+    """Encrypts the LoRA adapter (file or directory) and writes ciphertext to output_enc_path.
+
+    Parameters
+    ----------
+    hkdf_salt : bytes, optional
+        The per-package random HKDF salt (32 bytes) used to derive *key*.
+        When provided, its hex representation is stored in metadata.json so
+        Phase 4 can reproduce the identical key on the authorized device.
+        Must NOT be confused with the secret — the salt itself is non-secret
+        and safe to store in the package.
+    """
     if not adapter_input.exists():
         raise FileNotFoundError(f"Adapter input not found: {adapter_input}")
     if len(key) != 32:
@@ -312,6 +323,11 @@ def encrypt_adapter(
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
 
+    # Store the non-secret HKDF salt in metadata so Phase 4 can derive the
+    # identical key.  Raw secret is never stored here.
+    if hkdf_salt is not None:
+        metadata["hkdf_salt_hex"] = hkdf_salt.hex()
+
     if metadata_path is not None:
         tmp_meta = metadata_path.with_suffix(".tmp")
         try:
@@ -323,6 +339,7 @@ def encrypt_adapter(
         logger.info("Encryption metadata saved → %s", metadata_path.name)
 
     return metadata
+
 
 
 def decrypt_adapter(

@@ -58,7 +58,34 @@ def verify_and_decrypt(
     # ── Step 5: Key derivation ───────────────────────────────────────────────
     logger.info("[5/6] Deriving device-bound decryption key…")
     try:
-        key = derive_key_from_env(local_fp_hash, salt)
+        import json
+        hkdf_salt_bytes = None
+        manifest_path = package_dir / "package_manifest.json"
+        meta_path = package_dir / "metadata.json"
+
+        if manifest_path.exists():
+            try:
+                mdata = json.loads(manifest_path.read_text())
+                salt_hex = mdata.get("hkdf_salt_hex")
+                if salt_hex:
+                    hkdf_salt_bytes = bytes.fromhex(salt_hex)
+            except Exception:
+                pass
+
+        if not hkdf_salt_bytes and meta_path.exists():
+            try:
+                mdata = json.loads(meta_path.read_text())
+                salt_hex = mdata.get("hkdf_salt_hex")
+                if salt_hex:
+                    hkdf_salt_bytes = bytes.fromhex(salt_hex)
+            except Exception:
+                pass
+
+        if hkdf_salt_bytes:
+            from src.security.key_derivation import derive_key_for_device
+            key = derive_key_for_device(local_fp_hash, hkdf_salt_bytes)
+        else:
+            key = derive_key_from_env(local_fp_hash, salt)
     except (ValueError, EnvironmentError) as exc:
         raise VerificationError(f"[Step 5] Key derivation failed: {exc}") from exc
     logger.info("[5/6] PASS — key derived.")

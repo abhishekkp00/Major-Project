@@ -17,7 +17,7 @@ def mock_fingerprints():
 
 @pytest.fixture
 def test_salt():
-    return "demo-integration-salt-abc123xyz"
+    return b"demo-integration-salt-abc123xyz!"
 
 
 def test_device_binding_success(mock_fingerprints):
@@ -44,7 +44,7 @@ def test_device_key_derivation_deterministic(mock_fingerprints, test_salt):
 
 def test_device_key_derivation_different_salt(mock_fingerprints, test_salt):
     k1 = get_device_bound_key(test_salt, mock_fingerprints["auth_fp"])
-    k2 = get_device_bound_key("different-salt", mock_fingerprints["auth_fp"])
+    k2 = get_device_bound_key(b"different-salt-32-bytes-00000000", mock_fingerprints["auth_fp"])
     assert k1 != k2
 
 
@@ -56,4 +56,5 @@ def test_device_key_derivation_different_fingerprint(mock_fingerprints, test_sal
 
 def test_device_key_derivation_empty_salt(mock_fingerprints):
     with pytest.raises(ValueError):
-        get_device_bound_key("", mock_fingerprints["auth_fp"])
+        get_device_bound_key(b"", mock_fingerprints["auth_fp"])
+

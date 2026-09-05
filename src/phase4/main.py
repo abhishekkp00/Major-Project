@@ -166,7 +166,16 @@ def run_deployment_pipeline(
                 logger.info("[7/9] Deriving decryption key via HKDF-SHA256...")
                 try:
                     kdf_ver = manifest.get("kdf_version") or manifest.get("encryption", {}).get("kdf_version")
-                    key = get_device_bound_key(salt, kdf_version=kdf_ver)
+                    # Retrieve the per-package HKDF salt stored in metadata (non-secret).
+                    # For v1 packages (legacy), fall back to salt string converted to bytes.
+                    hkdf_salt_hex = manifest.get("hkdf_salt_hex") or manifest.get("encryption", {}).get("hkdf_salt_hex")
+                    if hkdf_salt_hex:
+                        hkdf_salt_bytes = bytes.fromhex(hkdf_salt_hex)
+                    else:
+                        # Legacy v1 package: no hkdf_salt_hex stored; derive from salt string
+                        logger.warning("[7/9] No hkdf_salt_hex in package manifest; using legacy salt fallback for v1 package.")
+                        hkdf_salt_bytes = salt.encode("utf-8")[:32].ljust(32, b"\x00") if isinstance(salt, str) else salt
+                    key = get_device_bound_key(hkdf_salt_bytes, kdf_version=kdf_ver)
                     steps_status["Step 7: Key Derivation"] = "PASSED"
                     logger.info("[7/9] PASS — Key derived transiently in volatile memory.")
                 except Exception as e:

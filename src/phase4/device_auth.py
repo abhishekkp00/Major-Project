@@ -6,6 +6,11 @@ Phase 4 deployment gateway device authorization & key derivation.
 Uses the policy-driven Adaptive Device-Bound Adapter Authorization engine
 to evaluate authorization state (AUTHORIZED, REAUTHORIZATION_REQUIRED, UNAUTHORIZED)
 before deriving the HKDF-SHA256 decryption key.
+
+Key derivation in this module uses the v2 scheme:
+    IKM  = device secret (loaded from protected file, never logged)
+    info = b"securelora-adapter-v2|" + fingerprint_hash
+    salt = per-package random HKDF salt (from package metadata.json)
 """
 
 import logging
@@ -13,14 +18,18 @@ from typing import Dict, Optional, Any
 
 from src.security import (
     get_fingerprint_hash,
-    derive_key,
     evaluate_device_authorization,
     reauthorize_device,
     DeviceState,
     AuthorizationResult,
     BindingPolicy,
 )
-from src.security.key_derivation import check_kdf_version, KDF_VERSION
+from src.security.key_derivation import (
+    check_kdf_version,
+    KDF_VERSION,
+    derive_key_for_device,
+    HKDF_SALT_LENGTH,
+)
 from src.common.exceptions import DeviceAuthorizationError
 
 logger = logging.getLogger("secure_lora.phase4.device_auth")
@@ -75,16 +84,31 @@ def verify_device_binding(
 
 
 def get_device_bound_key(
-    salt: str,
+    hkdf_salt: bytes,
     mock_fingerprint: Optional[str] = None,
     kdf_version: Optional[str] = None,
 ) -> bytes:
     """
-    Derives the device-bound 32-byte AES key using HKDF-SHA256 over the
-    local fingerprint and configured salt.
+    Derives the device-bound 32-byte AES key using HKDF-SHA256 (v2).
+
+    Parameters
+    ----------
+    hkdf_salt : bytes
+        Per-package random HKDF salt (32 bytes) retrieved from the package
+        metadata.json field ``hkdf_salt_hex``.  Non-secret; must match the
+        salt used during packaging exactly.
+
+    mock_fingerprint : str, optional
+        Override for the local fingerprint hash (test use only).
+
+    kdf_version : str, optional
+        KDF version string from the package manifest; checked for compatibility.
     """
-    if not salt:
-        raise ValueError("Device salt must not be empty.")
+    if not hkdf_salt or len(hkdf_salt) == 0:
+        raise ValueError(
+            "hkdf_salt must not be empty. "
+            "Read it from the package metadata.json field 'hkdf_salt_hex'."
+        )
 
     if kdf_version is not None:
         check_kdf_version(kdf_version)
@@ -92,5 +116,5 @@ def get_device_bound_key(
         logger.debug("No kdf_version supplied by caller; using local default: %s", KDF_VERSION)
 
     local_hash = mock_fingerprint or get_fingerprint_hash()
-    key = derive_key(local_hash, salt)
+    key = derive_key_for_device(local_hash, hkdf_salt)
     return key

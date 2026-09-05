@@ -82,7 +82,8 @@ def validate_manifest_schema(manifest: Dict[str, Any]) -> None:
     if not isinstance(manifest["sequence_number"], int) or manifest["sequence_number"] < 1:
         raise ManifestSchemaError("Invalid 'sequence_number': must be a positive integer >= 1.")
 
-    if manifest["kdf_version"] != "hkdf-sha256-v1":
+    from src.security.key_derivation import SUPPORTED_KDF_VERSIONS
+    if manifest["kdf_version"] not in SUPPORTED_KDF_VERSIONS:
         raise ManifestSchemaError(f"Unsupported KDF version: {manifest['kdf_version']}")
 
     if manifest["encryption_version"] != "aes-256-gcm-v1":
