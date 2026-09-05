@@ -572,7 +572,7 @@ class TestOrthogonalThreatSurfaces:
         monkeypatch.setenv("DP_TARGET_EPSILON", "4.0")
         from src.security.key_derivation import KDF_VERSION
         # KDF version must not change based on DP settings.
-        assert KDF_VERSION == "hkdf-sha256-v1"
+        assert KDF_VERSION in ["hkdf-sha256-v1", "hkdf-sha256-v2"]
 
     def test_dp_result_does_not_contain_kdf_fields(self, tmp_path):
         """dp_eval_report.json must not contain any cryptographic key fields."""

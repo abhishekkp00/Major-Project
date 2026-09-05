@@ -74,6 +74,8 @@ def _unavailable(reason: str):
 def research_summary():
     """Returns full pipeline research summary from aggregated statistics, privacy benchmark, and runs."""
     stats_data, err_stats = _load_json("b8_summary")
+    if err_stats:
+        return _unavailable(err_stats)
     priv_data, _ = _load_json("privacy_comparison")
     pii_data, _ = _load_json("pii_metrics")
     scale_data, _ = _load_json("model_scale")

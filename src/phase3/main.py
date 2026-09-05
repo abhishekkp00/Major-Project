@@ -11,11 +11,11 @@ from src.security import (
     get_fingerprint_hash,
     compute_sha256,
     save_hash,
-    derive_key_from_env,
     generate_dev_keypair,
     sign_digest,
     save_signature,
 )
+from src.security.key_derivation import derive_key_for_device, generate_hkdf_salt
 from src.phase3.verifier import verify_and_decrypt
 from src.common.exceptions import VerificationError
 from src.phase3.package_builder import build_package, export_package_archive
@@ -70,16 +70,18 @@ def cmd_protect(args: argparse.Namespace) -> int:
     # Step 2 — fingerprint
     fp_hash = get_fingerprint_hash()
 
-    # Step 3 — key derivation
-    key = derive_key_from_env(fp_hash)
+    # Step 3 — key derivation (v2: device secret as IKM, fingerprint in info)
+    hkdf_salt = generate_hkdf_salt()
+    key = derive_key_for_device(fp_hash, hkdf_salt)
 
-    # Step 4 — encrypt
+    # Step 4 — encrypt (pass hkdf_salt so it is stored in metadata.json)
     enc_meta = encrypt_adapter(
         adapter_input=cfg.ADAPTER_INPUT_DIR,
         output_enc_path=cfg.enc_path(),
         key=key,
         fingerprint_hash=fp_hash,
         metadata_path=cfg.metadata_path(),
+        hkdf_salt=hkdf_salt,
     )
 
     # Step 5 — hash

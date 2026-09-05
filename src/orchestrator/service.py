@@ -418,8 +418,39 @@ class JobOrchestrator:
             logger.info("[%s] Full secure lifecycle completed successfully!", job_id)
 
         except Exception as exc:
-            logger.error("[%s] Pipeline execution failed: %s", job_id, exc, exc_info=True)
-            self.update_job_state(job_id, status="FAILED", error=str(exc))
+            from src.common.exceptions import (
+                AdapterSecurityGateError,
+                SecurityPolicyRejectedError,
+                SecurityScreeningFailedError,
+            )
+            if isinstance(exc, SecurityPolicyRejectedError):
+                logger.error("[%s] Pipeline aborted: Security policy rejected adapter: %s", job_id, exc)
+                self.update_job_state(
+                    job_id,
+                    status="SECURITY_POLICY_REJECTED",
+                    stage="preparing_adapter",
+                    error=str(exc)
+                )
+            elif isinstance(exc, SecurityScreeningFailedError):
+                logger.error("[%s] Pipeline aborted: Security screening failed: %s", job_id, exc)
+                self.update_job_state(
+                    job_id,
+                    status="SECURITY_SCREENING_FAILED",
+                    stage="preparing_adapter",
+                    error=str(exc)
+                )
+            elif isinstance(exc, AdapterSecurityGateError):
+                logger.error("[%s] Pipeline aborted: Adapter security gate error: %s", job_id, exc)
+                status_code = "SECURITY_POLICY_REJECTED" if ("REJECTED" in str(exc) or "policy" in str(exc).lower()) else "SECURITY_SCREENING_FAILED"
+                self.update_job_state(
+                    job_id,
+                    status=status_code,
+                    stage="preparing_adapter",
+                    error=str(exc)
+                )
+            else:
+                logger.error("[%s] Pipeline execution failed: %s", job_id, exc, exc_info=True)
+                self.update_job_state(job_id, status="FAILED", error=str(exc))
 
 
 # Global Orchestrator Instance

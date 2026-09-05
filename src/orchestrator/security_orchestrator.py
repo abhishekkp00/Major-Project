@@ -10,7 +10,7 @@ from typing import Dict, Any, Callable
 
 # Import Phase 3 & 4 primitives
 from src.security.fingerprint import get_fingerprint_hash
-from src.security.key_derivation import derive_key_from_env
+from src.security.key_derivation import derive_key_for_device, generate_hkdf_salt
 from src.security.crypto import encrypt_adapter, compute_sha256, decrypt_stream
 from src.security.signature import sign_digest, generate_dev_keypair, save_signature
 from src.phase3.package_builder import build_package, export_package_archive
@@ -68,16 +68,37 @@ def run_security_orchestration(
     outcomes["adapter_size_before_encryption_bytes"] = adapter_size_before
 
     # Pre-packaging Adapter Security Screening Gate
+    from src.evaluation.adapter_security import screen_adapter_and_enforce_policy
+    from src.common.exceptions import (
+        AdapterSecurityGateError,
+        SecurityPolicyRejectedError,
+        SecurityScreeningFailedError,
+    )
+
     try:
-        from src.evaluation.adapter_security import screen_adapter_and_enforce_policy
         screening_result = screen_adapter_and_enforce_policy(
             adapter_dir=adapter_input_dir,
             adapter_id=job_id,
             force=False,
+            allow_mock_fallback=False,
         )
+
+        if screening_result is None or not getattr(screening_result, "approved", False) or getattr(screening_result, "risk_level", None) is None:
+            raise SecurityScreeningFailedError("Security screening produced an invalid or incomplete result.")
+
+        if not getattr(screening_result, "actual_adapter_loaded", False):
+            raise SecurityScreeningFailedError("Security screening did not load actual adapter weights.")
+
+        if screening_result.risk_level == "HIGH" or not screening_result.approved:
+            raise SecurityPolicyRejectedError(
+                f"Pre-packaging security screening REJECTED high-risk adapter '{job_id}' "
+                f"(risk_score={screening_result.adapter_risk_score:.4f}, risk_level={screening_result.risk_level})."
+            )
+
         outcomes["security_screening_risk_score"] = screening_result.adapter_risk_score
         outcomes["security_screening_risk_level"] = screening_result.risk_level
         outcomes["security_screening"] = "pass"
+        outcomes["actual_adapter_loaded"] = screening_result.actual_adapter_loaded
         if hasattr(screening_result, "to_dict"):
             outcomes["screening_details"] = screening_result.to_dict()
             try:
@@ -86,10 +107,59 @@ def run_security_orchestration(
                 )
             except Exception:
                 pass
-    except Exception as e:
-        logger.warning("[%s] Security screening warning: %s", job_id, e)
-        outcomes["security_screening"] = "warning"
+    except SecurityPolicyRejectedError as e:
+        logger.error("[%s] Pre-packaging security screening REJECTED adapter: %s", job_id, e)
+        outcomes["security_screening"] = "rejected"
         outcomes["security_screening_risk_level"] = "HIGH"
+        outcomes["security_screening_error"] = str(e)
+        update_state_fn(
+            job_id,
+            status="SECURITY_POLICY_REJECTED",
+            stage="preparing_adapter",
+            security_metrics=outcomes,
+            error=str(e)
+        )
+        raise
+    except SecurityScreeningFailedError as e:
+        logger.error("[%s] Security screening failed to load or analyze adapter: %s", job_id, e)
+        outcomes["security_screening"] = "failed"
+        outcomes["security_screening_risk_level"] = "HIGH"
+        outcomes["security_screening_error"] = str(e)
+        update_state_fn(
+            job_id,
+            status="SECURITY_SCREENING_FAILED",
+            stage="preparing_adapter",
+            security_metrics=outcomes,
+            error=str(e)
+        )
+        raise
+    except AdapterSecurityGateError as e:
+        logger.error("[%s] Security screening gate error: %s", job_id, e)
+        outcomes["security_screening"] = "failed"
+        outcomes["security_screening_risk_level"] = "HIGH"
+        outcomes["security_screening_error"] = str(e)
+        status_code = "SECURITY_POLICY_REJECTED" if ("REJECTED" in str(e) or "policy" in str(e).lower()) else "SECURITY_SCREENING_FAILED"
+        update_state_fn(
+            job_id,
+            status=status_code,
+            stage="preparing_adapter",
+            security_metrics=outcomes,
+            error=str(e)
+        )
+        raise
+    except Exception as e:
+        logger.error("[%s] Security screening failed due to error: %s", job_id, e)
+        outcomes["security_screening"] = "failed"
+        outcomes["security_screening_risk_level"] = "HIGH"
+        outcomes["security_screening_error"] = str(e)
+        update_state_fn(
+            job_id,
+            status="SECURITY_SCREENING_FAILED",
+            stage="preparing_adapter",
+            security_metrics=outcomes,
+            error=str(e)
+        )
+        raise SecurityScreeningFailedError(f"Security screening failed due to error: {e}") from e
 
 
     # ────────────────────────────────────────────────────────────────
@@ -98,10 +168,10 @@ def run_security_orchestration(
     update_state_fn(job_id, status="PACKAGING", stage="deriving_device_binding", progress=73)
     logger.info("[%s] Status: deriving_device_binding", job_id)
     fp_hash = get_fingerprint_hash()
-    
-    # Temporarily set environment variables to align with legacy derivation
-    os.environ["P3_DEVICE_SALT"] = salt
-    key = derive_key_from_env(fp_hash)
+
+    # Derive key using v2: device secret as IKM, per-package random HKDF salt
+    hkdf_salt = generate_hkdf_salt()
+    key = derive_key_for_device(fp_hash, hkdf_salt)
 
     # ────────────────────────────────────────────────────────────────
     # STATUS: encrypting_adapter
@@ -118,7 +188,8 @@ def run_security_orchestration(
         output_enc_path=enc_path,
         key=key,
         fingerprint_hash=fp_hash,
-        metadata_path=meta_path
+        metadata_path=meta_path,
+        hkdf_salt=hkdf_salt,
     )
     end_enc_time = time.perf_counter()
     outcomes["encryption_time_seconds"] = end_enc_time - start_enc_time
@@ -284,8 +355,5 @@ def run_security_orchestration(
     # ────────────────────────────────────────────────────────────────
     update_state_fn(job_id, status="COMPLETED", stage="security_validation_completed", progress=100)
     logger.info("[%s] Status: security_validation_completed", job_id)
-
-    # Clean up environment variable
-    os.environ.pop("P3_DEVICE_SALT", None)
 
     return outcomes

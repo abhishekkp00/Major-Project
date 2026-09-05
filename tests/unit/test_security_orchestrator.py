@@ -39,7 +39,16 @@ def mock_job_workspace(tmp_path: Path):
     adapter_dir = job_dir / "adapter"
     adapter_dir.mkdir()
     (adapter_dir / "adapter_config.json").write_text('{"r": 8, "lora_alpha": 16}', encoding="utf-8")
-    (adapter_dir / "adapter_model.safetensors").write_text("dummy model weight tensors", encoding="utf-8")
+    import torch
+    import numpy as np
+    rng = np.random.RandomState(42)
+    mock_weights = {}
+    for i in range(4):
+        a = rng.normal(0.0, 0.02, size=(8, 64)).astype(np.float32)
+        b = rng.normal(0.0, 0.001, size=(64, 8)).astype(np.float32)
+        mock_weights[f"base_model.model.encoder.layer.{i}.attention.self.query.lora_A.weight"] = torch.from_numpy(a)
+        mock_weights[f"base_model.model.encoder.layer.{i}.attention.self.query.lora_B.weight"] = torch.from_numpy(b)
+    torch.save(mock_weights, adapter_dir / "adapter_model.bin")
     
     yield job_dir
     shutil.rmtree(tmp_path, ignore_errors=True)
@@ -94,3 +103,153 @@ def test_security_orchestration_lifecycle_and_simulations(mock_job_workspace, mo
     assert outcomes["deployment_validation_result"] == "success"
     assert outcomes["tamper_simulation"] == "pass"
     assert outcomes["unauthorized_device_simulation"] == "pass"
+
+
+def test_missing_adapter_blocks_packaging_and_deployment(tmp_path: Path):
+    """Verify missing adapter directory fails closed, sets status to SECURITY_SCREENING_FAILED, and prevents packaging/deployment."""
+    from src.common.exceptions import SecurityScreeningFailedError
+
+    job_dir = tmp_path / "job_missing_adapter"
+    job_dir.mkdir()
+    # Create empty adapter dir without weights file
+    (job_dir / "adapter").mkdir()
+
+    statuses = []
+    stages = []
+
+    def mock_update_state(jid, **kwargs):
+        if "status" in kwargs:
+            statuses.append(kwargs["status"])
+        if "stage" in kwargs:
+            stages.append(kwargs["stage"])
+
+    with pytest.raises(SecurityScreeningFailedError):
+        run_security_orchestration(
+            job_id="job_missing_test",
+            job_dir=job_dir,
+            salt="test-salt",
+            base_model_name="JackFram/llama-68m",
+            update_state_fn=mock_update_state,
+        )
+
+    # Status must be SECURITY_SCREENING_FAILED
+    assert "SECURITY_SCREENING_FAILED" in statuses
+    # No package artifact or encrypted output should be written
+    assert not (job_dir / "protected" / "adapter.enc").exists()
+    assert not (job_dir / "protected" / "protected_package.tar.gz").exists()
+    # Deployment step must NOT have been executed
+    assert "running_secure_deployment_check" not in stages
+
+
+def test_high_risk_adapter_blocks_packaging_and_deployment(tmp_path: Path):
+    """Verify high-risk adapter raises SecurityPolicyRejectedError, sets status to SECURITY_POLICY_REJECTED, and blocks packaging/deployment."""
+    import torch
+    from src.common.exceptions import SecurityPolicyRejectedError
+    from src.evaluation.adapter_security import _generate_mock_lora_weights
+
+    job_dir = tmp_path / "job_high_risk_adapter"
+    job_dir.mkdir()
+    adapter_dir = job_dir / "adapter"
+    adapter_dir.mkdir()
+    (adapter_dir / "adapter_config.json").write_text('{"r": 8}')
+
+    # Create outlier weights that trigger HIGH risk level
+    weights = _generate_mock_lora_weights(seed=42)
+    first_key = list(weights.keys())[0]
+    weights[first_key] = weights[first_key] * 200.0 + 100.0
+    torch_state_dict = {k: torch.from_numpy(v) for k, v in weights.items()}
+    torch.save(torch_state_dict, adapter_dir / "adapter_model.bin")
+
+    statuses = []
+    stages = []
+
+    def mock_update_state(jid, **kwargs):
+        if "status" in kwargs:
+            statuses.append(kwargs["status"])
+        if "stage" in kwargs:
+            stages.append(kwargs["stage"])
+
+    with pytest.raises(SecurityPolicyRejectedError):
+        run_security_orchestration(
+            job_id="job_high_risk_test",
+            job_dir=job_dir,
+            salt="test-salt",
+            base_model_name="JackFram/llama-68m",
+            update_state_fn=mock_update_state,
+        )
+
+    assert "SECURITY_POLICY_REJECTED" in statuses
+    assert not (job_dir / "protected" / "adapter.enc").exists()
+    assert not (job_dir / "protected" / "protected_package.tar.gz").exists()
+    assert "running_secure_deployment_check" not in stages
+
+
+def test_screening_exception_blocks_packaging_and_deployment(tmp_path: Path, monkeypatch):
+    """Verify arbitrary screening engine exception raises SecurityScreeningFailedError and blocks packaging/deployment."""
+    from src.common.exceptions import SecurityScreeningFailedError
+    import src.evaluation.adapter_security
+
+    job_dir = tmp_path / "job_screening_exception"
+    job_dir.mkdir()
+    (job_dir / "adapter").mkdir()
+
+    def mock_screen_error(*args, **kwargs):
+        raise RuntimeError("Unexpected screening engine crash")
+
+    monkeypatch.setattr(src.evaluation.adapter_security, "screen_adapter_and_enforce_policy", mock_screen_error)
+
+    statuses = []
+    stages = []
+
+    def mock_update_state(jid, **kwargs):
+        if "status" in kwargs:
+            statuses.append(kwargs["status"])
+        if "stage" in kwargs:
+            stages.append(kwargs["stage"])
+
+    with pytest.raises(SecurityScreeningFailedError) as exc_info:
+        run_security_orchestration(
+            job_id="job_exception_test",
+            job_dir=job_dir,
+            salt="test-salt",
+            base_model_name="JackFram/llama-68m",
+            update_state_fn=mock_update_state,
+        )
+
+    assert "SECURITY_SCREENING_FAILED" in statuses
+    assert "Unexpected screening engine crash" in str(exc_info.value)
+    assert not (job_dir / "protected" / "adapter.enc").exists()
+    assert not (job_dir / "protected" / "protected_package.tar.gz").exists()
+    assert "running_secure_deployment_check" not in stages
+
+
+def test_invalid_incomplete_result_blocks_packaging(tmp_path: Path, monkeypatch):
+    """Verify invalid/incomplete screening result raises SecurityScreeningFailedError and blocks packaging/deployment."""
+    from src.common.exceptions import SecurityScreeningFailedError
+    import src.evaluation.adapter_security
+
+    job_dir = tmp_path / "job_invalid_result"
+    job_dir.mkdir()
+    (job_dir / "adapter").mkdir()
+
+    monkeypatch.setattr(src.evaluation.adapter_security, "screen_adapter_and_enforce_policy", lambda *a, **kw: None)
+
+    statuses = []
+
+    def mock_update_state(jid, **kwargs):
+        if "status" in kwargs:
+            statuses.append(kwargs["status"])
+
+    with pytest.raises(SecurityScreeningFailedError) as exc_info:
+        run_security_orchestration(
+            job_id="job_invalid_test",
+            job_dir=job_dir,
+            salt="test-salt",
+            base_model_name="JackFram/llama-68m",
+            update_state_fn=mock_update_state,
+        )
+
+    assert "SECURITY_SCREENING_FAILED" in statuses
+    assert "invalid or incomplete result" in str(exc_info.value)
+    assert not (job_dir / "protected" / "adapter.enc").exists()
+

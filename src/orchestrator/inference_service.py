@@ -61,7 +61,6 @@ def ensure_model_loaded() -> bool:
     from src.phase4.device_auth import get_device_bound_key
 
     base_model_name = os.environ.get("P3_MODEL_REFERENCE", "JackFram/llama-68m")
-    salt = os.environ.get("P3_DEVICE_SALT", "demo-integration-salt-abc123xyz")
 
     # Search jobs dir first
     jobs_dir = Path("outputs/jobs")
@@ -86,9 +85,17 @@ def ensure_model_loaded() -> bool:
                     continue
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 target_model_name = manifest.get("base_model_name", base_model_name)
-                
-                key = get_device_bound_key(salt)
+
+                # Read per-package HKDF salt from manifest (non-secret, set during packaging).
+                # Fail closed: if hkdf_salt_hex is absent, do not silently fall back.
+                hkdf_salt_hex = manifest.get("hkdf_salt_hex") or manifest.get("encryption", {}).get("hkdf_salt_hex")
+                if not hkdf_salt_hex:
+                    logger.warning("Package at %s has no hkdf_salt_hex in manifest; skipping.", pkg_path)
+                    continue
+                hkdf_salt_bytes = bytes.fromhex(hkdf_salt_hex)
+                key = get_device_bound_key(hkdf_salt_bytes)
                 decryptor = DecryptedAdapterContext(enc_path, key)
+
                 with decryptor as decrypted_adapter_dir:
                     base_model, tokenizer = load_base_model_and_tokenizer(target_model_name)
                     peft_model = load_peft_adapter(base_model, decrypted_adapter_dir)
@@ -106,26 +113,8 @@ def ensure_model_loaded() -> bool:
         except Exception as e:
             logger.warning("Failed loading package from %s: %s", pkg_path, e)
 
-    # Fallback: initialize base model and PEFT adapter in memory
-    try:
-        from peft import LoraConfig, get_peft_model
-        base_model, tokenizer = load_base_model_and_tokenizer(base_model_name)
-        lora_config = LoraConfig(r=8, lora_alpha=16, target_modules=["q_proj", "v_proj"], lora_dropout=0.05, bias="none", task_type="CAUSAL_LM")
-        peft_model = get_peft_model(base_model, lora_config)
-        model_registry.register(
-            base_model=base_model,
-            peft_model=peft_model,
-            tokenizer=tokenizer,
-            base_model_name=base_model_name,
-            adapter_id="secure_lora_verified",
-            deployment_id="verified_runtime",
-            deployment_status="VERIFIED"
-        )
-        logger.info("Initialized in-memory verified SecureLoRA model runtime.")
-        return True
-    except Exception as e:
-        logger.error("Failed initializing in-memory model runtime: %s", e)
-        return False
+    logger.warning("No verified SecureLoRA package archive found to load into ModelRegistry.")
+    return False
 
 
 def generate_base(
