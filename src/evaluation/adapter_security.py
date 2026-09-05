@@ -42,7 +42,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from src.common.exceptions import AdapterSecurityGateError
+from src.common.exceptions import (
+    AdapterSecurityGateError,
+    SecurityPolicyRejectedError,
+    SecurityScreeningFailedError,
+)
 
 logger = logging.getLogger("secure_lora.evaluation.adapter_security")
 
@@ -91,6 +95,8 @@ class StructuralAnalysisReport:
     cosine_similarity_ref: Optional[float]
     parameter_drift_score: float
     structural_risk_score: float
+    weights_source_desc: str = "file"
+    actual_adapter_loaded: bool = True
     layer_metrics: Dict[str, Dict[str, float]] = field(default_factory=dict)
 
 
@@ -115,6 +121,7 @@ class ScreeningResult:
     approved: bool
     bypassed_via_force: bool
     screening_latency_ms: float
+    actual_adapter_loaded: bool
     structural_report: StructuralAnalysisReport
     behavioral_report: BehavioralScreeningReport
     risk_breakdown: Dict[str, float]
@@ -127,36 +134,99 @@ class ScreeningResult:
 # Layer 1 — Structural Analysis
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _load_weights_from_file_or_dict(weights_source: Union[Path, Dict[str, np.ndarray]]) -> Dict[str, np.ndarray]:
-    """Loads adapter weights into numpy arrays from PyTorch/Safetensors file, directory, or dict."""
+def _load_weights_from_file_or_dict(
+    weights_source: Union[Path, str, Dict[str, np.ndarray]],
+    allow_mock_fallback: bool = False,
+) -> Tuple[Dict[str, np.ndarray], str, bool]:
+    """
+    Loads adapter weights into numpy arrays from PyTorch/Safetensors file, directory, or dict.
+
+    FAIL-CLOSED GUARANTEE: In production screening (allow_mock_fallback=False), missing,
+    corrupted, empty, or unreadable adapter files raise AdapterSecurityGateError.
+    Synthetic mock weights are NEVER substituted for actual missing/malformed adapters.
+    """
     if isinstance(weights_source, dict):
-        return {k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.array(v, dtype=np.float32)) for k, v in weights_source.items()}
+        if not weights_source:
+            raise SecurityScreeningFailedError("Adapter weights dictionary is empty. Cannot perform security screening.")
+        loaded = {
+            k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.array(v, dtype=np.float32))
+            for k, v in weights_source.items()
+        }
+        return loaded, "in_memory_dict", True
 
     weights_path = Path(weights_source)
+    original_target = weights_path
+
     if weights_path.is_dir():
-        # Check for safetensors or bin
         st_file = weights_path / "adapter_model.safetensors"
         bin_file = weights_path / "adapter_model.bin"
         if st_file.exists():
             weights_path = st_file
         elif bin_file.exists():
             weights_path = bin_file
+        else:
+            if not allow_mock_fallback:
+                raise SecurityScreeningFailedError(
+                    f"Adapter directory '{original_target}' does not contain expected model weight files "
+                    "('adapter_model.safetensors' or 'adapter_model.bin'). Security screening aborted."
+                )
 
-    if not weights_path.exists():
-        logger.warning("Weights file %s not found. Generating synthetic mock weights for structural analysis.", weights_path)
-        return _generate_mock_lora_weights()
+    if not weights_path.exists() or weights_path.is_dir():
+        if allow_mock_fallback:
+            logger.warning("Weights file %s not found. Generating synthetic mock weights for research baseline.", weights_path)
+            return _generate_mock_lora_weights(), "mock_fallback", False
+        raise SecurityScreeningFailedError(
+            f"Adapter weights file '{weights_path}' does not exist or is not a valid file. "
+            "Security screening cannot proceed without actual adapter weights."
+        )
 
     try:
+        weights_dict = {}
+        source_desc = ""
         if weights_path.name.endswith(".safetensors"):
-            from safetensors.numpy import load_file
-            return load_file(str(weights_path))
+            try:
+                from safetensors.numpy import load_file
+                weights_dict = load_file(str(weights_path))
+                source_desc = f"safetensors:{weights_path.name}"
+            except Exception:
+                import torch
+                state_dict = torch.load(str(weights_path), map_location="cpu")
+                if isinstance(state_dict, dict):
+                    weights_dict = {
+                        k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.array(v, dtype=np.float32))
+                        for k, v in state_dict.items()
+                        if hasattr(v, "numpy") or isinstance(v, torch.Tensor)
+                    }
+                    source_desc = f"pytorch_bin:{weights_path.name}"
+                else:
+                    raise
         else:
             import torch
             state_dict = torch.load(str(weights_path), map_location="cpu")
-            return {k: v.detach().cpu().numpy() for k, v in state_dict.items() if hasattr(v, "numpy")}
+            if not isinstance(state_dict, dict):
+                raise ValueError("PyTorch model weight file did not contain a valid state_dict dictionary.")
+            weights_dict = {
+                k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.array(v, dtype=np.float32))
+                for k, v in state_dict.items()
+                if hasattr(v, "numpy") or isinstance(v, torch.Tensor)
+            }
+            source_desc = f"pytorch_bin:{weights_path.name}"
+
+        if not weights_dict:
+            raise ValueError(f"Loaded adapter weights file '{weights_path}' is empty or contains no tensor weights.")
+
+        return weights_dict, source_desc, True
+
     except Exception as e:
-        logger.warning("Failed to load weights via standard loaders (%s). Using fallback parser.", e)
-        return _generate_mock_lora_weights()
+        if isinstance(e, AdapterSecurityGateError):
+            raise
+        if allow_mock_fallback:
+            logger.warning("Failed to load weights via standard loaders (%s). Using fallback mock parser.", e)
+            return _generate_mock_lora_weights(), "mock_fallback", False
+        raise SecurityScreeningFailedError(
+            f"Failed to load actual adapter weights from '{weights_path}': {e}. "
+            "Security screening aborted."
+        ) from e
 
 
 def _generate_mock_lora_weights(num_layers: int = 4, rank: int = 8, hidden_dim: int = 64, seed: int = 42) -> Dict[str, np.ndarray]:
@@ -173,9 +243,10 @@ def _generate_mock_lora_weights(num_layers: int = 4, rank: int = 8, hidden_dim: 
 
 
 def analyze_adapter_structure(
-    weights_source: Union[Path, Dict[str, np.ndarray]],
-    reference_weights_source: Optional[Union[Path, Dict[str, np.ndarray]]] = None,
+    weights_source: Union[Path, str, Dict[str, np.ndarray]],
+    reference_weights_source: Optional[Union[Path, str, Dict[str, np.ndarray]]] = None,
     cfg: Optional[ScreeningConfig] = None,
+    allow_mock_fallback: bool = False,
 ) -> StructuralAnalysisReport:
     """
     Analyzes adapter parameter norms, rank utilization, layer-wise magnitude distribution,
@@ -184,8 +255,14 @@ def analyze_adapter_structure(
     if cfg is None:
         cfg = ScreeningConfig()
 
-    cand_weights = _load_weights_from_file_or_dict(weights_source)
-    ref_weights = _load_weights_from_file_or_dict(reference_weights_source) if reference_weights_source else None
+    cand_weights, cand_desc, cand_actual = _load_weights_from_file_or_dict(
+        weights_source, allow_mock_fallback=allow_mock_fallback
+    )
+    ref_weights = None
+    if reference_weights_source:
+        ref_weights, _, _ = _load_weights_from_file_or_dict(
+            reference_weights_source, allow_mock_fallback=allow_mock_fallback
+        )
 
     total_params = 0
     all_vals = []
@@ -288,6 +365,8 @@ def analyze_adapter_structure(
         cosine_similarity_ref=round(cos_sim, 4) if cos_sim is not None else None,
         parameter_drift_score=round(drift_score, 4),
         structural_risk_score=round(structural_risk, 4),
+        weights_source_desc=cand_desc,
+        actual_adapter_loaded=cand_actual,
         layer_metrics=layer_metrics,
     )
 
@@ -451,15 +530,16 @@ def screen_adapter_behavior(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def evaluate_adapter_security(
-    adapter_source: Union[Path, Dict[str, np.ndarray]],
+    adapter_source: Union[Path, str, Dict[str, np.ndarray]],
     adapter_id: str = "adapter-candidate-v1",
-    reference_source: Optional[Union[Path, Dict[str, np.ndarray]]] = None,
+    reference_source: Optional[Union[Path, str, Dict[str, np.ndarray]]] = None,
     candidate_model_fn: Optional[Any] = None,
     trusted_model_fn: Optional[Any] = None,
     base_model_fn: Optional[Any] = None,
     probe_suite: Optional[List[Dict[str, Any]]] = None,
     cfg: Optional[ScreeningConfig] = None,
     force: bool = False,
+    allow_mock_fallback: bool = False,
 ) -> ScreeningResult:
     """
     Performs full pre-packaging security screening on a candidate LoRA adapter.
@@ -477,6 +557,7 @@ def evaluate_adapter_security(
         weights_source=adapter_source,
         reference_weights_source=reference_source,
         cfg=cfg,
+        allow_mock_fallback=allow_mock_fallback,
     )
 
     # Layer 2
@@ -531,6 +612,7 @@ def evaluate_adapter_security(
         approved=approved or force,
         bypassed_via_force=bypassed,
         screening_latency_ms=latency_ms,
+        actual_adapter_loaded=struct_rep.actual_adapter_loaded,
         structural_report=struct_rep,
         behavioral_report=behav_rep,
         risk_breakdown={
@@ -549,11 +631,12 @@ def evaluate_adapter_security(
 
 
 def screen_adapter_and_enforce_policy(
-    adapter_dir: Union[Path, Dict[str, np.ndarray]],
+    adapter_dir: Union[Path, str, Dict[str, np.ndarray]],
     adapter_id: str = "adapter-v1",
-    reference_dir: Optional[Union[Path, Dict[str, np.ndarray]]] = None,
+    reference_dir: Optional[Union[Path, str, Dict[str, np.ndarray]]] = None,
     cfg: Optional[ScreeningConfig] = None,
     force: bool = False,
+    allow_mock_fallback: bool = False,
 ) -> ScreeningResult:
 
     """
@@ -566,10 +649,11 @@ def screen_adapter_and_enforce_policy(
         reference_source=reference_dir,
         cfg=cfg,
         force=force,
+        allow_mock_fallback=allow_mock_fallback,
     )
 
     if res.risk_level == "HIGH" and not force:
-        raise AdapterSecurityGateError(
+        raise SecurityPolicyRejectedError(
             f"Pre-packaging security screening REJECTED high-risk adapter '{adapter_id}' "
             f"(risk_score={res.adapter_risk_score:.4f} > threshold={cfg.high_risk_threshold if cfg else 0.65}). "
             f"Packaging aborted. Use --force to bypass for research purposes."

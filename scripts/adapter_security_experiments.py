@@ -118,6 +118,7 @@ def run_experiments() -> Dict[str, Any]:
             reference_source=ref_weights,
             candidate_model_fn=cand_fn,
             cfg=cfg,
+            allow_mock_fallback=True,
         )
         lat_ms = (time.perf_counter() - t0) * 1000.0
         latencies.append(lat_ms)

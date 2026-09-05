@@ -90,8 +90,19 @@ class DatasetValidationError(SecureLoraError, ValueError):
 
 
 class AdapterSecurityGateError(SecurityError):
-    """Raised when pre-packaging adapter security screening flags an adapter as high-risk."""
+    """Raised when pre-packaging adapter security screening flags an adapter as high-risk or fails."""
     pass
+
+
+class SecurityPolicyRejectedError(AdapterSecurityGateError):
+    """Raised when adapter screening completes but security policy rejects the adapter due to high risk or policy violation."""
+    pass
+
+
+class SecurityScreeningFailedError(AdapterSecurityGateError):
+    """Raised when adapter security screening fails due to missing/corrupted adapter files or screening execution errors."""
+    pass
+
 
 
 
