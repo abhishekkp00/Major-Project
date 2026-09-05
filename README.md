@@ -96,7 +96,7 @@ The SecureLoRA framework executes across 10 structured pipeline stages:
 | :--- | :--- | :--- |
 | **Parameter-Efficient Tuning** | PEFT / LoRA ($r=8, \alpha=16$) | Restricts trainable parameters to low-rank matrices, enabling modular adapter distribution. |
 | **Privacy Accounting** | Opacus / RDP Accountant | Guarantees formal $(\epsilon, \delta)$-Differential Privacy bound ($\epsilon=2.4430, \delta=10^{-5}$). |
-| **PII Redaction Engine** | SpaCy + Presidio + ISO Regex | Provides high-precision (0.9500) and recall (0.9744) entity masking in volatile RAM. |
+| **PII Redaction Engine** | SpaCy + Presidio + ISO Regex | Provides high-precision (0.9737) and recall (0.9487) entity masking (micro-F1: 0.9610) in volatile RAM. |
 | **Symmetric Encryption** | AES-256-GCM | Ensures payload confidentiality and authenticated integrity for datasets and adapters. |
 | **Key Derivation** | HKDF-SHA256 | Binds encryption keys to software-derived host identifiers and deployment salts. |
 | **Asymmetric Signatures** | RSA-2048-PSS | Provides origin authentication and non-repudiation for deployment package archives. |
@@ -149,9 +149,9 @@ The following table summarizes all verified empirical metrics directly extracted
 
 | Domain | Research Metric | Verified Value | Experiment / Dataset | Sample Count ($N$) | Seeds | Source Artifact Path |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **PII Redaction** | Micro-Average Precision | **0.9500 (95.00%)** | Redaction Engine Benchmark | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
-| **PII Redaction** | Micro-Average Recall | **0.9744 (97.44%)** | Redaction Engine Benchmark | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
-| **PII Redaction** | Micro-Average F1 Score | **0.9620 (96.20%)** | Redaction Engine Benchmark | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
+| **PII Redaction** | Micro-Average Precision | **0.9737 (97.37%)** | Redaction Engine Benchmark | 48 | 123 | `outputs/paper_results/benchmarks/pii_metrics.json` |
+| **PII Redaction** | Micro-Average Recall | **0.9487 (94.87%)** | Redaction Engine Benchmark | 48 | 123 | `outputs/paper_results/benchmarks/pii_metrics.json` |
+| **PII Redaction** | Micro-Average F1 Score | **0.9610 (96.10%)** | Redaction Engine Benchmark | 48 | 123 | `outputs/paper_results/benchmarks/pii_metrics.json` |
 | **Differential Privacy**| Privacy Budget ($\epsilon$) | **2.4430** ($\le 2.50$) | E9 Full SecureLoRA Run | 100 | 42 | `outputs/research/runs/EXP_E9_seed_42.json` |
 | **Differential Privacy**| Privacy Parameter ($\delta$) | **$1.0 \times 10^{-5}$** | E9 Full SecureLoRA Run | 100 | 42 | `outputs/research/runs/EXP_E9_seed_42.json` |
 | **Adaptive Evasion** | Level 0 & 1 Detection | **1.0000 (100.0%)** | Multi-Seed Evasion Suite | 40 | 42, 43, 44 | `outputs/evaluation/adaptive_evasion/comparison.json` |
