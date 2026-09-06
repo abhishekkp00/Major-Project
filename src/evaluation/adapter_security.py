@@ -764,6 +764,7 @@ def screen_adapter_and_enforce_policy(
     cfg: Optional[ScreeningConfig] = None,
     force: bool = False,
     mode: ScreeningMode = ScreeningMode.PRODUCTION,
+    candidate_model_fn: Optional[Callable[[str], str]] = None,
 ) -> ScreeningResult:
     """
     High-level entry point called before Phase 3 packaging.
@@ -784,6 +785,7 @@ def screen_adapter_and_enforce_policy(
         cfg=cfg,
         force=force,
         mode=mode,
+        candidate_model_fn=candidate_model_fn,
     )
 
     if res.risk_level == "HIGH" and not force:

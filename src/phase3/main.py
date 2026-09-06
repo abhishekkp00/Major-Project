@@ -53,10 +53,12 @@ def cmd_protect(args: argparse.Namespace) -> int:
     force_mode = getattr(args, "force", False)
     try:
         from src.evaluation.adapter_security import screen_adapter_and_enforce_policy
+        model_fn = getattr(cfg, "CANDIDATE_MODEL_FN", None)
         screen_res = screen_adapter_and_enforce_policy(
             adapter_dir=cfg.ADAPTER_INPUT_DIR,
             adapter_id=cfg.ADAPTER_ID,
             force=force_mode,
+            candidate_model_fn=model_fn,
         )
         logger.info("Pre-packaging security screening PASSED (risk_score=%.4f, level=%s).",
                     screen_res.adapter_risk_score, screen_res.risk_level)

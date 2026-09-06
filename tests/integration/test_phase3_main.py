@@ -43,6 +43,7 @@ def test_phase3_cli_pipeline(tmp_dir, monkeypatch):
     monkeypatch.setattr(Phase3Config, "RSA_PRIVATE_KEY_PATH", output_dir / "dev_private.pem")
     monkeypatch.setattr(Phase3Config, "RSA_PUBLIC_KEY_PATH", output_dir / "public.pem")
     monkeypatch.setattr(Phase3Config, "DEVICE_SALT", "test-salt-12345")
+    monkeypatch.setattr(Phase3Config, "CANDIDATE_MODEL_FN", lambda prompt: "Clean non-malicious text response", raising=False)
 
     # Set env vars just in case other parts look there
     monkeypatch.setenv("P3_DEVICE_SALT", "test-salt-12345")

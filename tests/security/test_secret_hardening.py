@@ -108,6 +108,9 @@ def test_missing_hkdf_salt_fails_closed_in_verification(tmp_path, monkeypatch):
     }))
     (pkg_dir / "metadata.json").write_text(json.dumps({}))
     (pkg_dir / "adapter.enc").write_bytes(b"dummy")
+    (pkg_dir / "adapter.hash").write_text("dummyhash")
+    (pkg_dir / "adapter.sig").write_bytes(b"dummysig")
+    (pkg_dir / "public.pem").write_text("dummypubkey")
 
     # Mock validate_package_provenance to return manifest
     monkeypatch.setattr(
