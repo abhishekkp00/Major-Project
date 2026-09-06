@@ -48,7 +48,11 @@ def _extract_gen_kwargs(generation_config: Optional[Dict[str, Any]], tokenizer: 
 
 
 def ensure_model_loaded() -> bool:
-    """Auto-loads and verifies the latest deployment package into ModelRegistry if not already loaded."""
+    """
+    Auto-loads and verifies the latest deployment package into ModelRegistry if not already loaded.
+    Enforces the strict Phase 4 verification order (Steps 1-9).
+    Clears ModelRegistry if any step fails.
+    """
     if model_registry.is_verified():
         return True
 
@@ -57,12 +61,14 @@ def ensure_model_loaded() -> bool:
     import json
     from src.phase4.adapter_loader import load_base_model_and_tokenizer, load_peft_adapter
     from src.phase4.package_loader import PackageLoader
+    from src.phase4.package_validator import validate_package_provenance
+    from src.phase4.device_auth import verify_device_binding, get_device_bound_key
     from src.phase4.decryptor import DecryptedAdapterContext
-    from src.phase4.device_auth import get_device_bound_key
+    from src.security import AntiReplayTracker
 
     base_model_name = os.environ.get("P3_MODEL_REFERENCE", "JackFram/llama-68m")
 
-    # Search jobs dir first
+    # Search jobs dir first, then default protected_adapter dir
     jobs_dir = Path("outputs/jobs")
     candidate_archives = []
     if jobs_dir.exists():
@@ -77,26 +83,47 @@ def ensure_model_loaded() -> bool:
         if not pkg_path.exists():
             continue
         try:
+            # Step 1: Package completeness check
             loader = PackageLoader(pkg_path)
             with loader as extracted_dir:
-                manifest_path = extracted_dir / "package_manifest.json"
-                enc_path = extracted_dir / "adapter.enc"
-                if not manifest_path.exists() or not enc_path.exists():
-                    continue
-                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                target_model_name = manifest.get("base_model_name", base_model_name)
+                # Steps 2, 3, 4: Manifest schema, RSA-PSS signature & SHA-256 digest validation
+                manifest, ciphertext_digest = validate_package_provenance(extracted_dir)
 
-                # Read per-package HKDF salt from manifest (non-secret, set during packaging).
-                # Fail closed: if hkdf_salt_hex is absent, do not silently fall back.
+                target_model_name = manifest.get("base_model_name", base_model_name)
+                target_adapter_id = manifest.get("adapter_id", "secure_lora_adapter")
+
+                # Step 5: Anti-replay, version, and model/adapter binding validation
+                tracker = AntiReplayTracker()
+                tracker.check_and_update(
+                    manifest=manifest,
+                    target_base_model_id=target_model_name,
+                    target_adapter_id=target_adapter_id,
+                )
+
+                # Step 6: Device authorization check
+                expected_fp_hash = manifest.get("device_fingerprint_hash_ref", "")
+                expected_features = manifest.get("deployment_policy", {}).get("expected_features")
+                verify_device_binding(
+                    expected_fingerprint_hash=expected_fp_hash,
+                    expected_features=expected_features,
+                )
+
+                # Step 7: HKDF key derivation
+                kdf_ver = manifest.get("kdf_version") or manifest.get("encryption", {}).get("kdf_version")
                 hkdf_salt_hex = manifest.get("hkdf_salt_hex") or manifest.get("encryption", {}).get("hkdf_salt_hex")
                 if not hkdf_salt_hex:
-                    logger.warning("Package at %s has no hkdf_salt_hex in manifest; skipping.", pkg_path)
+                    logger.warning("Package at %s has no hkdf_salt_hex in manifest; Phase 4 verification failed.", pkg_path)
+                    model_registry.clear()
                     continue
                 hkdf_salt_bytes = bytes.fromhex(hkdf_salt_hex)
-                key = get_device_bound_key(hkdf_salt_bytes)
+                key = get_device_bound_key(hkdf_salt_bytes, kdf_version=kdf_ver)
+
+                # Step 8: AES-256-GCM authenticated decryption (only after Steps 1-7 succeed!)
+                enc_path = extracted_dir / "adapter.enc"
                 decryptor = DecryptedAdapterContext(enc_path, key)
 
                 with decryptor as decrypted_adapter_dir:
+                    # Step 9: Load PEFT Adapter & Register in ModelRegistry only after all steps succeed
                     base_model, tokenizer = load_base_model_and_tokenizer(target_model_name)
                     peft_model = load_peft_adapter(base_model, decrypted_adapter_dir)
                     model_registry.register(
@@ -104,16 +131,18 @@ def ensure_model_loaded() -> bool:
                         peft_model=peft_model,
                         tokenizer=tokenizer,
                         base_model_name=target_model_name,
-                        adapter_id=manifest.get("adapter_id", "secure_lora_adapter"),
+                        adapter_id=target_adapter_id,
                         deployment_id=manifest.get("package_id", "verified_deployment"),
                         deployment_status="VERIFIED"
                     )
-                    logger.info("Auto-loaded verified model package into ModelRegistry from %s", pkg_path)
+                    logger.info("Successfully verified and loaded model package into ModelRegistry from %s", pkg_path)
                     return True
         except Exception as e:
-            logger.warning("Failed loading package from %s: %s", pkg_path, e)
+            logger.warning("Package at %s failed Phase 4 verification: %s. Clearing registry.", pkg_path, e)
+            model_registry.clear()
 
-    logger.warning("No verified SecureLoRA package archive found to load into ModelRegistry.")
+    logger.warning("No valid, verified SecureLoRA package archive found to load into ModelRegistry.")
+    model_registry.clear()
     return False
 
 

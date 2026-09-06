@@ -241,6 +241,11 @@ def run_deployment_pipeline(
             if steps_status[step] == "PENDING":
                 steps_status[step] = "SKIPPED"
         verification_success = False
+        try:
+            from src.orchestrator.model_registry import model_registry
+            model_registry.clear()
+        except Exception:
+            pass
 
     try:
         json_report, md_report = generate_validation_reports(
