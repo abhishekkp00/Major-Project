@@ -3,18 +3,22 @@ seed_evaluator.py
 =================
 Multi-Seed Statistical Replication Pipeline for SecureLoRA Experiments (STEP 6).
 
-Executes key experiments across 5 random seeds (42, 123, 456, 789, 1001):
+Executes key experiments across random seeds (e.g. 42, 123, 456, 789, 1001):
   1. PII Evaluation (privacy_evaluator.py)
   2. Adapter Screening (screening_evaluator.py)
   3. Adaptive Evasion (adaptive_evasion_evaluator.py)
   4. Utility Evaluation (benchmark_evaluator.py)
 
-Calculates across seeds:
-  - mean
-  - standard deviation (std)
-  - minimum (min)
-  - maximum (max)
-  - formatted 'mean ± std' strings
+STRICT RESULT VALIDITY & AGGREGATION RULES:
+------------------------------------------
+1. A seed counts as VALID (executed) only when the underlying experiment actually
+   executed successfully.
+2. NOT_EXECUTED, FAILED, or SKIPPED runs are NEVER included in mean, standard
+   deviation, 95% confidence intervals, detection rates, or utility averages.
+3. PARTIAL runs do not silently count as complete runs.
+4. Detailed seed tracking records requested_seeds, executed_seeds, failed_seeds,
+   and skipped_seeds.
+5. Never reports "N-seed evaluation" unless N independent valid executions exist.
 
 Output Directory:
   outputs/evaluation/statistics/
@@ -27,12 +31,13 @@ import os
 import sys
 import csv
 import json
+import math
 import logging
 import statistics
 import argparse
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
@@ -48,29 +53,60 @@ STATISTICS_OUT_DIR = _PROJECT_ROOT / "outputs" / "evaluation" / "statistics"
 DEFAULT_SEEDS = [42, 123, 456, 789, 1001]
 
 
-def calc_stats(values: List[float]) -> Dict[str, Any]:
-    """Computes mean, std, min, max, and formatted 'mean ± std' for a numeric series."""
-    if not values:
+def calc_stats(values: List[float], total_requested: int = 5) -> Dict[str, Any]:
+    """
+    Computes mean, std, min, max, 95% confidence interval, count, and status
+    strictly for valid observed numeric series.
+    """
+    n = len(values)
+    if n == 0:
         return {
             "mean": 0.0,
             "std": 0.0,
             "min": 0.0,
             "max": 0.0,
-            "formatted": "0.0000 ± 0.0000",
-            "count": 0
+            "confidence_interval_95": [0.0, 0.0],
+            "formatted": "N/A (0 valid runs)",
+            "count": 0,
+            "status": "NOT_EXECUTED"
         }
     m = float(statistics.mean(values))
-    s = float(statistics.stdev(values)) if len(values) > 1 else 0.0
+    s = float(statistics.stdev(values)) if n > 1 else 0.0
     mn = float(min(values))
     mx = float(max(values))
+
+    if n > 1:
+        margin = 1.96 * (s / math.sqrt(n))
+        ci_95 = [round(m - margin, 4), round(m + margin, 4)]
+    else:
+        ci_95 = [round(m, 4), round(m, 4)]
+
+    status = "COMPLETE" if n == total_requested else "PARTIAL"
+
     return {
         "mean": round(m, 4),
         "std": round(s, 4),
         "min": round(mn, 4),
         "max": round(mx, 4),
+        "confidence_interval_95": ci_95,
         "formatted": f"{m:.4f} ± {s:.4f}",
-        "count": len(values)
+        "count": n,
+        "status": status
     }
+
+
+def _extract_exp_status(res: Any) -> str:
+    """Helper to categorize experiment output dictionary status."""
+    if not isinstance(res, dict):
+        return "FAILED"
+    st = res.get("status") or res.get("execution_status")
+    if st == "NOT_EXECUTED":
+        return "NOT_EXECUTED"
+    if st in ("SUCCESS", "EXECUTED"):
+        return "SUCCESS"
+    if st == "FAILED":
+        return "FAILED"
+    return "SUCCESS"
 
 
 def run_multi_seed_evaluations(
@@ -78,7 +114,8 @@ def run_multi_seed_evaluations(
     output_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
     """
-    Runs PII evaluation, adapter screening, adaptive evasion, and utility evaluation across all seeds.
+    Runs PII evaluation, adapter screening, adaptive evasion, and utility evaluation
+    across requested seeds, filtering out unexecuted or failed runs during statistical aggregation.
     """
     eval_seeds = seeds or DEFAULT_SEEDS
     out_dir = Path(output_dir) if output_dir else STATISTICS_OUT_DIR
@@ -93,8 +130,9 @@ def run_multi_seed_evaluations(
         # 1. PII Evaluation
         try:
             p_res = evaluate_privacy_pipeline(dataset_id="synthetic", samples=30, seed=seed)
+            st = _extract_exp_status(p_res)
             seed_data["experiments"]["pii_evaluation"] = {
-                "status": "SUCCESS",
+                "status": st,
                 "data": p_res
             }
         except Exception as exc:
@@ -107,8 +145,9 @@ def run_multi_seed_evaluations(
         # 2. Adapter Screening Evaluation
         try:
             s_res = run_screening_evaluation(num_samples_per_cat=10, seed=seed)
+            st = _extract_exp_status(s_res)
             seed_data["experiments"]["adapter_screening"] = {
-                "status": "SUCCESS",
+                "status": st,
                 "data": s_res
             }
         except Exception as exc:
@@ -121,8 +160,9 @@ def run_multi_seed_evaluations(
         # 3. Adaptive Evasion Evaluation
         try:
             e_res = run_adaptive_evasion_evaluation(num_malicious_samples=10, max_iterations=5, seed=seed)
+            st = _extract_exp_status(e_res)
             seed_data["experiments"]["adaptive_evasion"] = {
-                "status": "SUCCESS",
+                "status": st,
                 "data": e_res
             }
         except Exception as exc:
@@ -135,8 +175,9 @@ def run_multi_seed_evaluations(
         # 4. Utility Evaluation
         try:
             u_res = evaluate_dataset_adapter(dataset_id="synthetic", subset_size=30, seed=seed)
+            st = _extract_exp_status(u_res)
             seed_data["experiments"]["utility_evaluation"] = {
-                "status": "SUCCESS",
+                "status": st,
                 "data": u_res
             }
         except Exception as exc:
@@ -148,24 +189,77 @@ def run_multi_seed_evaluations(
 
         seed_results[seed_key] = seed_data
 
+    # --- Categorize Seeds per Experiment Type ---
+    exp_names = ["adapter_screening", "adaptive_evasion", "pii_evaluation", "utility_evaluation"]
+    exp_seed_provenance: Dict[str, Dict[str, Any]] = {}
+
+    for exp_name in exp_names:
+        requested = list(eval_seeds)
+        executed = []
+        failed = []
+        skipped = []
+
+        for seed in eval_seeds:
+            s_exp = seed_results[f"seed_{seed}"]["experiments"].get(exp_name, {})
+            st = s_exp.get("status")
+            if st == "SUCCESS":
+                executed.append(seed)
+            elif st == "FAILED":
+                failed.append(seed)
+            else:
+                skipped.append(seed)
+
+        exp_status = "COMPLETE" if len(executed) == len(requested) and len(requested) > 0 else ("NOT_EXECUTED" if len(executed) == 0 else "PARTIAL")
+        exp_seed_provenance[exp_name] = {
+            "requested_seeds": requested,
+            "executed_seeds": executed,
+            "failed_seeds": failed,
+            "skipped_seeds": skipped,
+            "valid_seed_count": len(executed),
+            "execution_status": exp_status,
+            "evaluation_title": f"{len(executed)}-seed {'COMPLETE' if exp_status == 'COMPLETE' else 'PARTIAL' if exp_status == 'PARTIAL' else 'NOT_EXECUTED'} evaluation"
+        }
+
+    # Overall pipeline seed provenance
+    overall_executed = [s for s in eval_seeds if all(seed_results[f"seed_{s}"]["experiments"].get(e, {}).get("status") == "SUCCESS" for e in exp_names)]
+    overall_failed = [s for s in eval_seeds if any(seed_results[f"seed_{s}"]["experiments"].get(e, {}).get("status") == "FAILED" for e in exp_names)]
+    overall_skipped = [s for s in eval_seeds if s not in overall_executed and s not in overall_failed]
+    overall_status = "COMPLETE" if len(overall_executed) == len(eval_seeds) and len(eval_seeds) > 0 else ("NOT_EXECUTED" if len(overall_executed) == 0 else "PARTIAL")
+    overall_title = f"{len(overall_executed)}-seed {'COMPLETE' if overall_status == 'COMPLETE' else 'PARTIAL' if overall_status == 'PARTIAL' else 'NOT_EXECUTED'} evaluation"
+
     # --- Write seed_results.json ---
     seed_results_file = out_dir / "seed_results.json"
     with open(seed_results_file, "w", encoding="utf-8") as f:
         json.dump({
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "seeds_evaluated": eval_seeds,
+            "requested_seeds": eval_seeds,
+            "executed_seeds": overall_executed,
+            "failed_seeds": overall_failed,
+            "skipped_seeds": overall_skipped,
+            "valid_seed_count": len(overall_executed),
+            "execution_status": overall_status,
+            "evaluation_title": overall_title,
             "results": seed_results
         }, f, indent=2)
 
-    # --- Aggregation across successful runs ---
+    # --- Aggregation across ONLY valid executed runs ---
     aggregated: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "seeds": eval_seeds,
+        "requested_seeds": eval_seeds,
+        "executed_seeds": overall_executed,
+        "failed_seeds": overall_failed,
+        "skipped_seeds": overall_skipped,
+        "valid_seed_count": len(overall_executed),
+        "execution_status": overall_status,
+        "evaluation_title": overall_title,
+        "experiment_provenance": exp_seed_provenance,
         "adapter_screening": {},
         "adaptive_evasion": {},
         "pii_evaluation": {},
         "utility_evaluation": {}
     }
+
+    total_req = len(eval_seeds)
 
     # 1. Aggregate Adapter Screening Metrics (structural_only, behavioral_only, combined)
     screening_detectors = ["structural_only", "behavioral_only", "combined"]
@@ -178,17 +272,16 @@ def run_multi_seed_evaluations(
         det_stats: Dict[str, Any] = {}
         for m_key in screening_metric_keys:
             vals = []
-            for seed in eval_seeds:
+            for seed in exp_seed_provenance["adapter_screening"]["executed_seeds"]:
                 s_exp = seed_results[f"seed_{seed}"]["experiments"].get("adapter_screening", {})
-                if s_exp.get("status") == "SUCCESS":
-                    sys_data = s_exp["data"].get("systems", {}).get(det, {})
-                    tm = sys_data.get("test_metrics", {})
-                    if m_key in tm and tm[m_key] is not None:
-                        vals.append(float(tm[m_key]))
-            det_stats[m_key] = calc_stats(vals)
+                sys_data = s_exp.get("data", {}).get("systems", {}).get(det, {})
+                tm = sys_data.get("test_metrics", {})
+                if m_key in tm and tm[m_key] is not None:
+                    vals.append(float(tm[m_key]))
+            det_stats[m_key] = calc_stats(vals, total_requested=total_req)
         aggregated["adapter_screening"][det] = det_stats
 
-    # 2. Aggregate Adaptive Evasion Metrics (random_perturbation/baseline, nonadaptive, adaptive)
+    # 2. Aggregate Adaptive Evasion Metrics (baseline, nonadaptive, adaptive)
     evasion_attacks = ["baseline", "nonadaptive", "adaptive"]
     evasion_metric_keys = [
         "attack_success_rate", "detection_rate", "false_negative_rate",
@@ -201,29 +294,40 @@ def run_multi_seed_evaluations(
             det_sub_stats: Dict[str, Any] = {}
             for m_key in evasion_metric_keys:
                 vals = []
-                for seed in eval_seeds:
+                for seed in exp_seed_provenance["adaptive_evasion"]["executed_seeds"]:
                     e_exp = seed_results[f"seed_{seed}"]["experiments"].get("adaptive_evasion", {})
-                    if e_exp.get("status") == "SUCCESS":
-                        att_data = e_exp["data"].get("attack_strategies", {}).get(att, {})
-                        det_data = att_data.get("detectors", {}).get(det, {})
-                        if m_key in det_data and det_data[m_key] is not None:
-                            vals.append(float(det_data[m_key]))
-                det_sub_stats[m_key] = calc_stats(vals)
-            det_stats[det] = det_sub_stats
-        aggregated["adaptive_evasion"][att] = det_stats
+                    att_data = e_exp.get("data", {}).get("attack_strategies", {}).get(att, {})
+                    det_data = att_data.get("detectors", {}).get(det, {})
+                    if m_key in det_data and det_data[m_key] is not None:
+                        vals.append(float(det_data[m_key]))
+                det_sub_stats[m_key] = calc_stats(vals, total_requested=total_req)
+            att_stats[det] = det_sub_stats
+        aggregated["adaptive_evasion"][att] = att_stats
 
-    # 3. Aggregate Utility Evaluation Metrics
+    # 3. Aggregate PII Evaluation Metrics
+    pii_metric_keys = ["pii_leakage_rate", "pii_free_response_rate"]
+    pii_stats: Dict[str, Any] = {}
+    for m_key in pii_metric_keys:
+        vals = []
+        for seed in exp_seed_provenance["pii_evaluation"]["executed_seeds"]:
+            p_exp = seed_results[f"seed_{seed}"]["experiments"].get("pii_evaluation", {})
+            m_data = p_exp.get("data", {}).get("variants", {}).get("securelora", {}).get("metrics", {}) or {}
+            if m_key in m_data and m_data[m_key] is not None:
+                vals.append(float(m_data[m_key]))
+        pii_stats[m_key] = calc_stats(vals, total_requested=total_req)
+    aggregated["pii_evaluation"] = pii_stats
+
+    # 4. Aggregate Utility Evaluation Metrics
     utility_metric_keys = ["precision", "recall", "f1", "record_count"]
     util_stats: Dict[str, Any] = {}
     for m_key in utility_metric_keys:
         vals = []
-        for seed in eval_seeds:
+        for seed in exp_seed_provenance["utility_evaluation"]["executed_seeds"]:
             u_exp = seed_results[f"seed_{seed}"]["experiments"].get("utility_evaluation", {})
-            if u_exp.get("status") == "SUCCESS":
-                m_data = u_exp["data"].get("metrics", {})
-                if m_key in m_data and m_data[m_key] is not None:
-                    vals.append(float(m_data[m_key]))
-        util_stats[m_key] = calc_stats(vals)
+            m_data = u_exp.get("data", {}).get("metrics", {})
+            if m_key in m_data and m_data[m_key] is not None:
+                vals.append(float(m_data[m_key]))
+        util_stats[m_key] = calc_stats(vals, total_requested=total_req)
     aggregated["utility_evaluation"] = util_stats
 
     # --- Write aggregated_results.json ---
@@ -279,7 +383,7 @@ def run_multi_seed_evaluations(
                 "N/A"
             ])
 
-    logger.info("Saved multi-seed statistical evaluation artifacts to %s", out_dir)
+    logger.info("Saved multi-seed statistical evaluation artifacts (%s) to %s", overall_title, out_dir)
     return aggregated
 
 
@@ -294,7 +398,7 @@ def main():
         seeds=args.seeds,
         output_dir=Path(args.output_dir)
     )
-    print(f"\n Multi-seed statistical evaluations completed. Output generated at -> {args.output_dir}")
+    print(f"\n Multi-seed statistical evaluations completed ({res.get('evaluation_title')}). Output generated at -> {args.output_dir}")
     return res
 
 
