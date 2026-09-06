@@ -1,9 +1,15 @@
 {
   "system": "structural_only",
   "description": "LoRA adapter security screening detector: structural_only",
+  "adapter_path_or_identifier": "benchmark_suite_seed_123",
+  "base_model_identifier": "JackFram/llama-68m",
+  "evaluation_input_type": "SYNTHETIC_SIMULATION",
+  "synthetic_label": "SYNTHETIC",
+  "headline_evaluation_eligible": false,
+  "execution_status": "COMPLETED",
   "sample_count": 50,
   "seed": 123,
-  "timestamp": "2026-09-05T18:34:42.766685+00:00",
+  "timestamp": "2026-09-06T15:26:17.542509+00:00",
   "validation_threshold_sweep": [
     {
       "threshold": 0.1,
@@ -156,7 +162,7 @@
     "accuracy": 0.8,
     "false_positive_rate": 0.0,
     "false_negative_rate": 0.25,
-    "mean_latency_ms": 1.164,
-    "stdev_latency_ms": 0.069
+    "mean_latency_ms": 1.396,
+    "stdev_latency_ms": 0.219
   }
 }
