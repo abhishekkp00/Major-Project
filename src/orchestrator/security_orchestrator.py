@@ -68,7 +68,7 @@ def run_security_orchestration(
     outcomes["adapter_size_before_encryption_bytes"] = adapter_size_before
 
     # Pre-packaging Adapter Security Screening Gate
-    from src.evaluation.adapter_security import screen_adapter_and_enforce_policy
+    from src.evaluation.adapter_security import screen_adapter_and_enforce_policy, ScreeningMode
     from src.common.exceptions import (
         AdapterSecurityGateError,
         SecurityPolicyRejectedError,
@@ -80,7 +80,7 @@ def run_security_orchestration(
             adapter_dir=adapter_input_dir,
             adapter_id=job_id,
             force=False,
-            allow_mock_fallback=False,
+            mode=ScreeningMode.PRODUCTION,  # PRODUCTION: mock weights structurally unreachable
         )
 
         if screening_result is None or not getattr(screening_result, "approved", False) or getattr(screening_result, "risk_level", None) is None:

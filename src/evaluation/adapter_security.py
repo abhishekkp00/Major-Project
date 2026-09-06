@@ -31,6 +31,7 @@ It does NOT claim to prove an adapter is 100% malware-free or detect arbitrary z
 
 from __future__ import annotations
 
+import enum
 import json
 import logging
 import math
@@ -49,6 +50,25 @@ from src.common.exceptions import (
 )
 
 logger = logging.getLogger("secure_lora.evaluation.adapter_security")
+
+
+class ScreeningMode(enum.Enum):
+    """
+    Explicit operational mode for adapter security screening.
+
+    PRODUCTION:
+        The real SecureLoRA packaging/security gate. Mock weight generation is
+        structurally unreachable — the code paths that call _generate_mock_lora_weights()
+        simply do not exist in this mode. A missing, corrupt, or unreadable adapter
+        file always raises SecurityScreeningFailedError immediately.
+
+    RESEARCH:
+        Isolated research, benchmark, or unit-test evaluation. Mock weights may be
+        generated as a controlled research baseline when a physical adapter file is
+        absent. This mode MUST NEVER be used by the production packaging pipeline.
+    """
+    PRODUCTION = "production"
+    RESEARCH = "research"
 
 
 @dataclass
@@ -136,14 +156,21 @@ class ScreeningResult:
 
 def _load_weights_from_file_or_dict(
     weights_source: Union[Path, str, Dict[str, np.ndarray]],
-    allow_mock_fallback: bool = False,
+    mode: ScreeningMode = ScreeningMode.PRODUCTION,
 ) -> Tuple[Dict[str, np.ndarray], str, bool]:
     """
     Loads adapter weights into numpy arrays from PyTorch/Safetensors file, directory, or dict.
 
-    FAIL-CLOSED GUARANTEE: In production screening (allow_mock_fallback=False), missing,
-    corrupted, empty, or unreadable adapter files raise AdapterSecurityGateError.
-    Synthetic mock weights are NEVER substituted for actual missing/malformed adapters.
+    FAIL-CLOSED GUARANTEE (PRODUCTION mode):
+        Missing, corrupted, empty, or unreadable adapter files always raise
+        SecurityScreeningFailedError immediately. Synthetic mock weights are never
+        generated or substituted. There is no code path in PRODUCTION mode that
+        reaches _generate_mock_lora_weights().
+
+    RESEARCH mode:
+        If the adapter file is absent or unloadable, synthetic mock weights are
+        generated as a controlled research baseline. This path MUST only be used
+        by explicitly designated research/benchmark/unit-test code.
     """
     if isinstance(weights_source, dict):
         if not weights_source:
@@ -165,20 +192,30 @@ def _load_weights_from_file_or_dict(
         elif bin_file.exists():
             weights_path = bin_file
         else:
-            if not allow_mock_fallback:
+            if mode is ScreeningMode.PRODUCTION:
                 raise SecurityScreeningFailedError(
                     f"Adapter directory '{original_target}' does not contain expected model weight files "
                     "('adapter_model.safetensors' or 'adapter_model.bin'). Security screening aborted."
                 )
+            # RESEARCH mode only: generate synthetic baseline
+            logger.warning(
+                "[RESEARCH MODE] Adapter directory '%s' has no weight files. "
+                "Generating synthetic mock weights for research baseline.", original_target
+            )
+            return _generate_mock_lora_weights(), "mock_fallback", False
 
     if not weights_path.exists() or weights_path.is_dir():
-        if allow_mock_fallback:
-            logger.warning("Weights file %s not found. Generating synthetic mock weights for research baseline.", weights_path)
-            return _generate_mock_lora_weights(), "mock_fallback", False
-        raise SecurityScreeningFailedError(
-            f"Adapter weights file '{weights_path}' does not exist or is not a valid file. "
-            "Security screening cannot proceed without actual adapter weights."
+        if mode is ScreeningMode.PRODUCTION:
+            raise SecurityScreeningFailedError(
+                f"Adapter weights file '{weights_path}' does not exist or is not a valid file. "
+                "Security screening cannot proceed without actual adapter weights."
+            )
+        # RESEARCH mode only
+        logger.warning(
+            "[RESEARCH MODE] Weights file '%s' not found. "
+            "Generating synthetic mock weights for research baseline.", weights_path
         )
+        return _generate_mock_lora_weights(), "mock_fallback", False
 
     try:
         weights_dict = {}
@@ -220,13 +257,14 @@ def _load_weights_from_file_or_dict(
     except Exception as e:
         if isinstance(e, AdapterSecurityGateError):
             raise
-        if allow_mock_fallback:
-            logger.warning("Failed to load weights via standard loaders (%s). Using fallback mock parser.", e)
-            return _generate_mock_lora_weights(), "mock_fallback", False
-        raise SecurityScreeningFailedError(
-            f"Failed to load actual adapter weights from '{weights_path}': {e}. "
-            "Security screening aborted."
-        ) from e
+        if mode is ScreeningMode.PRODUCTION:
+            raise SecurityScreeningFailedError(
+                f"Failed to load actual adapter weights from '{weights_path}': {e}. "
+                "Security screening aborted."
+            ) from e
+        # RESEARCH mode only
+        logger.warning("[RESEARCH MODE] Failed to load weights (%s). Using synthetic mock weights.", e)
+        return _generate_mock_lora_weights(), "mock_fallback", False
 
 
 def _generate_mock_lora_weights(num_layers: int = 4, rank: int = 8, hidden_dim: int = 64, seed: int = 42) -> Dict[str, np.ndarray]:
@@ -246,22 +284,26 @@ def analyze_adapter_structure(
     weights_source: Union[Path, str, Dict[str, np.ndarray]],
     reference_weights_source: Optional[Union[Path, str, Dict[str, np.ndarray]]] = None,
     cfg: Optional[ScreeningConfig] = None,
-    allow_mock_fallback: bool = False,
+    mode: ScreeningMode = ScreeningMode.PRODUCTION,
 ) -> StructuralAnalysisReport:
     """
     Analyzes adapter parameter norms, rank utilization, layer-wise magnitude distribution,
     outlier layers, and parameter drift against reference weights.
+
+    In PRODUCTION mode (default) the actual adapter artifact must be loadable; any failure
+    raises SecurityScreeningFailedError immediately.
+    In RESEARCH mode a synthetic baseline may be used when no file is present.
     """
     if cfg is None:
         cfg = ScreeningConfig()
 
     cand_weights, cand_desc, cand_actual = _load_weights_from_file_or_dict(
-        weights_source, allow_mock_fallback=allow_mock_fallback
+        weights_source, mode=mode
     )
     ref_weights = None
     if reference_weights_source:
         ref_weights, _, _ = _load_weights_from_file_or_dict(
-            reference_weights_source, allow_mock_fallback=allow_mock_fallback
+            reference_weights_source, mode=mode
         )
 
     total_params = 0
@@ -539,13 +581,17 @@ def evaluate_adapter_security(
     probe_suite: Optional[List[Dict[str, Any]]] = None,
     cfg: Optional[ScreeningConfig] = None,
     force: bool = False,
-    allow_mock_fallback: bool = False,
+    mode: ScreeningMode = ScreeningMode.PRODUCTION,
 ) -> ScreeningResult:
     """
     Performs full pre-packaging security screening on a candidate LoRA adapter.
 
     Executes Layer 1 (Structural Analysis) and Layer 2 (Behavioral Probing),
     combines scores into an interpretable risk score, and determines policy approval.
+
+    mode:
+        ScreeningMode.PRODUCTION (default) — real adapter artifact required; fail-closed.
+        ScreeningMode.RESEARCH — mock/synthetic weights may be used for research baselines.
     """
     if cfg is None:
         cfg = ScreeningConfig()
@@ -557,7 +603,7 @@ def evaluate_adapter_security(
         weights_source=adapter_source,
         reference_weights_source=reference_source,
         cfg=cfg,
-        allow_mock_fallback=allow_mock_fallback,
+        mode=mode,
     )
 
     # Layer 2
@@ -636,12 +682,19 @@ def screen_adapter_and_enforce_policy(
     reference_dir: Optional[Union[Path, str, Dict[str, np.ndarray]]] = None,
     cfg: Optional[ScreeningConfig] = None,
     force: bool = False,
-    allow_mock_fallback: bool = False,
+    mode: ScreeningMode = ScreeningMode.PRODUCTION,
 ) -> ScreeningResult:
-
     """
     High-level entry point called before Phase 3 packaging.
-    If the adapter is flagged HIGH risk and force is False, raises AdapterSecurityGateError.
+
+    In PRODUCTION mode (default): the actual trained adapter artifact must be present
+    and loadable. Any missing/corrupt/unreadable file raises SecurityScreeningFailedError.
+    Mock weight generation is structurally unreachable in this mode.
+
+    In RESEARCH mode: allowed only for isolated research or unit-test fixtures.
+    MUST NOT be passed from the production packaging/deployment pipeline.
+
+    If the adapter is flagged HIGH risk and force is False, raises SecurityPolicyRejectedError.
     """
     res = evaluate_adapter_security(
         adapter_source=adapter_dir,
@@ -649,7 +702,7 @@ def screen_adapter_and_enforce_policy(
         reference_source=reference_dir,
         cfg=cfg,
         force=force,
-        allow_mock_fallback=allow_mock_fallback,
+        mode=mode,
     )
 
     if res.risk_level == "HIGH" and not force:

@@ -35,7 +35,7 @@ from src.security.crypto import encrypt_stream, decrypt_stream
 from src.security.key_derivation import derive_key
 from src.security.fingerprint import get_fingerprint_hash
 from src.security.provenance import validate_manifest_schema, AntiReplayTracker
-from src.evaluation.adapter_security import evaluate_adapter_security, _generate_mock_lora_weights
+from src.evaluation.adapter_security import evaluate_adapter_security, _generate_mock_lora_weights, ScreeningMode
 from src.evaluation.pii_metrics import evaluate_pii_detection
 
 logger = logging.getLogger("secure_lora.evaluation.experiment_runner")
@@ -207,13 +207,20 @@ def run_single_baseline(
             dp_clip = 1.0
             dp_noise = 1.2
 
-        # 3. Pre-packaging Security Screening
+        # 3. Pre-packaging Security Screening (RESEARCH MODE benchmark — uses synthetic adapter)
+        # This is a research experiment measuring screening detection/latency on controlled
+        # synthetic adapters. It explicitly uses ScreeningMode.RESEARCH; this code is
+        # NOT part of the production packaging pipeline.
         screen_time_ms = 0.0
         malicious_detection_rate = 1.0 if defn["screen"] else 0.0
         if defn["screen"]:
             t0_scr = time.perf_counter()
             mock_w = _generate_mock_lora_weights(seed=seed)
-            scr_res = evaluate_adapter_security(adapter_source=mock_w, adapter_id=f"run-{normalized_id}-{seed}")
+            scr_res = evaluate_adapter_security(
+                adapter_source=mock_w,
+                adapter_id=f"run-{normalized_id}-{seed}",
+                mode=ScreeningMode.RESEARCH,  # RESEARCH: synthetic weights are expected here
+            )
             screen_time_ms = (time.perf_counter() - t0_scr) * 1000.0
             malicious_detection_rate = 1.0 if scr_res.approved else 0.0
 
