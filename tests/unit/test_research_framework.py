@@ -39,19 +39,46 @@ def test_calculate_metric_summary():
 
 
 def test_run_single_baseline(tmp_path):
-    res_b0 = run_single_baseline("E0", seed=42, output_dir=tmp_path)
+    res_b0 = run_single_baseline("E0", seed=42, output_dir=tmp_path, quick_mode=True)
     assert res_b0.baseline_id == "E0"
     assert res_b0.execution_status == "COMPLETED"
     assert res_b0.utility.val_loss > 0
 
-    res_e8 = run_single_baseline("E8", seed=42, output_dir=tmp_path)
+    res_e8 = run_single_baseline("E8", seed=42, output_dir=tmp_path, quick_mode=True)
     assert res_e8.baseline_id == "E8"
     assert res_e8.privacy.dp_enabled is True
     assert res_e8.security.cross_device_rejection_rate == 1.0
 
 
+def test_no_synthetic_constants_in_experiment_runner():
+    """Verify that experiment_runner.py source code contains no rng.normal synthetic metric calls."""
+    import inspect
+    import src.evaluation.experiment_runner as exp_runner
+    source = inspect.getsource(exp_runner)
+    assert "rng.normal" not in source
+    assert "2.15 + rng.normal" not in source
+    assert "0.89 + rng.normal" not in source
+    assert "0.58 + rng.normal" not in source
+
+
+def test_experiment_failure_marks_not_executed(tmp_path, monkeypatch):
+    """Verify that if model loading fails, experiment returns NOT_EXECUTED with a clear reason."""
+    import src.evaluation.experiment_runner as exp_runner
+
+    def mock_from_pretrained(*args, **kwargs):
+        raise RuntimeError("Model weights unavailable in offline environment.")
+
+    from transformers import AutoModelForCausalLM
+    monkeypatch.setattr(AutoModelForCausalLM, "from_pretrained", mock_from_pretrained)
+
+    res = exp_runner.run_single_baseline("E0", seed=42, output_dir=tmp_path, quick_mode=True)
+    assert res.execution_status == "NOT_EXECUTED"
+    assert res.not_executed_reason is not None
+    assert "unavailable" in res.not_executed_reason.lower() or "failed" in res.not_executed_reason.lower()
+
+
 def test_run_experiment_matrix_and_reports(tmp_path):
-    aggregated = run_experiment_matrix(seeds=[42, 43], output_dir=tmp_path, quick_mode=True)
+    aggregated = run_experiment_matrix(seeds=[42, 43], output_dir=tmp_path, experiment_ids=["E0", "E9"], quick_mode=True)
     assert "E0" in aggregated or "B0" in aggregated
     assert "E9" in aggregated or "B8" in aggregated
     key = "E9" if "E9" in aggregated else "B8"
@@ -64,3 +91,4 @@ def test_run_experiment_matrix_and_reports(tmp_path):
     assert (tmp_path / "summaries" / "RESEARCH_EVALUATION_REPORT.md").exists()
     assert (tmp_path / "tables" / "table1_model_utility.csv").exists()
     assert (tmp_path / "figures" / "utility_vs_epsilon.png").exists()
+

@@ -39,14 +39,15 @@ class PrivacyMetrics:
 
 @dataclass
 class SecurityMetrics:
-    unauthorized_device_rejection_rate: float = 1.0
-    cross_device_rejection_rate: float = 1.0
-    tamper_rejection_rate: float = 1.0
-    signature_rejection_rate: float = 1.0
-    wrong_key_rejection_rate: float = 1.0
-    replay_rejection_rate: float = 1.0
-    malicious_adapter_detection_rate: float = 1.0
-    unauthorized_deployment_rejection_rate: float = 1.0
+    unauthorized_device_rejection_rate: Optional[float] = None
+    cross_device_rejection_rate: Optional[float] = None
+    tamper_rejection_rate: Optional[float] = None
+    signature_rejection_rate: Optional[float] = None
+    wrong_key_rejection_rate: Optional[float] = None
+    replay_rejection_rate: Optional[float] = None
+    malicious_adapter_detection_rate: Optional[float] = None
+    unauthorized_deployment_rejection_rate: Optional[float] = None
+    details: Optional[Dict[str, Any]] = None
 
 
 @dataclass

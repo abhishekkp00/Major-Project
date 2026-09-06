@@ -35,7 +35,8 @@ from src.security.crypto import encrypt_stream, decrypt_stream
 from src.security.key_derivation import derive_key
 from src.security.fingerprint import get_fingerprint_hash
 from src.security.provenance import validate_manifest_schema, AntiReplayTracker
-from src.evaluation.adapter_security import evaluate_adapter_security, _generate_mock_lora_weights, ScreeningMode
+from src.common.exceptions import ReplayAttackError
+from src.evaluation.adapter_security import evaluate_adapter_security, ScreeningMode, EvaluationInputType
 from src.evaluation.pii_metrics import evaluate_pii_detection
 
 logger = logging.getLogger("secure_lora.evaluation.experiment_runner")
@@ -146,7 +147,17 @@ def run_single_baseline(
         configuration_snapshot=defn,
     )
 
-    rng = np.random.RandomState(seed)
+    # 0. Seed random generators reproducibly
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    try:
+        import torch
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+    except ImportError:
+        pass
 
     try:
         # 1. PII Ingestion / Sanitization phase
@@ -157,80 +168,252 @@ def run_single_baseline(
             try:
                 pii_res = evaluate_pii_detection(verbose=False)
                 micro = pii_res.get("micro_average", {})
-                pii_prec = float(micro.get("precision", 0.98))
-                pii_rec = float(micro.get("recall", 0.96))
-                pii_f1 = float(micro.get("f1", 0.97))
-            except Exception:
-                pii_prec, pii_rec, pii_f1 = 0.9812, 0.9654, 0.9732
+                pii_prec = float(micro.get("precision", 0.0))
+                pii_rec = float(micro.get("recall", 0.0))
+                pii_f1 = float(micro.get("f1", 0.0))
+            except Exception as pii_err:
+                return SingleRunResult(
+                    baseline_id=normalized_id,
+                    baseline_name=b_name,
+                    seed=seed,
+                    execution_status="NOT_EXECUTED",
+                    not_executed_reason=f"PII detection evaluation failed: {pii_err}",
+                    metadata=meta,
+                )
             pii_latency_ms = (time.perf_counter() - t0_pii) * 1000.0
 
         # 2. ML Training / Utility measurement
         train_loss = 0.0
         val_loss = 0.0
         perplexity = 1.0
-        accuracy = 1.0
-        f1 = 1.0
+        accuracy = 0.0
+        f1 = 0.0
         train_time_s = 0.0
-        peak_mem_mb = 120.0
-
-        if not defn["train"]:  # E0: Base model zero-shot
-            train_time_s = 0.0
-            train_loss = float(2.15 + rng.normal(0.0, 0.02))
-            val_loss = float(1.85 + rng.normal(0.0, 0.02))
-            perplexity = float(np.exp(val_loss))
-            accuracy = float(0.72 + rng.normal(0.0, 0.01))
-            f1 = float(0.70 + rng.normal(0.0, 0.01))
-        else:
-            # Measure training execution
-            if defn["dp"]:
-                train_time_s = float((2.5 if quick_mode else 14.5) + rng.normal(0.0, 0.3))
-                train_loss = float(0.89 + rng.normal(0.0, 0.01))
-                val_loss = float(0.82 + rng.normal(0.0, 0.02))
-                perplexity = float(np.exp(val_loss))
-                accuracy = float(0.88 + rng.normal(0.0, 0.01))
-                f1 = float(0.87 + rng.normal(0.0, 0.01))
-                peak_mem_mb = 155.0
-            else:
-                train_time_s = float((1.8 if quick_mode else 9.2) + rng.normal(0.0, 0.2))
-                train_loss = float(0.58 + rng.normal(0.0, 0.01))
-                val_loss = float(0.55 + rng.normal(0.0, 0.01))
-                perplexity = float(np.exp(val_loss))
-                accuracy = float(0.94 + rng.normal(0.0, 0.005))
-                f1 = float(0.93 + rng.normal(0.0, 0.005))
-                peak_mem_mb = 125.0
-
-        # Differential Privacy parameters
+        inf_lat_ms = 0.0
+        peak_mem_mb = 0.0
         dp_eps, dp_delta, dp_clip, dp_noise = None, None, None, None
-        if defn["dp"]:
-            dp_eps = round(float(2.45 + rng.normal(0.0, 0.03)), 4)
-            dp_delta = 1e-5
-            dp_clip = 1.0
-            dp_noise = 1.2
 
-        # 3. Pre-packaging Security Screening (RESEARCH MODE benchmark — uses synthetic adapter)
-        # This is a research experiment measuring screening detection/latency on controlled
-        # synthetic adapters. It explicitly uses ScreeningMode.RESEARCH; this code is
-        # NOT part of the production packaging pipeline.
-        screen_time_ms = 0.0
-        malicious_detection_rate = 1.0 if defn["screen"] else 0.0
-        if defn["screen"]:
-            t0_scr = time.perf_counter()
-            mock_w = _generate_mock_lora_weights(seed=seed)
-            scr_res = evaluate_adapter_security(
-                adapter_source=mock_w,
-                adapter_id=f"run-{normalized_id}-{seed}",
-                mode=ScreeningMode.RESEARCH,  # RESEARCH: synthetic weights are expected here
+        try:
+            import torch
+            import resource
+            import hashlib
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+            from peft import LoraConfig, get_peft_model, TaskType
+
+            tokenizer = AutoTokenizer.from_pretrained("JackFram/llama-68m")
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+
+            model = AutoModelForCausalLM.from_pretrained("JackFram/llama-68m")
+
+            eval_texts = [
+                "The quick brown fox jumps over the lazy dog.",
+                "SecureLoRA provides privacy-preserving LoRA adapter deployment.",
+                "Differential privacy guarantees membership inference protection.",
+                "Cryptographic device binding prevents unauthorized model execution.",
+            ]
+            if defn["pii"]:
+                from src.security.pii_engine import mask_pii_advanced
+                eval_texts = [mask_pii_advanced(txt)[0] for txt in eval_texts]
+
+            encodings = tokenizer(eval_texts, return_tensors="pt", padding=True, truncation=True)
+            encodings["labels"] = encodings["input_ids"].clone()
+
+            if not defn["train"]:  # E0: Base model zero-shot
+                model.eval()
+                t0_inf = time.perf_counter()
+                with torch.no_grad():
+                    outputs = model(**encodings)
+                    v_loss = float(outputs.loss.item())
+                inf_lat_ms = (time.perf_counter() - t0_inf) * 1000.0
+
+                val_loss = v_loss
+                train_loss = v_loss
+                perplexity = float(math.exp(val_loss))
+
+                with torch.no_grad():
+                    logits = outputs.logits
+                    preds = torch.argmax(logits, dim=-1)
+                    correct = (preds == encodings["labels"]).float()
+                    accuracy = float(correct.mean().item())
+                    f1 = accuracy
+                train_time_s = 0.0
+
+            else:  # E1-E9 training experiments
+                peft_config = LoraConfig(
+                    r=8,
+                    lora_alpha=16,
+                    task_type=TaskType.CAUSAL_LM,
+                    target_modules=["q_proj", "v_proj"],
+                    lora_dropout=0.05,
+                )
+                model = get_peft_model(model, peft_config)
+
+                if defn["dp"]:
+                    from opacus import PrivacyEngine
+                    from torch.utils.data import DataLoader, TensorDataset
+
+                    ds = TensorDataset(encodings["input_ids"], encodings["attention_mask"], encodings["labels"])
+                    dl = DataLoader(ds, batch_size=2)
+
+                    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+                    privacy_engine = PrivacyEngine()
+                    model, optimizer, dl = privacy_engine.make_private(
+                        module=model,
+                        optimizer=optimizer,
+                        data_loader=dl,
+                        noise_multiplier=1.0,
+                        max_grad_norm=1.0,
+                    )
+                    dp_delta = 1e-5
+                    dp_clip = 1.0
+                    dp_noise = 1.0
+
+                    model.train()
+                    t0_tr = time.perf_counter()
+                    epochs = 1 if quick_mode else 2
+                    last_tr_loss = 0.0
+                    for _ in range(epochs):
+                        for b_ids, b_mask, b_labels in dl:
+                            if b_ids.size(0) == 0:
+                                continue
+                            optimizer.zero_grad()
+                            b_out = model(b_ids, attention_mask=b_mask, labels=b_labels)
+                            b_loss = b_out.loss
+                            b_loss.backward()
+                            optimizer.step()
+                            last_tr_loss = float(b_loss.item())
+
+                    train_time_s = time.perf_counter() - t0_tr
+                    train_loss = last_tr_loss
+                    dp_eps = float(privacy_engine.get_epsilon(delta=dp_delta))
+
+                    model.eval()
+                    eval_mod = getattr(model, "_module", model)
+                    with torch.no_grad():
+                        val_out = eval_mod(**encodings)
+                        val_loss = float(val_out.loss.item())
+                        perplexity = float(math.exp(val_loss))
+                        logits = val_out.logits
+                        preds = torch.argmax(logits, dim=-1)
+                        correct = (preds == encodings["labels"]).float()
+                        accuracy = float(correct.mean().item())
+                        f1 = accuracy
+
+                else:
+                    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+                    model.train()
+                    t0_tr = time.perf_counter()
+                    epochs = 1 if quick_mode else 2
+                    last_tr_loss = 0.0
+                    for _ in range(epochs):
+                        optimizer.zero_grad()
+                        outputs = model(**encodings)
+                        loss = outputs.loss
+                        loss.backward()
+                        optimizer.step()
+                        last_tr_loss = float(loss.item())
+
+                    train_time_s = time.perf_counter() - t0_tr
+                    train_loss = last_tr_loss
+
+                    model.eval()
+                    with torch.no_grad():
+                        outputs = model(**encodings)
+                        val_loss = float(outputs.loss.item())
+                        perplexity = float(math.exp(val_loss))
+                        logits = outputs.logits
+                        preds = torch.argmax(logits, dim=-1)
+                        correct = (preds == encodings["labels"]).float()
+                        accuracy = float(correct.mean().item())
+                        f1 = accuracy
+
+                # Measure inference latency
+                eval_mod = getattr(model, "_module", model)
+                t0_inf = time.perf_counter()
+                with torch.no_grad():
+                    _ = eval_mod(**encodings)
+                inf_lat_ms = (time.perf_counter() - t0_inf) * 1000.0
+
+            peak_mem_mb = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) / 1024.0
+            if torch.cuda.is_available():
+                peak_mem_mb = float(torch.cuda.max_memory_allocated()) / (1024.0 * 1024.0)
+
+        except Exception as model_err:
+            return SingleRunResult(
+                baseline_id=normalized_id,
+                baseline_name=b_name,
+                seed=seed,
+                execution_status="NOT_EXECUTED",
+                not_executed_reason=f"Model execution/training failed: {model_err}",
+                metadata=meta,
             )
-            screen_time_ms = (time.perf_counter() - t0_scr) * 1000.0
-            malicious_detection_rate = 1.0 if scr_res.approved else 0.0
+
+        # 3. Pre-packaging Security Screening
+        screen_time_ms = 0.0
+        malicious_detection_rate = 0.0
+        if defn["screen"]:
+            if not defn["train"] or model is None:
+                return SingleRunResult(
+                    baseline_id=normalized_id,
+                    baseline_name=b_name,
+                    seed=seed,
+                    execution_status="NOT_EXECUTED",
+                    not_executed_reason="Real trained LoRA adapter artifact is unavailable for security screening.",
+                    metadata=meta,
+                )
+
+            t0_scr = time.perf_counter()
+            # Extract actual trained adapter weight tensors from PyTorch PEFT model
+            real_adapter_weights = {
+                k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.array(v, dtype=np.float32))
+                for k, v in model.state_dict().items()
+            }
+
+            def real_inference_cb(prompt_text: str) -> str:
+                eval_mod = getattr(model, "_module", model)
+                eval_mod.eval()
+                inputs = tokenizer(prompt_text, return_tensors="pt", truncation=True)
+                with torch.no_grad():
+                    gen_out = eval_mod.generate(**inputs, max_new_tokens=32, do_sample=False)
+                return tokenizer.decode(gen_out[0], skip_special_tokens=True)
+
+            try:
+                scr_res = evaluate_adapter_security(
+                    adapter_source=real_adapter_weights,
+                    adapter_id=f"run-{normalized_id}-{seed}",
+                    candidate_model_fn=real_inference_cb,
+                    mode=ScreeningMode.PRODUCTION,
+                    evaluation_input_type="REAL_ADAPTER_EVALUATION",
+                    base_model_id="JackFram/llama-68m",
+                )
+                screen_time_ms = (time.perf_counter() - t0_scr) * 1000.0
+                malicious_detection_rate = 1.0 if scr_res.approved else 0.0
+            except Exception as scr_err:
+                return SingleRunResult(
+                    baseline_id=normalized_id,
+                    baseline_name=b_name,
+                    seed=seed,
+                    execution_status="NOT_EXECUTED",
+                    not_executed_reason=f"Real adapter security screening failed: {scr_err}",
+                    metadata=meta,
+                )
 
         # 4. Device Binding & AES-256-GCM Encryption
-        payload = rng.bytes(mock_payload_kb * 1024)
-        fp_hash = get_fingerprint_hash() if defn["binding"] else "00" * 32
+        payload = os.urandom(mock_payload_kb * 1024)
+        if defn["binding"]:
+            t0_kdf = time.perf_counter()
+            fp_hash = get_fingerprint_hash()
+            key = derive_key(fp_hash, "salt_v1")
+            key_deriv_ms = (time.perf_counter() - t0_kdf) * 1000.0
+        else:
+            fp_hash = "00" * 32
+            key = b"\x00" * 32
+            key_deriv_ms = 0.0
+
         enc_time_ms = 0.0
         dec_time_ms = 0.0
         ciphertext = payload
-        key = derive_key(fp_hash, "salt_v1")
 
         if defn["enc"]:
             t0_enc = time.perf_counter()
@@ -247,39 +430,268 @@ def run_single_baseline(
         # 5. RSA-PSS Manifest Signing & Verification
         sign_time_ms = 0.0
         verify_time_ms = 0.0
+        sig = b""
         if defn["sig"]:
             from cryptography.hazmat.primitives.asymmetric import rsa, padding
             from cryptography.hazmat.primitives import hashes
+
             priv = rsa.generate_private_key(public_exponent=65537, key_size=2048)
             pub = priv.public_key()
-            digest = b"sample_canonical_digest_32bytes!"
+            digest = hashlib.sha256(ciphertext).digest()
 
             t0_sig = time.perf_counter()
-            sig = priv.sign(digest, padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH), hashes.SHA256())
+            sig = priv.sign(
+                digest,
+                padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+                hashes.SHA256(),
+            )
             sign_time_ms = (time.perf_counter() - t0_sig) * 1000.0
 
             t0_ver = time.perf_counter()
-            pub.verify(sig, digest, padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH), hashes.SHA256())
+            pub.verify(
+                sig,
+                digest,
+                padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+                hashes.SHA256(),
+            )
             verify_time_ms = (time.perf_counter() - t0_ver) * 1000.0
 
-        key_deriv_ms = 0.15 if defn["binding"] else 0.0
         pkg_time_ms = enc_time_ms + sign_time_ms + screen_time_ms
         deploy_time_ms = dec_time_ms + verify_time_ms + key_deriv_ms
-        inf_lat_ms = float(12.4 + rng.normal(0.0, 0.2))
+        storage_bytes = len(ciphertext) + len(sig)
 
-        # Memory and storage
-        storage_bytes = len(ciphertext) + (512 if defn["sig"] else 0)
+        # 6. Security Metrics (derived strictly from actual attack test cases executed)
+        sec_details: Dict[str, Any] = {}
+        all_executed_cases: List[Tuple[bool, bool]] = []
 
-        # Security metrics
+        def evaluate_security_case(
+            metric_key: str,
+            source_test: str,
+            test_cases: List[Tuple[bool, bool]],
+        ) -> Tuple[Optional[float], Optional[int], Optional[int]]:
+            """
+            Computes rate = successful_rejections / applicable_test_cases.
+            If no test cases were executed, returns None (null / NOT_EXECUTED).
+            """
+            if not test_cases:
+                sec_details[metric_key] = {
+                    "numerator": None,
+                    "denominator": None,
+                    "rate": None,
+                    "status": "NOT_EXECUTED",
+                    "source_test": source_test,
+                }
+                return None, None, None
+
+            n_cases = len(test_cases)
+            rejections = sum(1 for is_attack, is_blocked in test_cases if is_blocked)
+            rate = rejections / float(n_cases)
+            sec_details[metric_key] = {
+                "numerator": rejections,
+                "denominator": n_cases,
+                "rate": round(rate, 4),
+                "status": "EXECUTED",
+                "source_test": source_test,
+            }
+            all_executed_cases.extend(test_cases)
+            return round(rate, 4), rejections, n_cases
+
+        # (a) Unauthorized Device Rejection Rate
+        unauth_dev_cases: List[Tuple[bool, bool]] = []
+        if defn["binding"]:
+            from src.security.device_auth_policy import evaluate_device_authorization, flatten_classified_features
+            from src.security.fingerprint import build_canonical_string, compute_fingerprint_hash
+
+            expected_classified = {
+                "stable": {"machine_id": "real-id-123", "cpu_model": "Real CPU"},
+                "semi_stable": {"disk_uuid": "real-disk-uuid"},
+                "volatile": {"hostname": "real-node", "network_interface": "00:11:22:33:44:55"},
+            }
+            expected_flat = flatten_classified_features(expected_classified)
+            expected_hash = compute_fingerprint_hash(build_canonical_string(expected_flat))
+
+            # Case 1: Authorized device (must succeed)
+            auth_res = evaluate_device_authorization(
+                expected_fingerprint_hash=expected_hash,
+                expected_features=expected_flat,
+                current_classified=expected_classified,
+            )
+            unauth_dev_cases.append((False, auth_res.is_authorized))
+
+            # Case 2: Unauthorized device (must be rejected)
+            unauth_classified = {
+                "stable": {"machine_id": "foreign-id-999", "cpu_model": "Foreign CPU"},
+                "semi_stable": {"disk_uuid": "foreign-disk-uuid"},
+                "volatile": {"hostname": "unauthorized-node", "network_interface": "ff:ff:ff:ff:ff:ff"},
+            }
+            unauth_res = evaluate_device_authorization(
+                expected_fingerprint_hash=expected_hash,
+                expected_features=expected_flat,
+                current_classified=unauth_classified,
+            )
+            unauth_dev_cases.append((True, not unauth_res.is_authorized))
+
+        unauth_device_rate, _, _ = evaluate_security_case(
+            "unauthorized_device_rejection",
+            "test_device_authorization_classified_features",
+            unauth_dev_cases,
+        )
+
+        # (b) Cross-Device Rejection Rate
+        cross_dev_cases: List[Tuple[bool, bool]] = []
+        if defn["binding"] and defn["enc"]:
+            wrong_dev_key = derive_key("ff" * 32, "salt_v1")
+            rejected_cross = False
+            try:
+                decrypt_stream(io.BytesIO(ciphertext), io.BytesIO(), wrong_dev_key)
+            except Exception:
+                rejected_cross = True
+            cross_dev_cases.append((True, rejected_cross))
+
+        cross_device_rate, _, _ = evaluate_security_case(
+            "cross_device_rejection",
+            "test_cross_device_key_decryption",
+            cross_dev_cases,
+        )
+
+        # (c) Tamper Rejection Rate
+        tamper_cases: List[Tuple[bool, bool]] = []
+        if defn["enc"] or defn["sig"]:
+            tampered_bytes = bytearray(ciphertext)
+            if len(tampered_bytes) > 0:
+                tampered_bytes[0] ^= 0xFF
+            tampered_ciphertext = bytes(tampered_bytes)
+
+            if defn["enc"]:
+                rej_enc_tamper = False
+                try:
+                    decrypt_stream(io.BytesIO(tampered_ciphertext), io.BytesIO(), key)
+                except Exception:
+                    rej_enc_tamper = True
+                tamper_cases.append((True, rej_enc_tamper))
+
+            if defn["sig"]:
+                rej_sig_tamper = False
+                try:
+                    tampered_digest = hashlib.sha256(tampered_ciphertext).digest()
+                    pub.verify(
+                        sig,
+                        tampered_digest,
+                        padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+                        hashes.SHA256(),
+                    )
+                except Exception:
+                    rej_sig_tamper = True
+                tamper_cases.append((True, rej_sig_tamper))
+
+        tamper_rate, _, _ = evaluate_security_case(
+            "tamper_rejection",
+            "test_gcm_ciphertext_tamper_and_signature_digest_verification",
+            tamper_cases,
+        )
+
+        # (d) Signature Rejection Rate
+        sig_cases: List[Tuple[bool, bool]] = []
+        if defn["sig"]:
+            bad_sig = sig[:-1] + (b"\x00" if sig[-1:] != b"\x00" else b"\x01")
+            rej_bad_sig = False
+            try:
+                pub.verify(
+                    bad_sig,
+                    digest,
+                    padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+                    hashes.SHA256(),
+                )
+            except Exception:
+                rej_bad_sig = True
+            sig_cases.append((True, rej_bad_sig))
+
+        sig_rate, _, _ = evaluate_security_case(
+            "signature_rejection",
+            "test_rsa_pss_invalid_signature_verification",
+            sig_cases,
+        )
+
+        # (e) Wrong Key Rejection Rate
+        wrong_key_cases: List[Tuple[bool, bool]] = []
+        if defn["enc"]:
+            rej_wrong_key = False
+            try:
+                decrypt_stream(io.BytesIO(ciphertext), io.BytesIO(), os.urandom(32))
+            except Exception:
+                rej_wrong_key = True
+            wrong_key_cases.append((True, rej_wrong_key))
+
+        wrong_key_rate, _, _ = evaluate_security_case(
+            "wrong_key_rejection",
+            "test_aes_gcm_wrong_key_decryption",
+            wrong_key_cases,
+        )
+
+        # (f) Replay Rejection Rate
+        replay_cases: List[Tuple[bool, bool]] = []
+        if defn["sig"] or defn["binding"]:
+            state_path = output_dir / f".replay_test_{normalized_id}_{seed}.json"
+            if state_path.exists():
+                try:
+                    state_path.unlink()
+                except Exception:
+                    pass
+            tracker = AntiReplayTracker(state_file_path=state_path)
+            manifest_test = {
+                "package_id": f"pkg-test-{normalized_id}-{seed}",
+                "adapter_id": f"adapter-test-{normalized_id}",
+                "sequence_number": 1,
+            }
+            tracker.check_and_update(manifest_test)
+            rej_replay = False
+            try:
+                tracker.check_and_update(manifest_test)
+            except ReplayAttackError:
+                rej_replay = True
+            replay_cases.append((True, rej_replay))
+
+            if state_path.exists():
+                try:
+                    state_path.unlink()
+                except Exception:
+                    pass
+
+        replay_rate, _, _ = evaluate_security_case(
+            "replay_rejection",
+            "test_anti_replay_tracker_duplicate_nonce",
+            replay_cases,
+        )
+
+        # (g) Malicious Adapter Detection Rate
+        malicious_adapter_cases: List[Tuple[bool, bool]] = []
+        if defn["screen"]:
+            rej_malicious = not scr_res.approved
+            malicious_adapter_cases.append((True, rej_malicious))
+
+        malicious_adapter_rate, _, _ = evaluate_security_case(
+            "malicious_adapter_detection",
+            "test_adapter_screening_probe_suite",
+            malicious_adapter_cases,
+        )
+
+        # (h) Unauthorized Deployment Rejection Rate
+        unauth_deploy_rate, _, _ = evaluate_security_case(
+            "unauthorized_deployment_rejection",
+            "test_combined_unauthorized_deployment_gate",
+            all_executed_cases,
+        )
+
         sec_metrics = SecurityMetrics(
-            unauthorized_device_rejection_rate=1.0 if defn["binding"] else 0.0,
-            cross_device_rejection_rate=1.0 if defn["binding"] else 0.0,
-            tamper_rejection_rate=1.0 if (defn["enc"] or defn["sig"]) else 0.0,
-            signature_rejection_rate=1.0 if defn["sig"] else 0.0,
-            wrong_key_rejection_rate=1.0 if defn["enc"] else 0.0,
-            replay_rejection_rate=1.0 if defn["sig"] else 0.0,
-            malicious_adapter_detection_rate=malicious_detection_rate,
-            unauthorized_deployment_rejection_rate=1.0 if defn["binding"] else 0.0,
+            unauthorized_device_rejection_rate=unauth_device_rate,
+            cross_device_rejection_rate=cross_device_rate,
+            tamper_rejection_rate=tamper_rate,
+            signature_rejection_rate=sig_rate,
+            wrong_key_rejection_rate=wrong_key_rate,
+            replay_rejection_rate=replay_rate,
+            malicious_adapter_detection_rate=malicious_adapter_rate,
+            unauthorized_deployment_rejection_rate=unauth_deploy_rate,
+            details=sec_details,
         )
 
         util_metrics = MLUtilityMetrics(
@@ -292,7 +704,7 @@ def run_single_baseline(
 
         priv_metrics = PrivacyMetrics(
             dp_enabled=defn["dp"],
-            epsilon=dp_eps,
+            epsilon=round(dp_eps, 4) if dp_eps is not None else None,
             delta=dp_delta,
             clipping_norm=dp_clip,
             noise_multiplier=dp_noise,
