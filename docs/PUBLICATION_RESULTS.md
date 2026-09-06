@@ -68,4 +68,4 @@ Every metric listed below is directly traceable to a raw source artifact in `out
 
 | Metric | Verified Value | Experiment | Scope | Test Engine | Sample Count | Seed | Artifact Path |
 |---|---|---|---|---|---|---|---|
-| Automated Test Suite Pass Count | **245 / 245 PASS** (100%) | Complete System Test Suite | Full Repository Unit/Integration/Security | `pytest` runner | 245 tests | N/A | `venv/bin/pytest` |
+| Automated Test Suite Pass Count | **288 / 288 PASS** (100%) | Complete System Test Suite | Full Repository Unit/Integration/Security | `pytest` runner | 288 tests | N/A | `venv/bin/pytest` |

@@ -151,6 +151,96 @@ def audit_adapter_security_artifact() -> Dict[str, Any]:
     }
 
 
+def audit_adaptive_evasion_artifact() -> Dict[str, Any]:
+    """Audits outputs/evaluation/adaptive_evasion/comparison.json."""
+    path = PROJECT_ROOT / "outputs" / "evaluation" / "adaptive_evasion" / "comparison.json"
+    data = validate_json_file(path)
+    
+    strategies = data.get("attack_strategies", {})
+    if "baseline" not in strategies or "adaptive" not in strategies:
+        raise ValueError("Adaptive evasion comparison missing required attack strategies.")
+
+    baseline_struct = strategies["baseline"]["detectors"]["structural_only"]
+    detection_rate = baseline_struct.get("detection_rate")
+
+    return {
+        "artifact": str(path.relative_to(PROJECT_ROOT)),
+        "status": "EXECUTED",
+        "strategies": list(strategies.keys()),
+        "baseline_structural_detection_rate": detection_rate,
+        "verified": True,
+    }
+
+
+def audit_device_binding_artifact() -> Dict[str, Any]:
+    """Audits outputs/evaluation/device_binding/comparison.json."""
+    path = PROJECT_ROOT / "outputs" / "evaluation" / "device_binding" / "comparison.json"
+    data = validate_json_file(path)
+    
+    cfg = data.get("configuration", {})
+    adaptive = cfg.get("adaptive_policy", {})
+    tradeoff = cfg.get("tradeoff_delta", {})
+
+    if adaptive.get("unauthorized_rejection_rate") != 1.0 or adaptive.get("replay_rejection_rate") != 1.0:
+        raise ValueError("Device binding adaptive policy rejection rate mismatch.")
+    if tradeoff.get("false_rejection_rate_reduction") != 0.6:
+        raise ValueError("Device binding FRR reduction mismatch.")
+
+    return {
+        "artifact": str(path.relative_to(PROJECT_ROOT)),
+        "status": "EXECUTED",
+        "unauthorized_rejection": adaptive.get("unauthorized_rejection_rate"),
+        "replay_rejection": adaptive.get("replay_rejection_rate"),
+        "adaptive_frr": adaptive.get("false_rejection_rate"),
+        "frr_reduction": tradeoff.get("false_rejection_rate_reduction"),
+        "verified": True,
+    }
+
+
+def audit_model_scale_artifact() -> Dict[str, Any]:
+    """Audits outputs/evaluation/model_scale/model_comparison.json."""
+    path = PROJECT_ROOT / "outputs" / "evaluation" / "model_scale" / "model_comparison.json"
+    data = validate_json_file(path)
+    
+    raw = data.get("metrics", {}).get("raw", {})
+    if "lightweight" not in raw or "scaled" not in raw:
+        raise ValueError("Model scale comparison missing lightweight or scaled benchmark metrics.")
+
+    lightweight_lat = raw["lightweight"].get("screening_latency_ms")
+    scaled_lat = raw["scaled"].get("screening_latency_ms")
+
+    return {
+        "artifact": str(path.relative_to(PROJECT_ROOT)),
+        "status": "EXECUTED",
+        "scales": list(raw.keys()),
+        "lightweight_screening_latency_ms": lightweight_lat,
+        "scaled_screening_latency_ms": scaled_lat,
+        "verified": True,
+    }
+
+
+def audit_e9_dp_lora_artifact() -> Dict[str, Any]:
+    """Audits outputs/research/runs/EXP_E9_seed_42.json for DP-LoRA epsilon and delta bounds."""
+    path = PROJECT_ROOT / "outputs" / "research" / "runs" / "EXP_E9_seed_42.json"
+    data = validate_json_file(path)
+    
+    privacy = data.get("privacy", {})
+    eps = privacy.get("epsilon")
+    delta = privacy.get("delta")
+    if eps is None or eps > 2.50 or delta != 1e-5:
+        raise ValueError(f"EXP_E9 DP metrics mismatch: eps={eps}, delta={delta}")
+
+    return {
+        "artifact": str(path.relative_to(PROJECT_ROOT)),
+        "status": "EXECUTED",
+        "epsilon_achieved": eps,
+        "delta_target": delta,
+        "clipping_norm": privacy.get("clipping_norm"),
+        "noise_multiplier": privacy.get("noise_multiplier"),
+        "verified": True,
+    }
+
+
 def run_full_evaluation_audit() -> List[Dict[str, Any]]:
     """Runs audit across all primary evaluation artifacts."""
     results = [
@@ -159,6 +249,10 @@ def run_full_evaluation_audit() -> List[Dict[str, Any]]:
         audit_threat_model_artifact(),
         audit_privacy_comparison_artifact(),
         audit_adapter_security_artifact(),
+        audit_adaptive_evasion_artifact(),
+        audit_device_binding_artifact(),
+        audit_model_scale_artifact(),
+        audit_e9_dp_lora_artifact(),
     ]
     return results
 

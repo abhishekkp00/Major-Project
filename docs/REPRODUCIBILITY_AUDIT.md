@@ -11,12 +11,12 @@
 The repository test suite was executed in full via `pytest`:
 
 - **Execution Command**: `PYTHONPATH=. ./venv/bin/pytest tests/ -v`
-- **Total Tests Collected**: **245**
-- **Passed**: **245**
+- **Total Tests Collected**: **288**
+- **Passed**: **288**
 - **Failed**: **0**
 - **Skipped**: **0**
 - **Errors**: **0**
-- **Execution Wall Clock Time**: 147.87 seconds (~2 min 27 sec)
+- **Execution Wall Clock Time**: 139.73 seconds (~2 min 19 sec)
 - **Status**: **100% PASS**
 
 ### Test Category Breakdown
@@ -26,8 +26,8 @@ The repository test suite was executed in full via `pytest`:
 | **Integration Suite** | `tests/integration/` | 8 | 8 | 0 | 0 | PASSED |
 | **Security & Cryptography** | `tests/security/` | 51 | 51 | 0 | 0 | PASSED |
 | **Evaluator Suite** | `tests/test_*.py` | 18 | 18 | 0 | 0 | PASSED |
-| **Unit & Subsystem Suite** | `tests/unit/` | 168 | 168 | 0 | 0 | PASSED |
-| **Total System Test Suite** | `tests/` | **245** | **245** | **0** | **0** | **100% PASS** |
+| **Unit & Subsystem Suite** | `tests/unit/` | 211 | 211 | 0 | 0 | PASSED |
+| **Total System Test Suite** | `tests/` | **288** | **288** | **0** | **0** | **100% PASS** |
 
 ---
 
