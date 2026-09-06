@@ -17,6 +17,7 @@ from src.security.adapter_screening.structural_analysis import (
 from src.security.adapter_screening.behavioral_analysis import (
     BehavioralAnalyzer,
     BehavioralEvidence,
+    BehavioralScreeningError,
     ProbeResult,
 )
 from src.security.adapter_screening.risk_scoring import (
@@ -44,6 +45,7 @@ __all__ = [
     "LayerStructuralMetrics",
     "BehavioralAnalyzer",
     "BehavioralEvidence",
+    "BehavioralScreeningError",
     "ProbeResult",
     "RiskScorer",
     "RiskAssessment",

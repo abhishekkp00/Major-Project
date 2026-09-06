@@ -39,7 +39,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
 from src.security.adapter_screening.structural_analysis import StructuralAnalyzer, StructuralEvidence
-from src.security.adapter_screening.behavioral_analysis import BehavioralAnalyzer, BehavioralEvidence
+from src.security.adapter_screening.behavioral_analysis import BehavioralAnalyzer, BehavioralEvidence, BehavioralScreeningError
 from src.security.adapter_screening.risk_scoring import RiskScorer, RiskAssessment, ScreeningThresholdConfig
 
 logger = logging.getLogger("secure_lora.security.adapter_screening.screening_pipeline")
@@ -104,14 +104,24 @@ class ScreeningPipeline:
         admin_override_token: Optional[str] = None,
         override_reason: Optional[str] = None,
         seed: int = 42,
+        mode: str = "research",
     ) -> ScreeningReport:
-        """Executes full screening pipeline and produces a decision report."""
+        """
+        Executes full screening pipeline and produces a decision report.
+
+        mode:
+            "production" — a real callable is required for behavioral probing;
+                _resolve_weights() raises if the adapter source cannot be resolved
+                to actual weights. Fail-closed on missing/unresolvable source.
+            "research" (default) — existing research/baseline behaviour is preserved;
+                random mock weights may be substituted for unresolvable sources.
+        """
         t0 = time.perf_counter()
         timestamp_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         # 1. Convert adapter_source to weights dict if file path / raw dict
-        weights = self._resolve_weights(adapter_source)
-        trusted_weights = self._resolve_weights(trusted_weights_or_adapter) if trusted_weights_or_adapter else None
+        weights = self._resolve_weights(adapter_source, mode=mode)
+        trusted_weights = self._resolve_weights(trusted_weights_or_adapter, mode=mode) if trusted_weights_or_adapter else None
 
         # 2. Layer 1: Structural Analysis
         structural_ev = self.structural_analyzer.analyze(weights=weights, trusted_weights=trusted_weights)
@@ -121,6 +131,7 @@ class ScreeningPipeline:
             candidate_model_or_fn=adapter_source,
             base_model_or_fn=base_model_or_fn,
             seed=seed,
+            mode=mode,
         )
 
         # 4. Composite Risk Assessment
@@ -197,7 +208,7 @@ class ScreeningPipeline:
             behavioral_evidence=behavioral_ev,
         )
 
-    def _resolve_weights(self, source: Any) -> Dict[str, Any]:
+    def _resolve_weights(self, source: Any, mode: str = "research") -> Dict[str, Any]:
         """Resolves weights dictionary from path, dict, or object."""
         if isinstance(source, dict):
             return source
@@ -208,8 +219,19 @@ class ScreeningPipeline:
                     import torch
                     return torch.load(path, map_location="cpu")
                 except Exception as e:
-                    logger.warning("Could not load torch weight file %s: %s", path, e)
-        # Default mock weight fallback for research pipeline
+                    if mode == "production":
+                        raise SecurityScreeningError(
+                            f"Could not load adapter weight file '{path}' in production mode: {e}. "
+                            "Screening aborted."
+                        ) from e
+                    logger.warning("[RESEARCH] Could not load torch weight file %s: %s", path, e)
+            elif mode == "production":
+                raise SecurityScreeningError(
+                    f"Adapter weight source '{source}' is not a valid file path in production mode. "
+                    "Screening aborted."
+                )
+        # RESEARCH mode only: synthetic fallback
+        logger.warning("[RESEARCH] Using synthetic mock weights as fallback for unresolvable source.")
         return {
             "lora_A.weight": np.random.randn(8, 64).astype(np.float32) * 0.02,
             "lora_B.weight": np.random.randn(64, 8).astype(np.float32) * 0.02,

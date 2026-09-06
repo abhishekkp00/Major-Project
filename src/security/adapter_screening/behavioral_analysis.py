@@ -30,6 +30,11 @@ import numpy as np
 logger = logging.getLogger("secure_lora.security.adapter_screening.behavioral_analysis")
 
 
+class BehavioralScreeningError(Exception):
+    """Raised when behavioral screening fails due to a missing callback or probe exception in production mode."""
+    pass
+
+
 @dataclass
 class ProbeResult:
     probe_id: str
@@ -54,6 +59,11 @@ class BehavioralEvidence:
     anomalous_trigger_detected: bool
     probe_results: List[ProbeResult] = field(default_factory=list)
     evidence_notes: List[str] = field(default_factory=list)
+    # Traceability: mode under which probes were executed.
+    # "production" only when a real callable was invoked for every probe without exception.
+    # "research" for all synthetic/fallback baseline runs.
+    inference_mode: str = "research"
+    real_inference_performed: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -113,8 +123,26 @@ class BehavioralAnalyzer:
         base_model_or_fn: Any = None,
         trusted_model_or_fn: Any = None,
         seed: int = 42,
+        mode: str = "research",
     ) -> BehavioralEvidence:
-        """Executes the probe suite against candidate model and compares with base model."""
+        """
+        Executes the probe suite against candidate model and compares with base model.
+
+        mode:
+            "production" — a real callable is required for candidate_model_or_fn.
+                Any probe execution failure raises SecurityScreeningError immediately.
+                Hard-coded synthetic baseline numbers are structurally absent.
+            "research" (default) — callable is optional; synthetic baseline numbers
+                are used when no callable is provided or when one raises.
+        """
+        if mode == "production":
+            if not callable(candidate_model_or_fn):
+                raise BehavioralScreeningError(
+                    "BehavioralAnalyzer.evaluate() in production mode requires a real "
+                    "model inference callable (candidate_model_or_fn). None was provided. "
+                    "Behavioral analysis aborted."
+                )
+
         rng = np.random.RandomState(seed)
         probe_results: List[ProbeResult] = []
 
@@ -125,7 +153,7 @@ class BehavioralAnalyzer:
         normal_entropies = []
 
         for i, prompt in enumerate(self.normal_prompts):
-            ppl, ent, kl, tokens = self._run_probe(prompt, "normal", candidate_model_or_fn, base_model_or_fn, rng)
+            ppl, ent, kl, tokens = self._run_probe(prompt, "normal", candidate_model_or_fn, base_model_or_fn, rng, mode=mode)
             normal_ppls.append(ppl)
             normal_entropies.append(ent)
             normal_kls.append(kl)
@@ -146,7 +174,7 @@ class BehavioralAnalyzer:
         # 2. Paraphrased Prompts
         para_kls = []
         for i, prompt in enumerate(self.paraphrased_prompts):
-            ppl, ent, kl, tokens = self._run_probe(prompt, "paraphrase", candidate_model_or_fn, base_model_or_fn, rng)
+            ppl, ent, kl, tokens = self._run_probe(prompt, "paraphrase", candidate_model_or_fn, base_model_or_fn, rng, mode=mode)
             para_kls.append(kl)
             probe_results.append(ProbeResult(
                 probe_id=f"para_{i}",
@@ -164,7 +192,7 @@ class BehavioralAnalyzer:
         # 3. Trigger Prompts
         trigger_kls = []
         for i, prompt in enumerate(self.trigger_prompts):
-            ppl, ent, kl, tokens = self._run_probe(prompt, "trigger", candidate_model_or_fn, base_model_or_fn, rng)
+            ppl, ent, kl, tokens = self._run_probe(prompt, "trigger", candidate_model_or_fn, base_model_or_fn, rng, mode=mode)
             trigger_kls.append(kl)
             probe_results.append(ProbeResult(
                 probe_id=f"trig_{i}",
@@ -185,7 +213,7 @@ class BehavioralAnalyzer:
         # 4. Randomized Probes
         random_entropies = []
         for i, prompt in enumerate(self.random_prompts):
-            ppl, ent, kl, tokens = self._run_probe(prompt, "random", candidate_model_or_fn, base_model_or_fn, rng)
+            ppl, ent, kl, tokens = self._run_probe(prompt, "random", candidate_model_or_fn, base_model_or_fn, rng, mode=mode)
             random_entropies.append(ent)
             probe_results.append(ProbeResult(
                 probe_id=f"rand_{i}",
@@ -219,6 +247,8 @@ class BehavioralAnalyzer:
             anomalous_trigger_detected=anomalous_trigger,
             probe_results=probe_results,
             evidence_notes=notes,
+            inference_mode=mode,
+            real_inference_performed=(mode == "production" and callable(candidate_model_or_fn)),
         )
 
     def _run_probe(
@@ -228,6 +258,7 @@ class BehavioralAnalyzer:
         candidate_model_or_fn: Any,
         base_model_or_fn: Any,
         rng: np.random.RandomState,
+        mode: str = "research",
     ) -> Tuple[float, float, float, List[str]]:
         """Runs single probe, calculating perplexity, entropy, KL divergence, and top tokens."""
         # If callable model fn provided, execute real forward pass
@@ -236,9 +267,24 @@ class BehavioralAnalyzer:
                 res = candidate_model_or_fn(prompt, probe_type)
                 return res["perplexity"], res["entropy"], res["kl_divergence"], res["top_tokens"]
             except Exception as e:
-                logger.warning("Callable model probe execution error: %s", e)
+                if mode == "production":
+                    raise BehavioralScreeningError(
+                        f"Behavioral screening candidate callable raised during probe "
+                        f"(probe_type={probe_type!r}, prompt={prompt[:40]!r}): {e}"
+                    ) from e
+                logger.warning("[RESEARCH] Callable model probe execution error: %s", e)
 
-        # Baseline probe simulation logic for research suite
+        # ── PRODUCTION guard ─────────────────────────────────────────────────
+        # This code is ONLY reached when the callable itself raised (handled above).
+        # For non-callable sources in PRODUCTION mode, evaluate() raises before _run_probe.
+        # Synthetic baseline numbers below are RESEARCH mode only.
+        if mode == "production":
+            raise BehavioralScreeningError(
+                f"_run_probe reached synthetic baseline path in production mode "
+                f"(probe_type={probe_type!r}). This is a programming error."
+            )
+
+        # ── RESEARCH mode synthetic baseline ───────────────────────────────────────
         if probe_type == "normal":
             ppl = 1.85 + rng.normal(0.0, 0.05)
             ent = 1.45 + rng.normal(0.0, 0.02)
