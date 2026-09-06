@@ -461,3 +461,85 @@ def test_behavioral_screening_research_mode_works_without_callback(clean_adapter
         "ScreeningResult.behavioral_inference_performed must be False in RESEARCH mode"
     )
 
+
+def test_real_adapter_evaluation_fails_when_adapter_missing():
+    """
+    REAL_ADAPTER_EVALUATION mode must raise SecurityScreeningFailedError immediately
+    when a real adapter artifact is missing. Synthetic mock weights must NEVER be generated.
+    """
+    from src.evaluation.adapter_security import EvaluationInputType
+    non_existent_path = Path("/nonexistent/path/adapter_model.bin")
+
+    with pytest.raises(SecurityScreeningFailedError) as exc_info:
+        evaluate_adapter_security(
+            adapter_source=non_existent_path,
+            adapter_id="test-missing-real-adapter",
+            evaluation_input_type=EvaluationInputType.REAL_ADAPTER_EVALUATION,
+            mode=ScreeningMode.RESEARCH,
+        )
+
+    assert "does not exist" in str(exc_info.value) or "unavailable" in str(exc_info.value)
+
+
+def test_real_adapter_evaluation_records_traceability_fields(clean_adapter_weights):
+    """
+    REAL_ADAPTER_EVALUATION must explicitly record evaluation_input_type, base_model_id,
+    and execution_status in ScreeningResult.
+    """
+    from src.evaluation.adapter_security import EvaluationInputType
+    result = evaluate_adapter_security(
+        adapter_source=clean_adapter_weights,
+        adapter_id="test-traceability",
+        mode=ScreeningMode.RESEARCH,
+        evaluation_input_type=EvaluationInputType.REAL_ADAPTER_EVALUATION,
+        base_model_id="JackFram/llama-68m",
+    )
+
+    assert result.evaluation_input_type == "REAL_ADAPTER_EVALUATION"
+    assert result.base_model_id == "JackFram/llama-68m"
+    assert result.execution_status == "COMPLETED"
+    assert result.actual_adapter_loaded is True
+
+
+def test_behavioral_screening_records_model_and_probe_metadata(clean_adapter_weights):
+    """
+    Verify BehavioralScreeningReport records model_identifier, adapter_identifier, probe_suite_version,
+    seed, generation_config, execution_status, and evaluation_type.
+    """
+    def mock_cb(prompt):
+        return f"Clinical output for {prompt[:20]}"
+
+    res = evaluate_adapter_security(
+        adapter_source=clean_adapter_weights,
+        adapter_id="test-beh-meta",
+        candidate_model_fn=mock_cb,
+        mode=ScreeningMode.PRODUCTION,
+        base_model_id="JackFram/llama-68m",
+    )
+
+    b_rep = res.behavioral_report
+    assert b_rep.model_identifier == "JackFram/llama-68m"
+    assert b_rep.adapter_identifier == "test-beh-meta"
+    assert b_rep.execution_status == "COMPLETED"
+    assert b_rep.evaluation_type == "REAL_BEHAVIORAL_EVALUATION"
+    assert b_rep.real_inference_performed is True
+    assert isinstance(b_rep.generation_config, dict)
+
+
+def test_real_behavioral_evaluation_requires_callable_callback():
+    """
+    REAL_BEHAVIORAL_EVALUATION must raise SecurityScreeningFailedError immediately if candidate_model_fn is not callable.
+    Synthetic default responses must never be used.
+    """
+    from src.evaluation.adapter_security import screen_adapter_behavior
+
+    with pytest.raises(SecurityScreeningFailedError) as exc_info:
+        screen_adapter_behavior(
+            candidate_model_fn=None,
+            evaluation_type="REAL_BEHAVIORAL_EVALUATION",
+        )
+
+    assert "requires a real model inference callback" in str(exc_info.value)
+
+
+

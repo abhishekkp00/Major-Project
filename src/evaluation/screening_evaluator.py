@@ -189,6 +189,12 @@ def run_screening_evaluation(
         report_data = {
             "system": sys_name,
             "description": f"LoRA adapter security screening detector: {sys_name}",
+            "adapter_path_or_identifier": f"benchmark_suite_seed_{seed}",
+            "base_model_identifier": "JackFram/llama-68m",
+            "evaluation_input_type": "SYNTHETIC_SIMULATION",
+            "synthetic_label": "SYNTHETIC",
+            "headline_evaluation_eligible": False,
+            "execution_status": "COMPLETED",
             "sample_count": len(test_samples),
             "seed": seed,
             "timestamp": now_iso,
@@ -209,6 +215,12 @@ def run_screening_evaluation(
     comparison_file = out_dir / "comparison.json"
     comp_data = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "adapter_path_or_identifier": f"benchmark_suite_seed_{seed}",
+        "base_model_identifier": "JackFram/llama-68m",
+        "evaluation_input_type": "SYNTHETIC_SIMULATION",
+        "synthetic_label": "SYNTHETIC",
+        "headline_evaluation_eligible": False,
+        "execution_status": "COMPLETED",
         "sample_count": len(test_samples),
         "seed": seed,
         "systems": system_data,
