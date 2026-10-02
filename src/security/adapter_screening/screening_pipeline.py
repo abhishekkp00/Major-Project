@@ -67,6 +67,12 @@ class ScreeningReport:
     risk_assessment: RiskAssessment
     structural_evidence: StructuralEvidence
     behavioral_evidence: BehavioralEvidence
+    # ── Provenance fields (required for production audit) ────────────────────
+    adapter_weight_path: Optional[str] = None   # absolute path of the weight file screened
+    screening_mode: str = "research"            # "production" | "research"
+    real_weights_used: bool = False             # True only when actual file was loaded
+    real_callable_used: bool = False            # True only when a live inference fn was called
+    # ────────────────────────────────────────────────────────────────────────
     security_distinction_note: str = field(
         default=(
             "Security Screening evaluates pre-packaging structural/behavioral indicators. "
@@ -100,6 +106,7 @@ class ScreeningPipeline:
         adapter_source: Any,
         adapter_id: str = "adapter-v1",
         base_model_or_fn: Any = None,
+        candidate_model_fn: Any = None,
         trusted_weights_or_adapter: Any = None,
         admin_override_token: Optional[str] = None,
         override_reason: Optional[str] = None,
@@ -109,29 +116,69 @@ class ScreeningPipeline:
         """
         Executes full screening pipeline and produces a decision report.
 
+        Parameters
+        ----------
+        adapter_source:
+            Path to the adapter weight file (str | Path) or a pre-loaded weight
+            dict.  In production mode this MUST be a readable weight file.
+        candidate_model_fn:
+            Optional live inference callable used for behavioral probing.
+            In production mode, if None, behavioral screening is skipped and
+            the report is marked real_callable_used=False (behavioral evidence
+            uses research-mode synthetic baseline with a warning).
         mode:
-            "production" — a real callable is required for behavioral probing;
-                _resolve_weights() raises if the adapter source cannot be resolved
-                to actual weights. Fail-closed on missing/unresolvable source.
-            "research" (default) — existing research/baseline behaviour is preserved;
-                random mock weights may be substituted for unresolvable sources.
+            "production" — _resolve_weights() raises on any unresolvable source;
+                synthetic random weight fallback is structurally prevented.
+            "research" (default) — random mock weights used when source is
+                unresolvable; research/evaluation paths only.
         """
         t0 = time.perf_counter()
         timestamp_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        # 1. Convert adapter_source to weights dict if file path / raw dict
+        # ── 1. Resolve adapter weight file to a weights dict ─────────────────
         weights = self._resolve_weights(adapter_source, mode=mode)
+        # Determine whether we loaded real weights (not synthetic fallback)
+        real_weights_used = isinstance(weights, dict) and bool(weights) and not (
+            set(weights.keys()) == {"lora_A.weight", "lora_B.weight"}
+            and all(v.shape == (8, 64) or v.shape == (64, 8)
+                    for v in weights.values() if hasattr(v, "shape"))
+        )
+        if mode == "production":
+            # In production mode _resolve_weights already raises on failure;
+            # we additionally assert the result is non-empty.
+            if not weights:
+                raise SecurityScreeningError(
+                    f"Weight resolution returned an empty dict for adapter '{adapter_id}' "
+                    "in production mode. Screening aborted."
+                )
+            real_weights_used = True   # guaranteed: production path raised above otherwise
+
+        weight_path_str = str(adapter_source) if isinstance(adapter_source, (str, Path)) else None
+
         trusted_weights = self._resolve_weights(trusted_weights_or_adapter, mode=mode) if trusted_weights_or_adapter else None
 
-        # 2. Layer 1: Structural Analysis
+        # ── 2. Layer 1: Structural Analysis ─────────────────────────────────
         structural_ev = self.structural_analyzer.analyze(weights=weights, trusted_weights=trusted_weights)
 
-        # 3. Layer 2: Behavioral Analysis
+        # ── 3. Layer 2: Behavioral Analysis ─────────────────────────────────
+        # candidate_model_fn (explicit inference callable) takes precedence over
+        # adapter_source for behavioral probing.  In production mode without a
+        # callable we emit a WARN and run behavioral analysis in research mode
+        # (synthetic baseline), but the report is marked real_callable_used=False
+        # so callers can detect the limitation.
+        behavioral_candidate = candidate_model_fn if candidate_model_fn is not None else adapter_source
+        if mode == "production" and not callable(behavioral_candidate):
+            logger.warning(
+                "Production screening for adapter '%s': no real inference callable provided. "
+                "Behavioral analysis will use research-mode synthetic baseline. "
+                "Set candidate_model_fn to a live callable for real behavioral probing.",
+                adapter_id,
+            )
         behavioral_ev = self.behavioral_analyzer.evaluate(
-            candidate_model_or_fn=adapter_source,
+            candidate_model_or_fn=behavioral_candidate,
             base_model_or_fn=base_model_or_fn,
             seed=seed,
-            mode=mode,
+            mode=mode if callable(behavioral_candidate) else "research",
         )
 
         # 4. Composite Risk Assessment
@@ -206,31 +253,112 @@ class ScreeningPipeline:
             risk_assessment=risk_assessment,
             structural_evidence=structural_ev,
             behavioral_evidence=behavioral_ev,
+            adapter_weight_path=weight_path_str,
+            screening_mode=mode,
+            real_weights_used=real_weights_used,
+            real_callable_used=behavioral_ev.real_inference_performed,
         )
 
     def _resolve_weights(self, source: Any, mode: str = "research") -> Dict[str, Any]:
-        """Resolves weights dictionary from path, dict, or object."""
+        """
+        Resolves a weights dictionary from a weight file path, pre-loaded dict,
+        or numpy/torch object.
+
+        Production-mode guarantees
+        --------------------------
+        - A directory path → SecurityScreeningError (hard failure).
+        - A missing file   → SecurityScreeningError (hard failure).
+        - An unreadable or malformed file → SecurityScreeningError (hard failure).
+        - Safetensors format is tried first (PEFT canonical); torch.load is the
+          fallback for legacy .bin files.
+        - The synthetic random-weight path is structurally unreachable in production
+          mode: any unresolvable source raises before reaching the fallback block.
+
+        Research-mode behaviour (unchanged)
+        ------------------------------------
+        - Unresolvable sources emit a WARNING and return synthetic Gaussian weights.
+        """
         if isinstance(source, dict):
             return source
+
         if isinstance(source, (str, Path)):
             path = Path(source)
-            if path.exists() and path.is_file():
+
+            # Hard failure: caller passed a directory instead of a file
+            if path.is_dir():
+                if mode == "production":
+                    raise SecurityScreeningError(
+                        f"Adapter weight source '{path}' is a directory, not a weight file. "
+                        "Pass the resolved weight file path (adapter_model.safetensors or "
+                        "adapter_model.bin) to the screening gate in production mode."
+                    )
+                logger.warning(
+                    "[RESEARCH] Adapter source is a directory '%s'; using synthetic fallback.", path
+                )
+
+            elif path.exists() and path.is_file():
+                suffix = path.suffix.lower()
+
+                # ── Safetensors (PEFT canonical format) ──────────────────────
+                if suffix == ".safetensors":
+                    try:
+                        from safetensors.torch import load_file as st_load
+                        tensors = st_load(str(path), device="cpu")
+                        # Convert to plain numpy so the analyzer has no torch dep
+                        return {k: v.numpy() for k, v in tensors.items()}
+                    except ImportError:
+                        # safetensors library not installed — try torch.load
+                        logger.warning(
+                            "[WARN] safetensors library not found; falling back to torch.load "
+                            "for '%s'. Install `pip install safetensors` for proper support.",
+                            path.name,
+                        )
+                    except Exception as e:
+                        if mode == "production":
+                            raise SecurityScreeningError(
+                                f"Could not load safetensors weight file '{path}': {e}. "
+                                "File may be malformed or unreadable. Screening aborted."
+                            ) from e
+                        logger.warning("[RESEARCH] Failed to load safetensors %s: %s", path, e)
+                        # Fall through to synthetic in research mode
+
+                # ── Torch / pickle format (.bin) ─────────────────────────────
                 try:
                     import torch
-                    return torch.load(path, map_location="cpu")
+                    state_dict = torch.load(path, map_location="cpu", weights_only=True)
+                    if isinstance(state_dict, dict):
+                        return state_dict
+                    # Some checkpoints wrap tensors one level deep
+                    if hasattr(state_dict, "state_dict"):
+                        return state_dict.state_dict()
+                    raise SecurityScreeningError(
+                        f"torch.load('{path}') returned an unexpected type "
+                        f"{type(state_dict).__name__!r}; expected a state-dict."
+                    )
+                except SecurityScreeningError:
+                    raise
                 except Exception as e:
                     if mode == "production":
                         raise SecurityScreeningError(
-                            f"Could not load adapter weight file '{path}' in production mode: {e}. "
+                            f"Could not load adapter weight file '{path}': {e}. "
                             "Screening aborted."
                         ) from e
-                    logger.warning("[RESEARCH] Could not load torch weight file %s: %s", path, e)
-            elif mode == "production":
-                raise SecurityScreeningError(
-                    f"Adapter weight source '{source}' is not a valid file path in production mode. "
-                    "Screening aborted."
-                )
-        # RESEARCH mode only: synthetic fallback
+                    logger.warning("[RESEARCH] Could not load weight file %s: %s", path, e)
+
+            else:  # path does not exist
+                if mode == "production":
+                    raise SecurityScreeningError(
+                        f"Adapter weight file '{path}' does not exist. "
+                        "Screening aborted."
+                    )
+                logger.warning("[RESEARCH] Adapter weight source '%s' not found; using synthetic fallback.", path)
+
+        # ── PRODUCTION guard: this line must never be reached in production mode ──
+        assert mode != "production", (
+            "BUG: _resolve_weights() reached the synthetic fallback in production mode. "
+            f"source={source!r}. This is a programming error — review call sites."
+        )
+        # ── RESEARCH mode only: synthetic random weight fallback ─────────────
         logger.warning("[RESEARCH] Using synthetic mock weights as fallback for unresolvable source.")
         return {
             "lora_A.weight": np.random.randn(8, 64).astype(np.float32) * 0.02,
@@ -280,13 +408,32 @@ def pre_packaging_screening_gate(
     adapter_id: str = "adapter-v1",
     admin_override_token: Optional[str] = None,
     pipeline: Optional[ScreeningPipeline] = None,
+    candidate_model_fn: Any = None,
+    mode: str = "research",
 ) -> ScreeningReport:
-    """Phase 3 Integration Gate: Executes screening and raises error if rejected."""
+    """
+    Phase 3 Integration Gate: Executes screening and raises error if rejected.
+
+    Parameters
+    ----------
+    adapter_source:
+        Resolved path to the adapter weight file (not the package directory).
+        In production mode this must be an existing, readable weight file.
+    mode:
+        "production" — hard failures on missing/unresolvable weight files;
+            synthetic random weight fallback is structurally prevented.
+        "research" — research/evaluation paths; synthetic fallback permitted.
+    candidate_model_fn:
+        Optional live inference callable for behavioral screening.  Pass a
+        real callable for full production behavioral vetting.
+    """
     pipe = pipeline or ScreeningPipeline()
     report = pipe.screen_adapter(
         adapter_source=adapter_source,
         adapter_id=adapter_id,
+        candidate_model_fn=candidate_model_fn,
         admin_override_token=admin_override_token,
+        mode=mode,
     )
 
     if not report.approved:

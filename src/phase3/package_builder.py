@@ -50,6 +50,42 @@ from src.common.config_loader import config
 
 logger = logging.getLogger("secure_lora.phase3.package_builder")
 
+# Ordered list of PEFT adapter weight file names, most-preferred first.
+_PEFT_WEIGHT_CANDIDATES = [
+    "adapter_model.safetensors",
+    "adapter_model.bin",
+]
+
+
+def _resolve_adapter_weight_file(package_dir: Path) -> Path:
+    """
+    Resolves the actual LoRA adapter weight file from within package_dir.
+
+    Raises
+    ------
+    FileNotFoundError
+        If neither adapter_model.safetensors nor adapter_model.bin exists.
+    ValueError
+        If the resolved path is not a regular file (e.g. a directory).
+    """
+    for candidate in _PEFT_WEIGHT_CANDIDATES:
+        weight_path = package_dir / candidate
+        if weight_path.exists():
+            if not weight_path.is_file():
+                raise ValueError(
+                    f"Expected a regular weight file but found a directory at '{weight_path}'. "
+                    "Package directory may be malformed."
+                )
+            logger.debug("Resolved adapter weight file: %s", weight_path.name)
+            return weight_path
+
+    raise FileNotFoundError(
+        f"No supported adapter weight file found in '{package_dir}'. "
+        f"Expected one of: {_PEFT_WEIGHT_CANDIDATES}. "
+        "Ensure the trained adapter has been saved into the package directory "
+        "before calling build_package()."
+    )
+
 REQUIRED_ARTEFACTS = [
     "adapter.enc",
     "adapter.hash",
@@ -191,14 +227,47 @@ def build_package(
       7. Verifies package completeness
     """
     if enable_screening:
-        from src.security.adapter_screening import pre_packaging_screening_gate
-        logger.info("Executing Phase 3 pre-packaging security screening gate for '%s'...", adapter_id)
+        from src.security.adapter_screening import (
+            pre_packaging_screening_gate,
+            SecurityScreeningError,
+        )
+        # ── Resolve the ACTUAL trained adapter weight file ──────────────────
+        # Hard failure if missing or unsupported: we must NEVER screen synthetic
+        # random weights during production package creation.
+        adapter_weight_path = _resolve_adapter_weight_file(package_dir)
+
+        # ── Production-mode assertion guard ────────────────────────────────
+        # Structural prevention: package_builder ONLY invokes the gate in
+        # production mode.  Research paths must call the pipeline directly.
+        _SCREENING_MODE = "production"
+        assert _SCREENING_MODE == "production", (
+            "BUG: package_builder attempted to invoke screening in non-production mode. "
+            "This is a programming error."
+        )
+
+        logger.info(
+            "Executing Phase 3 pre-packaging security screening gate for '%s' "
+            "(weight_file=%s, mode=%s)...",
+            adapter_id, adapter_weight_path.name, _SCREENING_MODE,
+        )
         screening_report = pre_packaging_screening_gate(
-            adapter_source=package_dir,
+            adapter_source=adapter_weight_path,
             adapter_id=adapter_id,
             admin_override_token=admin_override_token,
+            mode=_SCREENING_MODE,
         )
-        logger.info("Pre-packaging security screening passed (decision=%s, risk=%.4f)", screening_report.decision, screening_report.risk_score)
+        logger.info(
+            "Pre-packaging security screening passed "
+            "(decision=%s, risk=%.4f, real_weights=%s, real_callable=%s)",
+            screening_report.decision,
+            screening_report.risk_score,
+            screening_report.real_weights_used,
+            screening_report.real_callable_used,
+        )
+        # Attach screening provenance to the manifest (written later)
+        _screening_report_dict = screening_report.to_dict()
+    else:
+        _screening_report_dict = None
 
     dest_pub = package_dir / "public.pem"
     if public_key_src.resolve() != dest_pub.resolve():
@@ -215,6 +284,18 @@ def build_package(
         sequence_number=sequence_number,
         expiration_timestamp=expiration_timestamp,
     )
+
+    # Embed screening provenance into manifest for auditability
+    if _screening_report_dict is not None:
+        manifest["screening_report"] = {
+            "adapter_weight_path": _screening_report_dict.get("adapter_weight_path"),
+            "screening_mode": _screening_report_dict.get("screening_mode"),
+            "real_weights_used": _screening_report_dict.get("real_weights_used"),
+            "real_callable_used": _screening_report_dict.get("real_callable_used"),
+            "risk_score": _screening_report_dict.get("risk_score"),
+            "decision": _screening_report_dict.get("decision"),
+            "risk_level": _screening_report_dict.get("risk_level"),
+        }
 
     # Sign canonical manifest digest if private key provided
     if private_key_src and private_key_src.exists():

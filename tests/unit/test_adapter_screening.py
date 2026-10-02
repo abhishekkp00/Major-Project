@@ -150,7 +150,20 @@ def test_phase3_packaging_integration_gate(tmp_path):
     (pkg_dir / "adapter.sig").write_bytes(b"dummy_sig")
     (pkg_dir / "metadata.json").write_text("{}")
 
-    # Packaging clean directory succeeds
+    # Place a real adapter weight file — required by the production screening gate.
+    # Previously this test relied on the (now-fixed) bug where missing weights
+    # silently fell through to synthetic random tensors.  The correct production
+    # workflow always saves trained weights into the package dir before packaging.
+    import torch, numpy as np
+    state_dict = {
+        "base_model.model.model.layers.0.self_attn.q_proj.lora_A.default.weight":
+            torch.tensor(np.random.randn(8, 64).astype(np.float32) * 0.01),
+        "base_model.model.model.layers.0.self_attn.q_proj.lora_B.default.weight":
+            torch.tensor(np.random.randn(64, 8).astype(np.float32) * 0.01),
+    }
+    torch.save(state_dict, pkg_dir / "adapter_model.bin")
+
+    # Packaging a clean directory with real weights succeeds
     manifest = build_package(
         package_dir=pkg_dir,
         adapter_id="med-v1",
@@ -160,3 +173,8 @@ def test_phase3_packaging_integration_gate(tmp_path):
     )
     assert manifest["package_id"] is not None
     assert (pkg_dir / "package_manifest.json").exists()
+    # Screening provenance is embedded in the manifest
+    assert "screening_report" in manifest
+    assert manifest["screening_report"]["real_weights_used"] is True
+    assert manifest["screening_report"]["screening_mode"] == "production"
+
