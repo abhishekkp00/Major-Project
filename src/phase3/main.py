@@ -107,6 +107,8 @@ def cmd_protect(args: argparse.Namespace) -> int:
         enc_metadata=enc_meta,
         public_key_src=pub_path,
         private_key_src=priv_path,
+        adapter_source=cfg.ADAPTER_INPUT_DIR,
+        candidate_model_fn=getattr(cfg, "CANDIDATE_MODEL_FN", None),
     )
 
 

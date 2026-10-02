@@ -24,7 +24,13 @@ def valid_package_bundle(tmp_path: Path):
     adapter_src.mkdir()
     (adapter_src / "adapter_config.json").write_text('{"peft_type": "LORA"}')
     import torch
-    torch.save({}, adapter_src / "adapter_model.bin")
+    import numpy as np
+    rng = np.random.RandomState(42)
+    mock_w = {
+        "base_model.model.encoder.layer.0.attention.self.query.lora_A.weight": torch.from_numpy(rng.normal(0.0, 0.02, size=(8, 64)).astype(np.float32)),
+        "base_model.model.encoder.layer.0.attention.self.query.lora_B.weight": torch.from_numpy(rng.normal(0.0, 0.001, size=(64, 8)).astype(np.float32)),
+    }
+    torch.save(mock_w, adapter_src / "adapter_model.bin")
 
     priv_pem = pkg_out / "dev_private.pem"
     pub_pem = pkg_out / "public.pem"
@@ -47,6 +53,7 @@ def valid_package_bundle(tmp_path: Path):
 
     build_package(
         package_dir=pkg_out,
+        adapter_source=adapter_src,
         adapter_id="lora-adapter-v1",
         model_reference="JackFram/llama-68m",
         fingerprint_hash=fp_hash,

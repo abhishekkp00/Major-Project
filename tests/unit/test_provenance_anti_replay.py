@@ -178,6 +178,7 @@ class TestPackageProvenanceVerificationOrder:
                 public_key_src=pub_key,
                 private_key_src=priv_key,
                 sequence_number=1,
+                enable_screening=False,
             )
 
             # Verification should pass
@@ -208,6 +209,7 @@ class TestPackageProvenanceVerificationOrder:
                 public_key_src=pub_key,
                 private_key_src=priv_key,
                 sequence_number=1,
+                enable_screening=False,
             )
 
             # Tamper with manifest

@@ -57,9 +57,9 @@ _PEFT_WEIGHT_CANDIDATES = [
 ]
 
 
-def _resolve_adapter_weight_file(package_dir: Path) -> Path:
+def _resolve_adapter_weight_file(source: Union[Path, str]) -> Path:
     """
-    Resolves the actual LoRA adapter weight file from within package_dir.
+    Resolves the actual LoRA adapter weight file from within source (file or directory).
 
     Raises
     ------
@@ -68,23 +68,33 @@ def _resolve_adapter_weight_file(package_dir: Path) -> Path:
     ValueError
         If the resolved path is not a regular file (e.g. a directory).
     """
-    for candidate in _PEFT_WEIGHT_CANDIDATES:
-        weight_path = package_dir / candidate
-        if weight_path.exists():
-            if not weight_path.is_file():
-                raise ValueError(
-                    f"Expected a regular weight file but found a directory at '{weight_path}'. "
-                    "Package directory may be malformed."
-                )
-            logger.debug("Resolved adapter weight file: %s", weight_path.name)
-            return weight_path
+    path = Path(source)
+    if not path.exists():
+        raise FileNotFoundError(f"Adapter weight source path does not exist: '{path}'")
 
-    raise FileNotFoundError(
-        f"No supported adapter weight file found in '{package_dir}'. "
-        f"Expected one of: {_PEFT_WEIGHT_CANDIDATES}. "
-        "Ensure the trained adapter has been saved into the package directory "
-        "before calling build_package()."
-    )
+    if path.is_file():
+        return path
+
+    if path.is_dir():
+        for candidate in _PEFT_WEIGHT_CANDIDATES:
+            weight_path = path / candidate
+            if weight_path.exists():
+                if not weight_path.is_file():
+                    raise ValueError(
+                        f"Expected a regular weight file but found a directory at '{weight_path}'. "
+                        "Package directory may be malformed."
+                    )
+                logger.debug("Resolved adapter weight file: %s", weight_path.name)
+                return weight_path
+
+        raise FileNotFoundError(
+            f"No supported adapter weight file found in '{path}'. "
+            f"Expected one of: {_PEFT_WEIGHT_CANDIDATES}. "
+            "Ensure the trained adapter has been saved into the package directory "
+            "before calling build_package()."
+        )
+
+    raise ValueError(f"Invalid adapter weight source: '{path}'")
 
 REQUIRED_ARTEFACTS = [
     "adapter.enc",
@@ -215,6 +225,8 @@ def build_package(
     expiration_timestamp: Optional[str] = None,
     enable_screening: bool = True,
     admin_override_token: Optional[str] = None,
+    adapter_source: Optional[Union[Path, str]] = None,
+    candidate_model_fn: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     High-level package orchestrator:
@@ -234,7 +246,8 @@ def build_package(
         # ── Resolve the ACTUAL trained adapter weight file ──────────────────
         # Hard failure if missing or unsupported: we must NEVER screen synthetic
         # random weights during production package creation.
-        adapter_weight_path = _resolve_adapter_weight_file(package_dir)
+        target_source = adapter_source if adapter_source is not None else package_dir
+        adapter_weight_path = _resolve_adapter_weight_file(target_source)
 
         # ── Production-mode assertion guard ────────────────────────────────
         # Structural prevention: package_builder ONLY invokes the gate in
@@ -253,6 +266,7 @@ def build_package(
         screening_report = pre_packaging_screening_gate(
             adapter_source=adapter_weight_path,
             adapter_id=adapter_id,
+            candidate_model_fn=candidate_model_fn,
             admin_override_token=admin_override_token,
             mode=_SCREENING_MODE,
         )

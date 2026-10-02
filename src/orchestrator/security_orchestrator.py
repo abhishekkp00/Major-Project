@@ -242,6 +242,7 @@ def run_security_orchestration(
     
     manifest = build_package(
         package_dir=protected_output_dir,
+        adapter_source=adapter_input_dir,
         adapter_id=job_id,
         model_reference=base_model_name,
         fingerprint_hash=fp_hash,
