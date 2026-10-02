@@ -151,8 +151,28 @@ ENTITIES_PATTERNS: Dict[str, Tuple[re.Pattern, str]] = {
 }
 
 # Generic Dynamic Grammatical Introduction Heuristics (NO hardcoded names)
+#
+# Pattern design notes:
+#   - The outer trigger alternation matches contextual lead-in phrases.
+#   - The optional inner honorific prefix (mr./mrs./dr./ms./prof.) allows
+#     sentences like "contact Mr. John Doe" or "employee is Mr. John Doe"
+#     to capture the actual name rather than the honorific.
+#   - The name group captures one or two Title-cased tokens, covering both
+#     single and compound names.
 DYNAMIC_NAME_PATTERNS = [
-    re.compile(r"\b(?:my name is|I am|this is|contact|patient|dr\.|mr\.|mrs\.|ms\.|prof\.|user|employee|client|author|reporter)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:my name is|I am|this is|contact|patient|user|employee|client|author|reporter)"
+        r"(?:\s+(?:is|was|,))?"                          # optional linking words: "employee is Mr."
+        r"\s+(?:(?-i:(?:Mr|Mrs|Ms|Dr|Prof))\.\s+)?"    # optional honorific (case-sensitive) — part of trigger span
+        r"(?-i:([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?))",      # name: Title-cased tokens (case-sensitive)
+        re.IGNORECASE
+    ),
+    # Standalone honorifics acting as their own trigger (e.g. "Dr. Smith", "Mr. John Doe")
+    re.compile(
+        r"\b(?-i:(?:Mr|Mrs|Ms|Dr|Prof))\.\s+"
+        r"(?-i:([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?))",
+        re.IGNORECASE
+    ),
 ]
 
 
@@ -331,10 +351,14 @@ class HybridPIIEngine:
                 masked = pattern.sub(replacement, masked)
 
         # 2. Dynamic Grammatical Name Masking
+        # Replace the ENTIRE match (trigger phrase + captured name) with the
+        # placeholder. Using a plain string replacement with NO backreference
+        # guarantees the original name cannot leak back into the output.
         for pat in DYNAMIC_NAME_PATTERNS:
-            if pat.search(masked):
-                masked = pat.sub(r"\1 [GIVENNAME]", masked)
-                counts["PERSON"] = counts.get("PERSON", 0) + 1
+            n_matches = len(pat.findall(masked))
+            if n_matches:
+                masked = pat.sub("[GIVENNAME]", masked)
+                counts["PERSON"] = counts.get("PERSON", 0) + n_matches
 
         # 3. Dynamic ML NER Masking
         if self.enable_ml:
