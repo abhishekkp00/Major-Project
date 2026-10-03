@@ -58,3 +58,148 @@ def test_orchestrator_job_lifecycle(custom_orchestrator):
     job = custom_orchestrator.get_job(job_id)
     assert job["status"] == "TRAINING"
     assert job["progress"] == 40
+
+
+def test_orchestrator_training_subprocess_uses_sys_executable(custom_orchestrator, monkeypatch):
+    """Regression test: verify training subprocess uses sys.executable and preserves all invocation options."""
+    import io
+    import sys
+    import subprocess
+    import src.orchestrator.security_orchestrator
+
+    job_id = custom_orchestrator.create_job(
+        dataset_name="health_records",
+        version="1.0.0",
+        epochs=1,
+        salt="test-salt-xyz"
+    )
+    dataset_content = b'{"instruction": "test instruction", "input": "test input", "output": "test output"}\n'
+    custom_orchestrator.add_dataset_file(job_id, "data.jsonl", dataset_content)
+
+    captured_popen_calls = []
+    real_popen = subprocess.Popen
+
+    class MockPopen:
+        def __init__(self, cmd, *args, **kwargs):
+            if isinstance(cmd, (list, tuple)) and len(cmd) > 1 and "src.phase2.train_lora" in cmd:
+                self.cmd = cmd
+                self.kwargs = kwargs
+                self.returncode = 0
+                self.stdout = io.StringIO("")
+                self.stderr = io.StringIO("")
+                captured_popen_calls.append((cmd, kwargs))
+                self._is_mock = True
+            else:
+                self._real = real_popen(cmd, *args, **kwargs)
+                self._is_mock = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if not self._is_mock:
+                return self._real.__exit__(exc_type, exc_val, exc_tb)
+
+        def wait(self, *args, **kwargs):
+            return 0 if self._is_mock else self._real.wait(*args, **kwargs)
+
+        def communicate(self, *args, **kwargs):
+            return ("", "") if self._is_mock else self._real.communicate(*args, **kwargs)
+
+        def __getattr__(self, name):
+            if not self._is_mock:
+                return getattr(self._real, name)
+            raise AttributeError(name)
+
+    monkeypatch.setattr("src.orchestrator.service.subprocess.Popen", MockPopen)
+    monkeypatch.setattr(
+        "src.orchestrator.security_orchestrator.run_security_orchestration",
+        lambda **kwargs: {"status": "mocked"}
+    )
+
+    custom_orchestrator._run_pipeline(job_id)
+
+    assert len(captured_popen_calls) == 1
+    cmd, kwargs = captured_popen_calls[0]
+
+    # Verify requirement 2 & 6: executable argument equals sys.executable
+    assert cmd[0] == sys.executable
+    # Verify requirement 3: preserve module invocation, working directory, env vars, stdout/stderr
+    assert cmd[1:] == ["-m", "src.phase2.train_lora"]
+    assert kwargs.get("cwd") == str(Path.cwd())
+    assert kwargs.get("stdout") == subprocess.PIPE
+    assert kwargs.get("stderr") == subprocess.STDOUT
+    assert kwargs.get("text") is True
+    assert "SECURE_LORA_KEY_HEX" in kwargs.get("env", {})
+    assert kwargs.get("env", {}).get("SECURE_LORA_EPOCHS") == "1"
+
+
+def test_orchestrator_training_subprocess_dynamic_sys_executable(custom_orchestrator, monkeypatch):
+    """Regression test: verify arbitrary sys.executable is respected (venv, .venv, system Python, IDE terminal)."""
+    import io
+    import sys
+    import subprocess
+    import src.orchestrator.security_orchestrator
+
+    custom_python = "/custom/virtualenv/bin/python3"
+    monkeypatch.setattr(sys, "executable", custom_python)
+
+    job_id = custom_orchestrator.create_job(
+        dataset_name="health_records",
+        version="1.0.0",
+        epochs=2,
+        salt="test-salt-custom"
+    )
+    dataset_content = b'{"instruction": "test", "input": "", "output": "result"}\n'
+    custom_orchestrator.add_dataset_file(job_id, "data.jsonl", dataset_content)
+
+    captured_popen_calls = []
+    real_popen = subprocess.Popen
+
+    class MockPopen:
+        def __init__(self, cmd, *args, **kwargs):
+            if isinstance(cmd, (list, tuple)) and len(cmd) > 1 and "src.phase2.train_lora" in cmd:
+                self.cmd = cmd
+                self.kwargs = kwargs
+                self.returncode = 0
+                self.stdout = io.StringIO("")
+                self.stderr = io.StringIO("")
+                captured_popen_calls.append((cmd, kwargs))
+                self._is_mock = True
+            else:
+                self._real = real_popen(cmd, *args, **kwargs)
+                self._is_mock = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if not self._is_mock:
+                return self._real.__exit__(exc_type, exc_val, exc_tb)
+
+        def wait(self, *args, **kwargs):
+            return 0 if self._is_mock else self._real.wait(*args, **kwargs)
+
+        def communicate(self, *args, **kwargs):
+            return ("", "") if self._is_mock else self._real.communicate(*args, **kwargs)
+
+        def __getattr__(self, name):
+            if not self._is_mock:
+                return getattr(self._real, name)
+            raise AttributeError(name)
+
+    monkeypatch.setattr("src.orchestrator.service.subprocess.Popen", MockPopen)
+    monkeypatch.setattr(
+        "src.orchestrator.security_orchestrator.run_security_orchestration",
+        lambda **kwargs: {"status": "mocked"}
+    )
+
+    custom_orchestrator._run_pipeline(job_id)
+
+    assert len(captured_popen_calls) == 1
+    cmd, kwargs = captured_popen_calls[0]
+    assert cmd[0] == custom_python
+    assert cmd[0] == sys.executable
+    assert cmd[1:] == ["-m", "src.phase2.train_lora"]
+    assert kwargs.get("env", {}).get("SECURE_LORA_EPOCHS") == "2"
+

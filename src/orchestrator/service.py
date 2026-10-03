@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import uuid
 import shutil
@@ -308,7 +309,7 @@ class JobOrchestrator:
 
             log_file = job_dir / "training.log"
             process = subprocess.Popen(
-                ["./venv/bin/python", "-m", "src.phase2.train_lora"],
+                [sys.executable, "-m", "src.phase2.train_lora"],
                 cwd=str(Path.cwd()),
                 env=env,
                 stdout=subprocess.PIPE,
