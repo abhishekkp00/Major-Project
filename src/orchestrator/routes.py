@@ -5,15 +5,37 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, current_app
 from werkzeug.utils import secure_filename
 
+from werkzeug.exceptions import RequestEntityTooLarge
+
 from .service import orchestrator
 from src.orchestrator.dataset_processor import validate_dataset_file
 from src.common.exceptions import DatasetValidationError
+from src.security.api_auth import require_bearer_token
 
 logger = logging.getLogger("secure_lora.orchestrator.routes")
 orchestrator_bp = Blueprint("orchestrator", __name__)
 
+DEFAULT_MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB safe default
+UPLOAD_CHUNK_SIZE = 64 * 1024  # 64 KB bounded chunk size
+ALLOWED_DATASET_EXTENSIONS = {".txt", ".csv", ".json", ".jsonl", ".md"}
+
+
+@orchestrator_bp.app_errorhandler(413)
+@orchestrator_bp.app_errorhandler(RequestEntityTooLarge)
+def handle_orchestrator_request_entity_too_large(error):
+    max_bytes = (
+        current_app.config.get("MAX_CONTENT_LENGTH")
+        if current_app else DEFAULT_MAX_UPLOAD_SIZE
+    ) or DEFAULT_MAX_UPLOAD_SIZE
+    max_mb = max_bytes / (1024 * 1024)
+    return jsonify({
+        "success": False,
+        "error": f"Request entity too large: payload exceeds maximum allowed size ({max_mb:.1f} MB limit)."
+    }), 413
+
 
 @orchestrator_bp.route("/api/orchestrator/validate", methods=["POST"])
+@require_bearer_token
 def pre_validate_dataset():
     """Parses and runs PII inspection on an uploaded dataset file before job creation."""
     if "file" not in request.files:
@@ -23,27 +45,68 @@ def pre_validate_dataset():
     if file.filename == "":
         return jsonify({"success": False, "error": "No file selected"}), 400
 
+    max_size = (
+        current_app.config.get("MAX_CONTENT_LENGTH")
+        if current_app else None
+    ) or DEFAULT_MAX_UPLOAD_SIZE
+
+    # Pre-validate Content-Length if supplied
+    if request.content_length is not None and request.content_length > max_size:
+        return jsonify({
+            "success": False,
+            "error": f"Upload exceeds maximum allowed size of {max_size} bytes."
+        }), 413
+
     filename = secure_filename(file.filename)
     suffix = Path(filename).suffix.lower()
 
-    # Save to a temporary file
+    # Save to a temporary file via bounded streaming
     temp_fd, temp_str = tempfile.mkstemp(suffix=suffix)
     os.close(temp_fd)
     temp_path = Path(temp_str)
 
     try:
-        file.save(temp_path)
-        # Validate and inspect
-        _, metadata = validate_dataset_file(temp_path)
+        bytes_written = 0
+        with open(temp_path, "wb") as f_out:
+            while True:
+                chunk = file.stream.read(UPLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                bytes_written += len(chunk)
+                if bytes_written > max_size:
+                    if temp_path.exists():
+                        temp_path.unlink()
+                    return jsonify({
+                        "success": False,
+                        "error": f"Upload exceeds maximum allowed size of {max_size} bytes."
+                    }), 413
+                f_out.write(chunk)
+
+        # Validate file extension/type after size validation (Requirement 7)
+        if suffix not in ALLOWED_DATASET_EXTENSIONS:
+            if temp_path.exists():
+                temp_path.unlink()
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported file format '{suffix}'. Supported formats: {', '.join(sorted(ALLOWED_DATASET_EXTENSIONS))}"
+            }), 400
+
+        # Validate and inspect without loading entire dataset into memory (Requirement 9)
+        _, metadata = validate_dataset_file(temp_path, metadata_only=True)
         return jsonify({"success": True, "metadata": metadata})
     except DatasetValidationError as val_err:
         return jsonify({"success": False, "error": str(val_err)}), 400
+    except RequestEntityTooLarge as re_err:
+        return jsonify({"success": False, "error": str(re_err)}), 413
     except Exception as e:
         logger.exception("Pre-validation failure:")
         return jsonify({"success": False, "error": f"Failed to validate dataset: {str(e)}"}), 500
     finally:
         if temp_path.exists():
-            temp_path.unlink()
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
 
 
 @orchestrator_bp.route("/api/orchestrator/datasets", methods=["GET"])
@@ -75,6 +138,7 @@ def get_dataset_details(dataset_id):
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs", methods=["POST"])
+@require_bearer_token
 def create_job():
     """Creates a new job with specified dataset configuration and subset size."""
     data = request.json or {}
@@ -105,8 +169,9 @@ def create_job():
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/upload", methods=["POST"])
+@require_bearer_token
 def upload_file(job_id):
-    """Uploads a raw dataset file to a created job workspace."""
+    """Uploads a raw dataset file to a created job workspace with bounded streaming."""
     job = orchestrator.get_job(job_id)
     if not job:
         return jsonify({"success": False, "error": "Job not found"}), 404
@@ -118,17 +183,70 @@ def upload_file(job_id):
     if file.filename == "":
         return jsonify({"success": False, "error": "No file selected"}), 400
 
+    max_size = (
+        current_app.config.get("MAX_CONTENT_LENGTH")
+        if current_app else None
+    ) or DEFAULT_MAX_UPLOAD_SIZE
+
+    # Pre-validate Content-Length if supplied
+    if request.content_length is not None and request.content_length > max_size:
+        return jsonify({
+            "success": False,
+            "error": f"Upload exceeds maximum allowed size of {max_size} bytes."
+        }), 413
+
     filename = secure_filename(file.filename)
+    suffix = Path(filename).suffix.lower()
+
+    target_path = orchestrator.base_jobs_dir / job_id / "raw_inputs" / filename
+
     try:
-        content = file.read()
-        orchestrator.add_dataset_file(job_id, filename, content)
+        # Stream file in bounded chunks enforcing max size limit
+        bytes_written = orchestrator.add_dataset_file_stream(
+            job_id=job_id,
+            filename=filename,
+            stream=file.stream,
+            max_size_bytes=max_size,
+            chunk_size=UPLOAD_CHUNK_SIZE,
+        )
+
+        # Validate file extension/type after size validation (Requirement 7)
+        if suffix not in ALLOWED_DATASET_EXTENSIONS:
+            if target_path.exists():
+                try:
+                    target_path.unlink()
+                except OSError:
+                    pass
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported file format '{suffix}'. Supported formats: {', '.join(sorted(ALLOWED_DATASET_EXTENSIONS))}"
+            }), 400
+
+        logger.info(
+            "Successfully uploaded dataset '%s' (%d bytes) to job '%s'",
+            filename, bytes_written, job_id
+        )
         return jsonify({"success": True, "filename": filename})
+
+    except RequestEntityTooLarge as re_err:
+        if target_path.exists():
+            try:
+                target_path.unlink()
+            except OSError:
+                pass
+        return jsonify({"success": False, "error": str(re_err)}), 413
     except Exception as e:
+        if target_path.exists():
+            try:
+                target_path.unlink()
+            except OSError:
+                pass
         logger.exception("Failed to upload dataset file:")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/start", methods=["POST"])
+@require_bearer_token
 def start_job(job_id):
     """Starts the full end-to-end secure pipeline execution."""
     try:
@@ -829,6 +947,7 @@ def get_dataset_templates():
 
 
 @orchestrator_bp.route("/api/orchestrator/chat", methods=["POST"])
+@require_bearer_token
 def orchestrator_chat():
     """
     Executes Base Model vs SecureLoRA PEFT Model inference using the canonical inference_service.

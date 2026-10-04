@@ -26,10 +26,13 @@ from src.orchestrator.transparency import build_transparency_trace
 from src.orchestrator.dataset_processor import validate_dataset_file, preprocess_and_standardize
 from src.orchestrator.chat_engine import answer_question
 from src.evaluation.research_api import research_api_bp
+from src.security.api_auth import require_bearer_token
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sec_dashboard")
+
+from werkzeug.exceptions import RequestEntityTooLarge
 
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(
@@ -37,6 +40,37 @@ app = Flask(
     template_folder=str(BASE_DIR / "templates"),
     static_folder=str(BASE_DIR / "static")
 )
+
+DEFAULT_MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB safe default
+
+
+def get_configured_max_content_length() -> int:
+    env_limit = os.environ.get("MAX_CONTENT_LENGTH") or os.environ.get("SECURELORA_MAX_UPLOAD_SIZE")
+    if env_limit:
+        try:
+            return int(env_limit)
+        except ValueError:
+            pass
+    try:
+        return config.max_upload_size_bytes
+    except Exception:
+        return DEFAULT_MAX_UPLOAD_SIZE
+
+
+app.config["MAX_CONTENT_LENGTH"] = get_configured_max_content_length()
+
+
+@app.errorhandler(413)
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_entity_too_large(error):
+    max_bytes = app.config.get("MAX_CONTENT_LENGTH", DEFAULT_MAX_UPLOAD_SIZE)
+    max_mb = max_bytes / (1024 * 1024)
+    return jsonify({
+        "success": False,
+        "error": f"Request entity too large: payload exceeds maximum allowed size ({max_mb:.1f} MB limit)."
+    }), 413
+
+
 app.register_blueprint(orchestrator_bp)
 app.register_blueprint(research_api_bp)
 
@@ -126,6 +160,7 @@ def get_p4_status():
 
 
 @app.route('/api/phase4/verify', methods=['POST'])
+@require_bearer_token
 def trigger_p4_verify():
     global base_model, peft_model, tokenizer, adapter_loaded, last_verification_steps
     from src.orchestrator.model_registry import model_registry
@@ -380,6 +415,7 @@ def trigger_p4_verify():
 
 
 @app.route('/api/phase4/generate', methods=['POST'])
+@require_bearer_token
 def p4_generate():
     from src.orchestrator.inference_service import compare_base_and_securelora
     from src.orchestrator.model_registry import model_registry
@@ -441,6 +477,7 @@ def p4_generate():
 
 
 @app.route('/api/transparency/inspect', methods=['POST'])
+@require_bearer_token
 def transparency_inspect():
     """
     Accepts a dataset file or uses a job's processed records and returns a full
@@ -495,6 +532,7 @@ def transparency_inspect():
 
 
 @app.route('/api/tamper/simulate', methods=['POST'])
+@require_bearer_token
 def tamper_simulate():
     """
     Simulates a flexible, multi-stage data corruption attack (Stage 1, 2, 3, or 4).
@@ -641,6 +679,7 @@ def compute_dataset_analytics(records):
 
 
 @app.route('/api/chat', methods=['POST'])
+@require_bearer_token
 def secure_chat():
     """
     Privacy-preserving Q&A endpoint.
@@ -717,6 +756,7 @@ def secure_chat():
 
 
 @app.route('/api/security/simulate-attack', methods=['POST'])
+@require_bearer_token
 def simulate_security_attack():
     """
     Simulates or demonstrates one of the 6 security attack vectors:

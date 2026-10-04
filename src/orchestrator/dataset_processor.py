@@ -57,10 +57,19 @@ def inspect_text_for_pii(text: str) -> Dict[str, int]:
     return counts
 
 
-def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def validate_dataset_file(
+    file_path: Path,
+    metadata_only: bool = False,
+    sample_limit: int = 50,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Validates file format, parses records, inspects metadata,
     detects schema format, and performs a PII security audit.
+
+    When metadata_only=True, iterates records in streaming fashion to validate
+    structure and count PII occurrences without accumulating the entire dataset
+    into memory. Only a small sample of records is retained for schema detection.
+
     Raises DatasetValidationError if validation checks fail.
     """
     if not file_path.exists():
@@ -71,6 +80,7 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
         raise DatasetValidationError(f"Unsupported file format '{suffix}'. Supported formats: .txt, .csv, .json, .jsonl, .md")
 
     records: List[Dict[str, Any]] = []
+    num_records = 0
     pii_counts = {"email": 0, "phone": 0, "ssn": 0, "credit_card": 0}
     total_chars = 0
 
@@ -80,21 +90,40 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
                 for line_num, line in enumerate(f, 1):
                     cleaned = line.strip()
                     if cleaned:
+                        num_records += 1
                         total_chars += len(cleaned)
                         # PII Inspection
                         for pii_type, count in inspect_text_for_pii(cleaned).items():
                             pii_counts[pii_type] += count
-                        records.append({"text": cleaned, "line_number": line_num})
+                        if not metadata_only or len(records) < sample_limit:
+                            records.append({"text": cleaned, "line_number": line_num})
 
         elif suffix == '.md':
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-                blocks = [b.strip() for b in content.split('\n\n') if b.strip()]
-                for idx, block in enumerate(blocks, 1):
-                    total_chars += len(block)
-                    for pii_type, count in inspect_text_for_pii(block).items():
+                current_block: List[str] = []
+                block_idx = 0
+                for line in f:
+                    if not line.strip() and current_block:
+                        block_idx += 1
+                        block_str = "\n".join(current_block).strip()
+                        num_records += 1
+                        total_chars += len(block_str)
+                        for pii_type, count in inspect_text_for_pii(block_str).items():
+                            pii_counts[pii_type] += count
+                        if not metadata_only or len(records) < sample_limit:
+                            records.append({"text": block_str, "block_index": block_idx})
+                        current_block = []
+                    elif line.strip():
+                        current_block.append(line.rstrip('\r\n'))
+                if current_block:
+                    block_idx += 1
+                    block_str = "\n".join(current_block).strip()
+                    num_records += 1
+                    total_chars += len(block_str)
+                    for pii_type, count in inspect_text_for_pii(block_str).items():
                         pii_counts[pii_type] += count
-                    records.append({"text": block, "block_index": idx})
+                    if not metadata_only or len(records) < sample_limit:
+                        records.append({"text": block_str, "block_index": block_idx})
 
         elif suffix == '.csv':
             with open(file_path, 'r', encoding='utf-8-sig', errors='replace') as f:
@@ -111,15 +140,17 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
                 for row_idx, row in enumerate(reader, 1):
                     if not row or all(v is None or str(v).strip() == "" for v in row.values()):
                         continue  # skip completely empty row
-                    
+
+                    num_records += 1
                     cleaned_row = {k: v for k, v in row.items() if k is not None}
                     row_str = " ".join(str(v) for v in cleaned_row.values())
                     total_chars += len(row_str)
                     for pii_type, count in inspect_text_for_pii(row_str).items():
                         pii_counts[pii_type] += count
-                    
+
                     cleaned_row["row_index"] = row_idx
-                    records.append(cleaned_row)
+                    if not metadata_only or len(records) < sample_limit:
+                        records.append(cleaned_row)
 
         elif suffix == '.jsonl':
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
@@ -131,12 +162,14 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
                         obj = json.loads(line_str)
                         if not isinstance(obj, dict):
                             raise DatasetValidationError(f"Invalid JSONL record on line {line_num}: must be a JSON object.")
-                        
+
+                        num_records += 1
                         total_chars += len(line_str)
                         for pii_type, count in inspect_text_for_pii(line_str).items():
                             pii_counts[pii_type] += count
                         obj["line_number"] = line_num
-                        records.append(obj)
+                        if not metadata_only or len(records) < sample_limit:
+                            records.append(obj)
                     except json.JSONDecodeError as err:
                         raise DatasetValidationError(f"Malformed JSONL on line {line_num}: {err}") from err
 
@@ -149,22 +182,26 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
 
                 if isinstance(data, list):
                     for idx, item in enumerate(data, 1):
+                        num_records += 1
                         if isinstance(item, dict):
                             item_str = json.dumps(item)
                             total_chars += len(item_str)
                             for pii_type, count in inspect_text_for_pii(item_str).items():
                                 pii_counts[pii_type] += count
-                            item_copy = dict(item)
-                            item_copy["record_index"] = idx
-                            records.append(item_copy)
+                            if not metadata_only or len(records) < sample_limit:
+                                item_copy = dict(item)
+                                item_copy["record_index"] = idx
+                                records.append(item_copy)
                         elif isinstance(item, str):
                             total_chars += len(item)
                             for pii_type, count in inspect_text_for_pii(item).items():
                                 pii_counts[pii_type] += count
-                            records.append({"text": item, "record_index": idx})
+                            if not metadata_only or len(records) < sample_limit:
+                                records.append({"text": item, "record_index": idx})
                         else:
                             raise DatasetValidationError(f"Invalid JSON array element at index {idx}: must be an object or string.")
                 elif isinstance(data, dict):
+                    num_records = 1
                     data_str = json.dumps(data)
                     total_chars += len(data_str)
                     for pii_type, count in inspect_text_for_pii(data_str).items():
@@ -179,11 +216,11 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
         logger.error("Dataset validation parsing failure: %s", e)
         raise DatasetValidationError(f"Failed to parse dataset file: {e}") from e
 
-    if not records:
+    if num_records == 0:
         raise DatasetValidationError("No valid data records found in the uploaded file.")
 
     # Determine schema representation
-    sample = records[0]
+    sample = records[0] if records else {}
     schema = "unknown"
     if "instruction" in sample and "output" in sample:
         schema = "instruction"
@@ -196,7 +233,7 @@ def validate_dataset_file(file_path: Path) -> Tuple[List[Dict[str, Any]], Dict[s
         "file_name": file_path.name,
         "file_type": suffix,
         "file_size_bytes": file_path.stat().st_size,
-        "num_raw_records": len(records),
+        "num_raw_records": num_records,
         "total_characters": total_chars,
         "schema_detected": schema,
         "pii_detected_summary": pii_counts,
