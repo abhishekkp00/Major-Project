@@ -28,6 +28,8 @@ CRITICAL SECURITY DISTINCTION:
 from __future__ import annotations
 
 import datetime
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -95,11 +97,15 @@ class ScreeningPipeline:
         self,
         threshold_config: Optional[ScreeningThresholdConfig] = None,
         audit_log_path: Optional[Path] = None,
+        admin_override_secret: Optional[str] = None,
+        allow_admin_override: bool = True,
     ):
         self.structural_analyzer = StructuralAnalyzer()
         self.behavioral_analyzer = BehavioralAnalyzer()
         self.risk_scorer = RiskScorer(config=threshold_config)
         self.audit_log_path = audit_log_path or Path("outputs/research/adapter_screening/override_audit.log")
+        self.admin_override_secret = admin_override_secret
+        self.allow_admin_override = allow_admin_override
 
     def screen_adapter(
         self,
@@ -110,6 +116,7 @@ class ScreeningPipeline:
         trusted_weights_or_adapter: Any = None,
         admin_override_token: Optional[str] = None,
         override_reason: Optional[str] = None,
+        allow_admin_override: Optional[bool] = None,
         seed: int = 42,
         mode: str = "research",
     ) -> ScreeningReport:
@@ -194,7 +201,13 @@ class ScreeningPipeline:
         decision = "REJECTED"
         approved = False
         override_logged = False
-        valid_override = self._validate_admin_token(admin_override_token)
+        effective_allow_override = (
+            self.allow_admin_override if allow_admin_override is None else allow_admin_override
+        )
+        valid_override = self._validate_admin_token(
+            admin_override_token,
+            allow_override=effective_allow_override,
+        )
 
         if risk_level == "LOW":
             decision = "APPROVED"
@@ -365,12 +378,46 @@ class ScreeningPipeline:
             "lora_B.weight": np.random.randn(64, 8).astype(np.float32) * 0.02,
         }
 
-    def _validate_admin_token(self, token: Optional[str]) -> bool:
-        """Validates admin override token against env or parameter."""
-        if not token:
+    def _validate_admin_token(
+        self,
+        token: Optional[str],
+        allow_override: bool = True,
+    ) -> bool:
+        """
+        Validates admin override token against protected runtime configuration.
+
+        Security invariants:
+        - Must fail closed if override permission is disabled (explicit API control).
+        - Must fail closed if the supplied token is None, empty, or whitespace.
+        - Must fail closed if the runtime secret (env or injected) is missing, empty, or whitespace.
+        - Must NEVER use hardcoded fallback tokens or credentials.
+        - Uses constant-time comparison (hmac.compare_digest) to prevent timing attacks.
+        """
+        if not allow_override or not self.allow_admin_override:
             return False
-        expected = os.getenv("ADMIN_SCREENING_OVERRIDE", "ADMIN_OVERRIDE_TOKEN_2026")
-        return token.strip() == expected.strip()
+
+        if not token or not isinstance(token, str):
+            return False
+
+        token_str = token.strip()
+        if not token_str:
+            return False
+
+        # Resolve expected secret from injected configuration or protected environment variable
+        expected = self.admin_override_secret
+        if expected is None:
+            expected = os.getenv("ADMIN_SCREENING_OVERRIDE")
+
+        if not expected or not isinstance(expected, str):
+            # No runtime secret configured -> fail closed
+            return False
+
+        expected_str = expected.strip()
+        if not expected_str:
+            # Empty runtime secret -> fail closed
+            return False
+
+        return hmac.compare_digest(token_str.encode("utf-8"), expected_str.encode("utf-8"))
 
     def _log_admin_override(
         self,
@@ -381,7 +428,17 @@ class ScreeningPipeline:
         reason: str,
         timestamp: str,
     ) -> bool:
-        """Logs an administrative override event to an audit trail."""
+        """
+        Logs an administrative override event to an audit trail.
+
+        CRITICAL SECURITY INVARIANTS:
+        - NEVER log the raw token or token prefixes to prevent credential leakage.
+        - Logs only a one-way cryptographic SHA-256 fingerprint for audit correlation.
+        """
+        token_fingerprint = "NONE"
+        if token and isinstance(token, str) and token.strip():
+            token_fingerprint = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()[:16]
+
         log_entry = {
             "event": "ADMIN_SCREENING_OVERRIDE",
             "timestamp_utc": timestamp,
@@ -389,14 +446,17 @@ class ScreeningPipeline:
             "risk_score": risk_score,
             "risk_level": risk_level,
             "reason": reason,
-            "token_sha256_prefix": token[:6] + "..." if token else "NONE",
+            "token_fingerprint_sha256_prefix": token_fingerprint,
         }
 
         try:
             self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.audit_log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(log_entry) + "\n")
-            logger.warning("AUDIT EVENT LOGGED: Admin override for adapter '%s' (risk=%.4f)", adapter_id, risk_score)
+            logger.warning(
+                "AUDIT EVENT LOGGED: Admin override for adapter '%s' (risk=%.4f, level=%s)",
+                adapter_id, risk_score, risk_level,
+            )
             return True
         except Exception as e:
             logger.error("Failed to log admin override event: %s", e)
@@ -410,6 +470,7 @@ def pre_packaging_screening_gate(
     pipeline: Optional[ScreeningPipeline] = None,
     candidate_model_fn: Any = None,
     mode: str = "research",
+    allow_admin_override: bool = True,
 ) -> ScreeningReport:
     """
     Phase 3 Integration Gate: Executes screening and raises error if rejected.
@@ -426,13 +487,17 @@ def pre_packaging_screening_gate(
     candidate_model_fn:
         Optional live inference callable for behavioral screening.  Pass a
         real callable for full production behavioral vetting.
+    allow_admin_override:
+        Explicit permission flag to permit administrative overrides when
+        a valid runtime token is presented. Defaults to True.
     """
-    pipe = pipeline or ScreeningPipeline()
+    pipe = pipeline or ScreeningPipeline(allow_admin_override=allow_admin_override)
     report = pipe.screen_adapter(
         adapter_source=adapter_source,
         adapter_id=adapter_id,
         candidate_model_fn=candidate_model_fn,
         admin_override_token=admin_override_token,
+        allow_admin_override=allow_admin_override,
         mode=mode,
     )
 
