@@ -208,6 +208,20 @@ class ConfigLoader:
         return self.security.get("package_version", "3.0.0")
 
     @property
+    def max_upload_size_bytes(self) -> int:
+        """
+        Maximum permitted request / dataset upload payload size in bytes.
+        Defaults to 50 MB (52,428,800 bytes) if not overridden via environment.
+        """
+        env_limit = os.environ.get("MAX_CONTENT_LENGTH") or os.environ.get("SECURELORA_MAX_UPLOAD_SIZE")
+        if env_limit:
+            try:
+                return int(env_limit)
+            except ValueError:
+                pass
+        return int(self.security.get("max_upload_size_bytes", 50 * 1024 * 1024))
+
+    @property
     def binding_policy(self) -> dict:
         """
         Returns binding_policy dictionary from security.yaml with env-var overrides.

@@ -9,7 +9,7 @@
   "execution_status": "COMPLETED",
   "sample_count": 50,
   "seed": 123,
-  "timestamp": "2026-09-06T15:26:17.646971+00:00",
+  "timestamp": "2026-10-04T08:51:54.599413+00:00",
   "validation_threshold_sweep": [
     {
       "threshold": 0.1,
@@ -162,7 +162,7 @@
     "accuracy": 0.2,
     "false_positive_rate": 0.0,
     "false_negative_rate": 1.0,
-    "mean_latency_ms": 1.372,
-    "stdev_latency_ms": 0.125
+    "mean_latency_ms": 16.738,
+    "stdev_latency_ms": 2.271
   }
 }

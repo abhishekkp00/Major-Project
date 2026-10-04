@@ -17,8 +17,11 @@ from src.orchestrator.service import orchestrator
 
 @pytest.fixture
 def client():
+    import os
     app.config["TESTING"] = True
+    token = os.environ.get("SECURELORA_API_TOKEN") or "test-bearer-token-securing-lora-2026"
     with app.test_client() as client:
+        client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
         yield client
 
 

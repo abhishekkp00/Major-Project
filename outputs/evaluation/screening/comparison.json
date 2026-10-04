@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-06T15:26:17.750962+00:00",
+  "timestamp": "2026-10-04T08:51:55.699488+00:00",
   "adapter_path_or_identifier": "benchmark_suite_seed_123",
   "base_model_identifier": "JackFram/llama-68m",
   "evaluation_input_type": "SYNTHETIC_SIMULATION",
@@ -20,7 +20,7 @@
       "execution_status": "COMPLETED",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-09-06T15:26:17.542509+00:00",
+      "timestamp": "2026-10-04T08:51:53.309663+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -173,8 +173,8 @@
         "accuracy": 0.8,
         "false_positive_rate": 0.0,
         "false_negative_rate": 0.25,
-        "mean_latency_ms": 1.396,
-        "stdev_latency_ms": 0.219
+        "mean_latency_ms": 19.03,
+        "stdev_latency_ms": 2.235
       }
     },
     "behavioral_only": {
@@ -188,7 +188,7 @@
       "execution_status": "COMPLETED",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-09-06T15:26:17.646971+00:00",
+      "timestamp": "2026-10-04T08:51:54.599413+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -341,8 +341,8 @@
         "accuracy": 0.2,
         "false_positive_rate": 0.0,
         "false_negative_rate": 1.0,
-        "mean_latency_ms": 1.372,
-        "stdev_latency_ms": 0.125
+        "mean_latency_ms": 16.738,
+        "stdev_latency_ms": 2.271
       }
     },
     "combined": {
@@ -356,7 +356,7 @@
       "execution_status": "COMPLETED",
       "sample_count": 50,
       "seed": 123,
-      "timestamp": "2026-09-06T15:26:17.750597+00:00",
+      "timestamp": "2026-10-04T08:51:55.698358+00:00",
       "validation_threshold_sweep": [
         {
           "threshold": 0.1,
@@ -509,8 +509,8 @@
         "accuracy": 0.8,
         "false_positive_rate": 0.0,
         "false_negative_rate": 0.25,
-        "mean_latency_ms": 1.362,
-        "stdev_latency_ms": 0.249
+        "mean_latency_ms": 14.247,
+        "stdev_latency_ms": 3.447
       }
     }
   },

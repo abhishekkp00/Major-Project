@@ -31,7 +31,9 @@ def client():
     os.environ.setdefault("SECURE_LORA_DASHBOARD_PORT", "5099")
     from src.evaluation.dashboard import app
     app.config["TESTING"] = True
+    token = os.environ.get("SECURELORA_API_TOKEN") or "test-bearer-token-securing-lora-2026"
     with app.test_client() as c:
+        c.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
         yield c
 
 
@@ -43,7 +45,9 @@ def routes_client():
     test_app = Flask(__name__)
     test_app.config["TESTING"] = True
     test_app.register_blueprint(orchestrator_bp)
+    token = os.environ.get("SECURELORA_API_TOKEN") or "test-bearer-token-securing-lora-2026"
     with test_app.test_client() as c:
+        c.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
         yield c
 
 

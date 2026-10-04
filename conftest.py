@@ -10,3 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+import os
+DEFAULT_TEST_TOKEN = "test-bearer-token-securing-lora-2026"
+if "SECURELORA_API_TOKEN" not in os.environ and "API_BEARER_TOKEN" not in os.environ:
+    os.environ["SECURELORA_API_TOKEN"] = DEFAULT_TEST_TOKEN

@@ -13,6 +13,19 @@ let chartEvasionIterations = null;
 let chartPrivacyUtility = null;
 let chartOverhead = null;
 
+// Dynamic API Authorization Helper (reads from storage; never hardcodes tokens)
+function getAuthHeaders(extraHeaders = {}) {
+  const headers = { ...extraHeaders };
+  const token = sessionStorage.getItem('SECURELORA_API_TOKEN') ||
+                localStorage.getItem('SECURELORA_API_TOKEN') ||
+                sessionStorage.getItem('api_bearer_token') ||
+                localStorage.getItem('api_bearer_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token.trim()}`;
+  }
+  return headers;
+}
+
 // Initialize default dataset templates & metrics
 function initDashboard() {
   initDatasetTemplates();
@@ -162,7 +175,7 @@ async function startSecurePipeline() {
     // 1. Create Job with dataset adapter type and subset size
     const createRes = await fetch('/api/orchestrator/jobs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         dataset_name: activeDataset.name || activeDataset.id,
         dataset_type: activeDataset.id,
@@ -192,7 +205,10 @@ async function startSecurePipeline() {
     document.getElementById('exec-job-id-label').textContent = `Job: ${activeJobId}`;
 
     // 3. Start Job Execution
-    await fetch(`/api/orchestrator/jobs/${activeJobId}/start`, { method: 'POST' });
+    await fetch(`/api/orchestrator/jobs/${activeJobId}/start`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
 
     // 4. Connect SSE Stream
     connectJobStream(activeJobId);
@@ -571,21 +587,21 @@ async function loadSelectedRunMetrics(runId) {
       const trainTime = sc.training_time_s ? `${sc.training_time_s} s` : (resSummary.model?.train_time_s ? `${resSummary.model.train_time_s} s` : 'N/A');
       const infLat = sc.inference_latency_ms ? `${sc.inference_latency_ms} ms` : (resSummary.model?.inf_latency_ms ? `${resSummary.model.inf_latency_ms} ms` : 'N/A');
 
-      const tamperRate = d.tamper_rejection_rate ?? 1.0;
-      const sigRate = d.signature_rejection_rate ?? 1.0;
-      const devRate = d.device_rejection_rate ?? d.unauthorized_hardware_rejection ?? 1.0;
-      const replayRate = d.replay_rejection_rate ?? d.replay_attack_rejection ?? 1.0;
+      const tamperRate = d.tamper_rejection_rate != null ? d.tamper_rejection_rate : (resSummary.security?.tamper_rejection_rate != null ? resSummary.security.tamper_rejection_rate : null);
+      const sigRate = d.signature_rejection_rate != null ? d.signature_rejection_rate : (resSummary.security?.signature_rejection_rate != null ? resSummary.security.signature_rejection_rate : null);
+      const devRate = d.device_rejection_rate != null ? d.device_rejection_rate : (d.unauthorized_hardware_rejection != null ? d.unauthorized_hardware_rejection : (resSummary.security?.device_rejection_rate != null ? resSummary.security.device_rejection_rate : null));
+      const replayRate = d.replay_rejection_rate != null ? d.replay_rejection_rate : (d.replay_attack_rejection != null ? d.replay_attack_rejection : (resSummary.security?.replay_rejection_rate != null ? resSummary.security.replay_rejection_rate : null));
 
-      const piiDetectedCount = resSummary.privacy?.pii_corpus_size || 48;
+      const piiDetectedCount = resSummary.privacy?.pii_corpus_size != null ? resSummary.privacy.pii_corpus_size : 'N/A';
 
       populateMetricsView({
         model: {
           trainable_params: trainParams ? `${Number(trainParams).toLocaleString()} (${trainPct})` : 'N/A',
           total_params: totParams ? `${Number(totParams).toLocaleString()} (68M tier)` : 'N/A',
           trainable_pct: trainPct,
-          train_loss: u.train_loss || 'N/A',
-          val_loss: u.val_loss || 'N/A',
-          perplexity: u.perplexity || 'N/A',
+          train_loss: u.train_loss != null ? (typeof u.train_loss === 'object' ? u.train_loss.value : u.train_loss) : 'N/A',
+          val_loss: u.val_loss != null ? (typeof u.val_loss === 'object' ? u.val_loss.value : u.val_loss) : 'N/A',
+          perplexity: u.perplexity != null ? (typeof u.perplexity === 'object' ? u.perplexity.value : u.perplexity) : 'N/A',
           train_time: trainTime,
           inf_latency: infLat
         },
@@ -597,29 +613,29 @@ async function loadSelectedRunMetrics(runId) {
           f1: p.pii_f1 != null ? String(p.pii_f1) : 'N/A',
           dp_epsilon: p.dp_epsilon != null ? String(p.dp_epsilon) : 'N/A',
           dp_delta: p.dp_delta != null ? String(p.dp_delta) : 'N/A',
-          dp_noise: '1.20'
+          dp_noise: (p.dp_noise_multiplier != null || p.dp_noise != null) ? String(p.dp_noise_multiplier ?? p.dp_noise) : 'N/A'
         },
         security: {
-          tamper: `PASS (${(tamperRate * 100).toFixed(1)}%)`,
-          sig: `PASS (${(sigRate * 100).toFixed(1)}%)`,
-          device: `PASS (${(devRate * 100).toFixed(1)}%)`,
-          replay: `PASS (${(replayRate * 100).toFixed(1)}%)`,
-          integrity: 'PASS (100.0%)',
-          overall: 'PASS (100.0%)'
+          tamper: tamperRate != null ? `PASS (${(tamperRate * 100).toFixed(1)}%)` : 'UNVERIFIED',
+          sig: sigRate != null ? `PASS (${(sigRate * 100).toFixed(1)}%)` : 'UNVERIFIED',
+          device: devRate != null ? `PASS (${(devRate * 100).toFixed(1)}%)` : 'UNVERIFIED',
+          replay: replayRate != null ? `PASS (${(replayRate * 100).toFixed(1)}%)` : 'UNVERIFIED',
+          integrity: (tamperRate != null || resSummary.security?.tamper_rejection_rate != null) ? 'PASS' : 'UNVERIFIED',
+          overall: (tamperRate != null && sigRate != null && devRate != null && replayRate != null) ? 'PASS' : 'UNVERIFIED'
         },
         screening: {
-          structural: sc.security_verification?.structural_score != null ? String(sc.security_verification.structural_score) : '0.0500',
-          behavioral: sc.security_verification?.behavioral_score != null ? String(sc.security_verification.behavioral_score) : '0.0300',
-          risk: sc.security_verification?.combined_score != null ? `${sc.security_verification.combined_score} (τ=0.35)` : '0.0800 (τ=0.35)',
-          decision: sc.security_verification?.decision || 'APPROVED',
+          structural: sc.security_verification?.structural_score != null ? String(sc.security_verification.structural_score) : 'UNVERIFIED',
+          behavioral: sc.security_verification?.behavioral_score != null ? String(sc.security_verification.behavioral_score) : 'UNVERIFIED',
+          risk: sc.security_verification?.combined_score != null ? `${sc.security_verification.combined_score} (τ=0.35)` : 'UNVERIFIED',
+          decision: sc.security_verification?.decision || (sc.security_verification ? 'REJECTED' : 'UNVERIFIED'),
           precision: s.precision != null ? String(s.precision) : 'N/A',
           recall: s.recall != null ? String(s.recall) : 'N/A',
-          f1: (s.evasion_suite_f1 ?? s.f1_score) != null ? String(s.evasion_suite_f1 ?? s.f1_score) : 'N/A',
-          adaptive_det: '100.0%'
+          f1: (s.evasion_suite_f1 ?? s.f1_score ?? s.f1) != null ? String(s.evasion_suite_f1 ?? s.f1_score ?? s.f1) : 'N/A',
+          adaptive_det: s.evasion_suite_f1 != null ? `${(Number(s.evasion_suite_f1) * 100).toFixed(1)}%` : 'UNVERIFIED'
         },
         deployment: {
           encrypt: o.encryption_time_ms != null ? `${o.encryption_time_ms} ms` : (o.encryption_ms != null ? `${o.encryption_ms} ms` : 'N/A'),
-          sign: (o.verification_ms != null ? `${o.verification_ms} ms` : '0.051 ms'),
+          sign: o.signing_time_ms != null ? `${o.signing_time_ms} ms` : 'N/A',
           verify: o.verification_time_ms != null ? `${o.verification_time_ms} ms` : (o.verification_ms != null ? `${o.verification_ms} ms` : 'N/A'),
           decrypt: o.decryption_time_ms != null ? `${o.decryption_time_ms} ms` : (o.decryption_ms != null ? `${o.decryption_ms} ms` : 'N/A'),
           deploy: o.deployment_gate_ms != null ? `${o.deployment_gate_ms} ms` : 'N/A',
@@ -700,13 +716,13 @@ async function loadSelectedRunMetrics(runId) {
     if (tag) tag.textContent = `Source: Live Training Job (${targetJobId} - ${jobData.status || 'COMPLETED'})`;
 
     // 1. Model metrics
-    const trainableParams = trSt.metrics?.trainable_params || evalM.trainable_parameters || evalM.trainable_params || 98304;
-    const totalParams = trSt.metrics?.total_params || evalM.total_parameters || evalM.total_params || evalM.all_parameters || 68128512;
+    const trainableParams = trSt.metrics?.trainable_params ?? evalM.trainable_parameters ?? evalM.trainable_params;
+    const totalParams = trSt.metrics?.total_params ?? evalM.total_parameters ?? evalM.total_params ?? evalM.all_parameters;
     const trainablePct = trSt.metrics?.trainable_pct != null 
       ? `${Number(trSt.metrics.trainable_pct).toFixed(3)}%` 
       : (evalM.trainable_percent != null 
         ? `${Number(evalM.trainable_percent).toFixed(3)}%` 
-        : `${(100 * trainableParams / totalParams).toFixed(3)}%`);
+        : (trainableParams && totalParams ? `${(100 * trainableParams / totalParams).toFixed(3)}%` : 'N/A'));
 
     let trainLoss = 'N/A';
     if (trSt.metrics?.final_train_loss != null) {
@@ -721,7 +737,6 @@ async function loadSelectedRunMetrics(runId) {
         }
       }
     }
-    if (trainLoss === 'N/A') trainLoss = '2.1795';
 
     let valLoss = 'N/A';
     if (trSt.metrics?.final_val_loss != null) {
@@ -731,7 +746,6 @@ async function loadSelectedRunMetrics(runId) {
     } else if (evalM.validation_loss != null && !isNaN(evalM.validation_loss)) {
       valLoss = Number(evalM.validation_loss).toFixed(4);
     }
-    if (valLoss === 'N/A') valLoss = '1.7289';
 
     let perplexity = 'N/A';
     if (evalM.perplexity != null && !isNaN(evalM.perplexity)) {
@@ -739,7 +753,6 @@ async function loadSelectedRunMetrics(runId) {
     } else if (valLoss !== 'N/A') {
       perplexity = Math.exp(Number(valLoss)).toFixed(4);
     }
-    if (perplexity === 'N/A') perplexity = '5.6346';
 
     let trainTime = 'N/A';
     if (evalM.training_duration_seconds != null) {
@@ -750,56 +763,55 @@ async function loadSelectedRunMetrics(runId) {
       const diffS = Math.max(1, Math.round((new Date(jobData.updated_at) - new Date(jobData.created_at)) / 1000));
       trainTime = `${diffS} s`;
     }
-    if (trainTime === 'N/A') trainTime = '19.3 s';
 
     const infLatency = evalM.throughput_samples_per_sec != null && evalM.throughput_samples_per_sec > 0
       ? `${(1000 / Number(evalM.throughput_samples_per_sec)).toFixed(1)} ms`
-      : (evalM.inference_latency_ms != null ? `${Number(evalM.inference_latency_ms).toFixed(1)} ms` : '13.3 ms');
+      : (evalM.inference_latency_ms != null ? `${Number(evalM.inference_latency_ms).toFixed(1)} ms` : 'N/A');
 
     // 2. Privacy metrics
     let piiDet = piiSt.metrics?.pii_detected;
     if (piiDet == null && piiSum) {
       const nums = Object.values(piiSum).filter(v => typeof v === 'number');
-      piiDet = nums.reduce((a, b) => a + b, 0);
+      if (nums.length > 0) piiDet = nums.reduce((a, b) => a + b, 0);
     }
-    if (piiDet == null || piiDet === 0) piiDet = 160;
-    const piiMask = piiSt.metrics?.pii_masked != null ? piiSt.metrics.pii_masked : piiDet;
+    const piiMask = piiSt.metrics?.pii_masked != null ? piiSt.metrics.pii_masked : (piiDet != null ? piiDet : 'N/A');
     const piiPrec = piiSt.metrics?.precision != null 
       ? Number(piiSt.metrics.precision).toFixed(4) 
-      : (piiDet > 0 ? (piiMask / Math.max(1, piiDet)).toFixed(4) : '1.0000');
+      : (piiDet != null && piiDet > 0 ? (Number(piiMask) / Number(piiDet)).toFixed(4) : 'N/A');
     const piiRec = piiSt.metrics?.recall != null 
       ? Number(piiSt.metrics.recall).toFixed(4) 
-      : '1.0000';
+      : 'N/A';
     const piiF1 = piiSt.metrics?.f1 != null 
       ? Number(piiSt.metrics.f1).toFixed(4) 
-      : (piiPrec !== 'N/A' && piiRec !== 'N/A' ? (2 * Number(piiPrec) * Number(piiRec) / (Number(piiPrec) + Number(piiRec))).toFixed(4) : '1.0000');
+      : (piiPrec !== 'N/A' && piiRec !== 'N/A' ? (2 * Number(piiPrec) * Number(piiRec) / (Number(piiPrec) + Number(piiRec))).toFixed(4) : 'N/A');
 
     const isDp = jobData.dp_enabled || evalM.training_mode === 'dp_lora' || trSt.metrics?.dp_enabled;
-    const dpEps = isDp ? (evalM.epsilon != null ? Number(evalM.epsilon).toFixed(4) : (jobData.dp_epsilon != null ? Number(jobData.dp_epsilon).toFixed(4) : '2.4430')) : 'N/A (Standard)';
-    const dpDelta = isDp ? (evalM.delta != null ? evalM.delta : '1e-5') : 'N/A';
-    const dpNoise = isDp ? (evalM.noise_multiplier != null ? Number(evalM.noise_multiplier).toFixed(2) : (jobData.dp_noise != null ? Number(jobData.dp_noise).toFixed(2) : '1.20')) : 'N/A';
+    const dpEps = isDp ? (evalM.epsilon != null ? Number(evalM.epsilon).toFixed(4) : (jobData.dp_epsilon != null ? Number(jobData.dp_epsilon).toFixed(4) : 'UNVERIFIED')) : 'N/A (Standard)';
+    const dpDelta = isDp ? (evalM.delta != null ? String(evalM.delta) : (jobData.dp_delta != null ? String(jobData.dp_delta) : 'UNVERIFIED')) : 'N/A';
+    const dpNoise = isDp ? (evalM.noise_multiplier != null ? Number(evalM.noise_multiplier).toFixed(2) : (jobData.dp_noise != null ? Number(jobData.dp_noise).toFixed(2) : 'UNVERIFIED')) : 'N/A';
 
-    // 3. Security metrics
+    // 3. Security verification metrics
     const isCompleted = jobData.status === 'COMPLETED' || jobData.status === 'SUCCESS';
-    const tamperVal = vsteps['Step 2: Integrity Verification'] || vsteps['Step 2: Manifest Schema Validation'] || (isCompleted ? 'PASS (100.0%)' : 'PASS (100.0%)');
-    const sigVal = vsteps['Step 3: Signature Verification'] || vsteps['Step 3: Signature Validation'] || (isCompleted ? 'PASS (100.0%)' : 'PASS (100.0%)');
-    const devVal = vsteps['Step 4: Device Authorization'] || vsteps['Step 6: Device Authorization'] || (isCompleted ? 'PASS (100.0%)' : 'PASS (100.0%)');
-    const replayVal = vsteps['Step 5: Replay & Version Validation'] || vsteps['Step 7: Nonce Replay Protection'] || (isCompleted ? 'PASS (100.0%)' : 'PASS (100.0%)');
-    const integVal = vsteps['Step 1: Package Completeness'] || 'PASS (100.0%)';
-    const overallVal = isCompleted ? 'PASS (100.0%)' : (jobData.status === 'FAILED' ? 'FAILED' : 'PASS (100.0%)');
+    const tamperVal = vsteps['Step 2: Integrity Verification'] || vsteps['Step 2: Manifest Schema Validation'] || (isCompleted && vsteps['Step 2: Integrity Verification'] ? 'PASS' : 'UNVERIFIED');
+    const sigVal = vsteps['Step 3: Signature Verification'] || vsteps['Step 3: Signature Validation'] || (isCompleted && vsteps['Step 3: Signature Verification'] ? 'PASS' : 'UNVERIFIED');
+    const devVal = vsteps['Step 4: Device Authorization'] || vsteps['Step 6: Device Authorization'] || (isCompleted && vsteps['Step 4: Device Authorization'] ? 'PASS' : 'UNVERIFIED');
+    const replayVal = vsteps['Step 5: Replay & Version Validation'] || vsteps['Step 7: Nonce Replay Protection'] || (isCompleted && vsteps['Step 5: Replay & Version Validation'] ? 'PASS' : 'UNVERIFIED');
+    const integVal = vsteps['Step 1: Package Completeness'] || (isCompleted && vsteps['Step 1: Package Completeness'] ? 'PASS' : 'UNVERIFIED');
+    const hasAnyFailed = Object.values(vsteps).some(v => v === 'FAILED');
+    const overallVal = hasAnyFailed ? 'FAILED' : (isCompleted ? 'PASS' : (jobData.status || 'UNVERIFIED'));
 
     // 4. Screening metrics
-    const structScore = scrSt.metrics?.structural_check != null ? Number(scrSt.metrics.structural_check).toFixed(4) : (secM.screening_details?.structural_score != null ? Number(secM.screening_details.structural_score).toFixed(4) : '0.0420');
-    const behavScore = scrSt.metrics?.behavioral_check != null ? Number(scrSt.metrics.behavioral_check).toFixed(4) : (secM.screening_details?.behavioral_score != null ? Number(secM.screening_details.behavioral_score).toFixed(4) : '0.0310');
-    const riskScore = scrSt.metrics?.risk_score != null ? `${Number(scrSt.metrics.risk_score).toFixed(4)} (τ=0.35)` : (secM.security_screening_risk_score != null ? `${Number(secM.security_screening_risk_score).toFixed(4)} (τ=0.35)` : '0.1546 (τ=0.35)');
-    const decision = scrSt.metrics?.screening_result || (secM.screening_details?.decision || 'APPROVED');
+    const structScore = scrSt.metrics?.structural_check != null ? Number(scrSt.metrics.structural_check).toFixed(4) : (secM.screening_details?.structural_score != null ? Number(secM.screening_details.structural_score).toFixed(4) : 'UNVERIFIED');
+    const behavScore = scrSt.metrics?.behavioral_check != null ? Number(scrSt.metrics.behavioral_check).toFixed(4) : (secM.screening_details?.behavioral_score != null ? Number(secM.screening_details.behavioral_score).toFixed(4) : 'UNVERIFIED');
+    const riskScore = scrSt.metrics?.risk_score != null ? `${Number(scrSt.metrics.risk_score).toFixed(4)} (τ=0.35)` : (secM.security_screening_risk_score != null ? `${Number(secM.security_screening_risk_score).toFixed(4)} (τ=0.35)` : 'UNVERIFIED');
+    const decision = scrSt.metrics?.screening_result || (secM.screening_details?.decision || 'UNVERIFIED');
 
-    const displayModelName = jobData.dataset_name ? (jobData.dataset_name.length > 16 ? jobData.dataset_name.slice(0, 14) + '…' : jobData.dataset_name) : 'AI4Privacy (68M)';
+    const displayModelName = jobData.dataset_name ? (jobData.dataset_name.length > 16 ? jobData.dataset_name.slice(0, 14) + '…' : jobData.dataset_name) : 'Model';
 
     populateMetricsView({
       model: {
-        trainable_params: trainableParams != null ? `${Number(trainableParams).toLocaleString()} (${trainablePct})` : '98,304 (0.144%)',
-        total_params: totalParams != null ? `${Number(totalParams).toLocaleString()} (${displayModelName})` : `68,128,512 (${displayModelName})`,
+        trainable_params: trainableParams != null ? `${Number(trainableParams).toLocaleString()} (${trainablePct})` : 'N/A',
+        total_params: totalParams != null ? `${Number(totalParams).toLocaleString()} (${displayModelName})` : 'N/A',
         trainable_pct: trainablePct,
         train_loss: trainLoss,
         val_loss: valLoss,
@@ -808,14 +820,14 @@ async function loadSelectedRunMetrics(runId) {
         inf_latency: infLatency
       },
       privacy: {
-        pii_detected: piiDet,
+        pii_detected: piiDet != null ? piiDet : 'N/A',
         pii_masked: piiMask,
         precision: piiPrec,
         recall: piiRec,
         f1: piiF1,
         dp_epsilon: dpEps,
-        dp_delta: String(dpDelta),
-        dp_noise: String(dpNoise)
+        dp_delta: dpDelta,
+        dp_noise: dpNoise
       },
       security: {
         tamper: tamperVal,
@@ -830,18 +842,18 @@ async function loadSelectedRunMetrics(runId) {
         behavioral: behavScore,
         risk: riskScore,
         decision: decision,
-        precision: secM.screening_details?.precision != null ? Number(secM.screening_details.precision).toFixed(4) : '1.0000',
-        recall: secM.screening_details?.recall != null ? Number(secM.screening_details.recall).toFixed(4) : '1.0000',
-        f1: secM.screening_details?.f1 != null ? Number(secM.screening_details.f1).toFixed(4) : '1.0000',
-        adaptive_det: secM.screening_details?.adaptive_detection_rate != null ? `${(Number(secM.screening_details.adaptive_detection_rate)*100).toFixed(1)}%` : '100.0%'
+        precision: secM.screening_details?.precision != null ? Number(secM.screening_details.precision).toFixed(4) : 'N/A',
+        recall: secM.screening_details?.recall != null ? Number(secM.screening_details.recall).toFixed(4) : 'N/A',
+        f1: secM.screening_details?.f1 != null ? Number(secM.screening_details.f1).toFixed(4) : 'N/A',
+        adaptive_det: secM.screening_details?.adaptive_detection_rate != null ? `${(Number(secM.screening_details.adaptive_detection_rate)*100).toFixed(1)}%` : 'UNVERIFIED'
       },
       deployment: {
-        encrypt: secM.encryption_time_ms != null ? `${Number(secM.encryption_time_ms).toFixed(3)} ms` : '0.210 ms',
-        sign: secM.signing_time_ms != null ? `${Number(secM.signing_time_ms).toFixed(3)} ms` : '0.051 ms',
-        verify: secM.verification_time_seconds != null ? `${(Number(secM.verification_time_seconds)*1000).toFixed(2)} ms` : (secM.verification_time_ms != null ? `${Number(secM.verification_time_ms).toFixed(2)} ms` : '0.051 ms'),
-        decrypt: secM.decryption_time_ms != null ? `${Number(secM.decryption_time_ms).toFixed(3)} ms` : '0.192 ms',
-        deploy: secM.deployment_latency_ms != null ? `${Number(secM.deployment_latency_ms).toFixed(3)} ms` : '0.394 ms',
-        inf_overhead: secM.screening_details?.screening_latency_ms != null ? `${Number(secM.screening_details.screening_latency_ms).toFixed(2)} ms` : '7.801 ms'
+        encrypt: secM.encryption_time_ms != null ? `${Number(secM.encryption_time_ms).toFixed(3)} ms` : 'N/A',
+        sign: secM.signing_time_ms != null ? `${Number(secM.signing_time_ms).toFixed(3)} ms` : 'N/A',
+        verify: secM.verification_time_seconds != null ? `${(Number(secM.verification_time_seconds)*1000).toFixed(2)} ms` : (secM.verification_time_ms != null ? `${Number(secM.verification_time_ms).toFixed(2)} ms` : 'N/A'),
+        decrypt: secM.decryption_time_ms != null ? `${Number(secM.decryption_time_ms).toFixed(3)} ms` : 'N/A',
+        deploy: secM.deployment_latency_ms != null ? `${Number(secM.deployment_latency_ms).toFixed(3)} ms` : 'N/A',
+        inf_overhead: secM.screening_details?.screening_latency_ms != null ? `${Number(secM.screening_details.screening_latency_ms).toFixed(2)} ms` : 'N/A'
       }
     });
 
@@ -1001,11 +1013,11 @@ async function renderMetricsCharts(jobData = null) {
             }
           ];
         } else {
-          labels = ['SSN', 'EMAIL', 'PHONE', 'IP ADDRESS', 'API KEY', 'CREDIT CARD'];
+          labels = ['No Entity Breakdown Available'];
           dSets = [
-            { label: 'Precision (%)', data: [100, 100, 75, 100, 100, 94], backgroundColor: '#3b82f6', borderRadius: 4 },
-            { label: 'Recall (%)', data: [100, 100, 100, 100, 100, 94], backgroundColor: '#10b981', borderRadius: 4 },
-            { label: 'F1 Score (%)', data: [100, 100, 85.7, 100, 100, 94], backgroundColor: '#f59e0b', borderRadius: 4 }
+            { label: 'Precision (%)', data: [0], backgroundColor: '#3b82f6', borderRadius: 4 },
+            { label: 'Recall (%)', data: [0], backgroundColor: '#10b981', borderRadius: 4 },
+            { label: 'F1 Score (%)', data: [0], backgroundColor: '#f59e0b', borderRadius: 4 }
           ];
         }
       }
@@ -1035,11 +1047,11 @@ async function renderMetricsCharts(jobData = null) {
       if (isLiveJob) {
         if (title2) title2.textContent = `2. ADAPTER SCREENING CHECKS & RISK SCORES (${jobData.job_id})`;
         const secM = jobData.security_metrics || {};
-        const riskScore = Number(secM.security_screening_risk_score ?? secM.screening_details?.adapter_risk_score ?? 0.1546);
-        const structScore = Number(secM.screening_details?.structural_score ?? 0.042);
-        const behavScore = Number(secM.screening_details?.behavioral_score ?? 0.031);
+        const riskScore = Number(secM.security_screening_risk_score ?? secM.screening_details?.adapter_risk_score ?? 0);
+        const structScore = Number(secM.screening_details?.structural_score ?? 0);
+        const behavScore = Number(secM.screening_details?.behavioral_score ?? 0);
 
-        labels = ['Structural Anomaly', 'Behavioral Shift', 'Combined Adapter Risk', 'Rejection Threshold (τ)'];
+        labels = ['Structural Anomaly', 'Behavioral Shift', 'Combined Adapter Risk', 'Rejection Threshold (τ=0.35)'];
         datasets = [{
           label: 'Score Metric',
           data: [structScore, behavScore, riskScore, 0.35],
@@ -1049,17 +1061,17 @@ async function renderMetricsCharts(jobData = null) {
       } else {
         if (title2) title2.textContent = '2. SCREENING PERFORMANCE (STRUCTURAL vs BEHAVIORAL vs COMBINED)';
         const ss = resScr.systems_summary || {};
-        const structF1 = Number(ss.structural_only?.f1 ?? 0.8571);
-        const structPrec = Number(ss.structural_only?.precision ?? 1.0);
-        const structRec = Number(ss.structural_only?.recall ?? 0.75);
+        const structF1 = ss.structural_only?.f1 != null ? Number(ss.structural_only.f1) : 0;
+        const structPrec = ss.structural_only?.precision != null ? Number(ss.structural_only.precision) : 0;
+        const structRec = ss.structural_only?.recall != null ? Number(ss.structural_only.recall) : 0;
 
-        const behavF1 = Number(ss.behavioral_only?.f1 ?? 0.0);
-        const behavPrec = Number(ss.behavioral_only?.precision ?? 0.0);
-        const behavRec = Number(ss.behavioral_only?.recall ?? 0.0);
+        const behavF1 = ss.behavioral_only?.f1 != null ? Number(ss.behavioral_only.f1) : 0;
+        const behavPrec = ss.behavioral_only?.precision != null ? Number(ss.behavioral_only.precision) : 0;
+        const behavRec = ss.behavioral_only?.recall != null ? Number(ss.behavioral_only.recall) : 0;
 
-        const combF1 = Number(ss.combined?.f1 ?? 1.0);
-        const combPrec = Number(ss.combined?.precision ?? 1.0);
-        const combRec = Number(ss.combined?.recall ?? 1.0);
+        const combF1 = ss.combined?.f1 != null ? Number(ss.combined.f1) : 0;
+        const combPrec = ss.combined?.precision != null ? Number(ss.combined.precision) : 0;
+        const combRec = ss.combined?.recall != null ? Number(ss.combined.recall) : 0;
 
         labels = ['Structural-Only', 'Behavioral-Only', 'Combined (SecureLoRA)'];
         datasets = [
@@ -1094,8 +1106,8 @@ async function renderMetricsCharts(jobData = null) {
         if (title3) title3.textContent = `3. CRYPTOGRAPHIC VERIFICATION GATES (${jobData.job_id})`;
         const vsteps = jobData.verification_steps || {};
         const stepKeys = Object.keys(vsteps);
-        const labels = stepKeys.length > 0 ? stepKeys.map(k => k.replace(/Step \d+:\s*/, '')) : ['Integrity', 'Signature', 'Device Auth', 'Key Derivation', 'Decryption'];
-        const values = stepKeys.length > 0 ? stepKeys.map(k => vsteps[k] === 'PASSED' ? 100 : 0) : [100, 100, 100, 100, 100];
+        const labels = stepKeys.length > 0 ? stepKeys.map(k => k.replace(/Step \d+:\s*/, '')) : ['No Verification Steps Executed'];
+        const values = stepKeys.length > 0 ? stepKeys.map(k => (vsteps[k] === 'PASSED' || vsteps[k]?.startsWith('PASS')) ? 100 : 0) : [0];
 
         chartEvasionIterations = new Chart(ctxEv, {
           type: 'bar',
@@ -1121,20 +1133,20 @@ async function renderMetricsCharts(jobData = null) {
       } else {
         if (title3) title3.textContent = '3. ADAPTIVE ATTACK EVASION TRAJECTORY ACROSS THREAT LEVELS';
         const ls = resEv.level_summary || {};
-        const s0 = Number(ls.level_0?.structural_detection ?? 1.0);
-        const s1 = Number(ls.level_1?.structural_detection ?? 0.75);
-        const s2 = Number(ls.level_2?.structural_detection ?? 0.35);
-        const s3 = Number(ls.level_3?.structural_detection ?? 0.0);
+        const s0 = ls.level_0?.structural_detection != null ? Number(ls.level_0.structural_detection) : 0;
+        const s1 = ls.level_1?.structural_detection != null ? Number(ls.level_1.structural_detection) : 0;
+        const s2 = ls.level_2?.structural_detection != null ? Number(ls.level_2.structural_detection) : 0;
+        const s3 = ls.level_3?.structural_detection != null ? Number(ls.level_3.structural_detection) : 0;
 
-        const b0 = Number(ls.level_0?.behavioral_detection ?? 0.0);
-        const b1 = Number(ls.level_1?.behavioral_detection ?? 0.25);
-        const b2 = Number(ls.level_2?.behavioral_detection ?? 0.75);
-        const b3 = Number(ls.level_3?.behavioral_detection ?? 1.0);
+        const b0 = ls.level_0?.behavioral_detection != null ? Number(ls.level_0.behavioral_detection) : 0;
+        const b1 = ls.level_1?.behavioral_detection != null ? Number(ls.level_1.behavioral_detection) : 0;
+        const b2 = ls.level_2?.behavioral_detection != null ? Number(ls.level_2.behavioral_detection) : 0;
+        const b3 = ls.level_3?.behavioral_detection != null ? Number(ls.level_3.behavioral_detection) : 0;
 
-        const c0 = Number(ls.level_0?.securelora_detection ?? 1.0);
-        const c1 = Number(ls.level_1?.securelora_detection ?? 1.0);
-        const c2 = Number(ls.level_2?.securelora_detection ?? 1.0);
-        const c3 = Number(ls.level_3?.securelora_detection ?? 1.0);
+        const c0 = ls.level_0?.securelora_detection != null ? Number(ls.level_0.securelora_detection) : 0;
+        const c1 = ls.level_1?.securelora_detection != null ? Number(ls.level_1.securelora_detection) : 0;
+        const c2 = ls.level_2?.securelora_detection != null ? Number(ls.level_2.securelora_detection) : 0;
+        const c3 = ls.level_3?.securelora_detection != null ? Number(ls.level_3.securelora_detection) : 0;
 
         chartEvasionIterations = new Chart(ctxEv, {
           type: 'line',
@@ -1238,56 +1250,81 @@ async function renderMetricsCharts(jobData = null) {
           }
         });
       } else {
-        if (title4) title4.textContent = '4. EMPIRICAL PRIVACY VS UTILITY TRADE-OFF (EPSILON vs PERPLEXITY)';
-        chartPrivacyUtility = new Chart(ctxPriv, {
-          type: 'line',
-          data: {
-            labels: ['ε = 1.0 (Strict DP)', 'ε = 2.0', 'ε = 2.443 (Optimal)', 'ε = 4.0', 'ε = 8.0 (Relaxed)', 'Standard LoRA (No DP)'],
-            datasets: [
-              {
-                label: 'Perplexity (Lower is Better)',
-                data: [2.10, 1.72, 1.57, 1.48, 1.41, 1.38],
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                fill: true,
-                tension: 0.35,
-                yAxisID: 'y'
-              },
-              {
-                label: 'Validation Loss',
-                data: [0.7419, 0.5423, 0.4500, 0.3920, 0.3436, 0.3221],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                fill: false,
-                tension: 0.35,
-                yAxisID: 'y1'
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#f8fafc', font: { size: 10 } } } },
-            scales: {
-              x: { ticks: { color: '#94a3b8', font: { size: 9 } } },
-              y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                ticks: { color: '#10b981', font: { size: 10 } },
-                title: { display: true, text: 'Perplexity', color: '#10b981', font: { size: 9 } }
-              },
-              y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                grid: { drawOnChartArea: false },
-                ticks: { color: '#3b82f6', font: { size: 10 } },
-                title: { display: true, text: 'Val Loss', color: '#3b82f6', font: { size: 9 } }
+        if (title4) title4.textContent = '4. EMPIRICAL PRIVACY VS UTILITY TRADE-OFF';
+        const curve = resPriv.privacy_utility_curve;
+        if (curve && curve.labels && curve.labels.length > 0) {
+          chartPrivacyUtility = new Chart(ctxPriv, {
+            type: 'line',
+            data: {
+              labels: curve.labels,
+              datasets: [
+                {
+                  label: 'Perplexity (Lower is Better)',
+                  data: curve.perplexity,
+                  borderColor: '#10b981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  fill: true,
+                  tension: 0.35,
+                  yAxisID: 'y'
+                },
+                {
+                  label: 'Validation Loss',
+                  data: curve.val_loss,
+                  borderColor: '#3b82f6',
+                  backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                  fill: false,
+                  tension: 0.35,
+                  yAxisID: 'y1'
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#f8fafc', font: { size: 10 } } } },
+              scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 9 } } },
+                y: {
+                  type: 'linear',
+                  display: true,
+                  position: 'left',
+                  ticks: { color: '#10b981', font: { size: 10 } },
+                  title: { display: true, text: 'Perplexity', color: '#10b981', font: { size: 9 } }
+                },
+                y1: {
+                  type: 'linear',
+                  display: true,
+                  position: 'right',
+                  grid: { drawOnChartArea: false },
+                  ticks: { color: '#3b82f6', font: { size: 10 } },
+                  title: { display: true, text: 'Val Loss', color: '#3b82f6', font: { size: 9 } }
+                }
               }
             }
-          }
-        });
+          });
+        } else {
+          chartPrivacyUtility = new Chart(ctxPriv, {
+            type: 'line',
+            data: {
+              labels: ['Unexecuted / No Curve Data'],
+              datasets: [
+                {
+                  label: 'Perplexity',
+                  data: [0],
+                  borderColor: '#10b981'
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 9 } } },
+                y: { ticks: { color: '#94a3b8', font: { size: 10 } }, beginAtZero: true }
+              }
+            }
+          });
+        }
       }
     }
 
@@ -1311,11 +1348,11 @@ async function renderMetricsCharts(jobData = null) {
         data = [trainS, scrMs, encMs, decMs, verMs];
       } else {
         const fpo = resOv.full_pipeline_overhead || {};
-        const scrMs = Number(fpo.screening_latency_ms ?? 7.801);
-        const encMs = Number(fpo.encryption_time_ms ?? 0.210);
-        const decMs = Number(fpo.decryption_time_ms ?? 0.192);
-        const verMs = Number(fpo.verification_time_ms ?? 0.051);
-        const gateMs = Number(fpo.deployment_gate_ms ?? 0.394);
+        const scrMs = Number(fpo.screening_latency_ms || 0);
+        const encMs = Number(fpo.encryption_time_ms || 0);
+        const decMs = Number(fpo.decryption_time_ms || 0);
+        const verMs = Number(fpo.verification_time_ms || 0);
+        const gateMs = Number(fpo.deployment_gate_ms || 0);
 
         labels = ['Screening Gate', 'AES-256 Encrypt', 'AES-256 Decrypt', 'RSA Signature Verify', 'Deployment Gate'];
         data = [scrMs, encMs, decMs, verMs, gateMs];
@@ -1465,7 +1502,7 @@ async function generateModelResponse() {
   try {
     const res = await fetch('/api/orchestrator/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         question: promptInput.value,
         max_new_tokens: maxNewTokens,
@@ -1522,7 +1559,7 @@ async function triggerSecurityTest(attackId) {
   try {
     const res = await fetch('/api/security/simulate-attack', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ attack_id: attackId, payload: 'Security test payload' })
     });
     const data = await res.json();

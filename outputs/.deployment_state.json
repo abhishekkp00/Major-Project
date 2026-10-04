@@ -1,7 +1,7 @@
 {
   "adapters": {
     "job_test_security_123": {
-      "last_sequence": 56,
+      "last_sequence": 63,
       "processed_packages": [
         "aa7107b2-1a3f-42b5-ba3a-21f095b47c75",
         "58317050-db0e-4c63-940c-1e0b01a71c98",
@@ -58,12 +58,19 @@
         "954f22e4-7b01-4abc-9af4-355b08b12f8c",
         "bb7fb2ef-370d-4276-8521-845f19709835",
         "ffea91ca-a6ac-41c3-8859-d9fa255cae17",
-        "2c424032-4109-40be-83fd-d3d06ebea005"
+        "2c424032-4109-40be-83fd-d3d06ebea005",
+        "7d159df0-3f38-46f4-b25c-c28c8ff99462",
+        "5610b04f-b8d0-44c1-86f0-71459dd93968",
+        "f03bd807-a40b-4e30-bc3f-fc35e47d8d2a",
+        "6a002638-5609-4def-ba44-e22daa9c3232",
+        "f64b8cbe-ce0f-4473-8713-72f248aaafdf",
+        "956432b8-ba14-446c-977d-05531e7b2255",
+        "afd17bdf-9029-4fa6-9837-0b80571f704a"
       ],
-      "last_deployed_utc": "2026-09-06T15:34:41.370482+00:00"
+      "last_deployed_utc": "2026-10-04T09:02:41.581652+00:00"
     },
     "lora-adapter-v1": {
-      "last_sequence": 100,
+      "last_sequence": 140,
       "processed_packages": [
         "c335f061-1c8b-4416-b0e4-5c4fca3ad1ad",
         "acaa83d5-e84b-4d9c-b902-20d5cd1b4b25",
@@ -164,9 +171,49 @@
         "0f86bf82-2e0a-49fd-a857-69fca61c2e93",
         "a56c0530-d8e2-470a-9374-65e6410e7196",
         "155e4f41-c1d1-49bc-8253-db31bf2a4a1f",
-        "d482dafb-4924-4f86-889c-84a2764a5df9"
+        "d482dafb-4924-4f86-889c-84a2764a5df9",
+        "586371c7-7704-478b-82e5-7a2cd287840d",
+        "d647082e-a152-4432-8ff1-e785b3caedf6",
+        "dc14c73f-c1a2-4ae8-a0c1-42363b316d26",
+        "0625138f-4644-4738-823b-bd48b75a79ca",
+        "099985cb-448e-4b9d-99d1-4f10fe2001c9",
+        "b558b189-00ce-4f47-bf87-b9e072a3b544",
+        "79723c4a-33d5-46d7-881e-68c0ba65d2c5",
+        "1800d3e5-d915-4f8c-9df0-12332522adf8",
+        "525b38fc-055e-4b2d-b7f1-11adc8b83b7e",
+        "84a7b1a0-c9c4-48be-84ab-8f28815240d7",
+        "08ec85fd-986d-4fa0-831d-b7797f0a0fc1",
+        "701b3cc0-7a31-43c2-9f2f-ff71674cd5f2",
+        "3e8c055d-6639-4e3c-8cda-cf8f3df66184",
+        "cf1d9c64-7c25-44ed-a8c1-6389494040ad",
+        "6abde6ad-44e1-42e8-b486-f386286ded0f",
+        "9e84099b-b000-40df-9872-73479c3db2af",
+        "31e8b358-4e4c-422b-a73c-84cadaf99207",
+        "435679d2-3d9d-44c0-a234-e3bc005a7016",
+        "4c396d1d-6c56-4227-aaec-508c50e8c9df",
+        "f793a5e5-01a3-4890-8589-fae263d1ae7d",
+        "9e265559-ba78-4f49-a87a-94492f867555",
+        "9977e7bd-0f5d-47ac-9824-a2a344f7594d",
+        "30feeb78-f421-4649-9502-e97cca4cb838",
+        "a07b00bb-e6c4-4cd9-94b1-aff6aded5963",
+        "f180b0a4-a0bc-4b76-b7e4-a21f938d7668",
+        "b9b02e96-5381-4eea-9048-feeee4e0cd56",
+        "1f6deaa0-7f20-4236-b5a7-9564ae697f1a",
+        "ccc03713-a5c8-4ce9-ae93-7be5505a7dee",
+        "0558992e-292f-4a39-a481-41c799d96330",
+        "d8a425a3-94a7-4a51-bb92-ffd4f88b4e0a",
+        "25240410-3b9f-4269-8989-ffc9fe24014d",
+        "a84b1248-cdf9-4335-9287-28d4da4c272c",
+        "36ebceee-a230-45ed-84da-8c331bd532f8",
+        "4f98d88f-e093-41c4-9d80-2943925900a0",
+        "3203f55d-188e-4386-9599-0ebdafb88188",
+        "9a85a856-5609-4889-a6e9-acedc9cc0e55",
+        "2e90c5ea-8d9d-4291-aeef-c28f6a436f25",
+        "46caf374-0574-4f0c-a0bd-9a10b10a7d77",
+        "67bf9441-1b87-4c30-ac26-6800362e6771",
+        "09d78679-9eec-4f4d-b16d-fd793cf0b404"
       ],
-      "last_deployed_utc": "2026-09-06T15:33:32.213568+00:00"
+      "last_deployed_utc": "2026-10-04T08:57:36.558507+00:00"
     },
     "job_1786882160_9540133a": {
       "last_sequence": 1,
