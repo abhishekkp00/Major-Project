@@ -183,7 +183,8 @@ class TestDatasetAdapterLayer(unittest.TestCase):
         self.assertTrue(meta["ground_truth_available"])
 
     def test_orchestrator_integration(self):
-        """Tests JobOrchestrator dataset adapter job creation."""
+        """Tests JobOrchestrator dataset adapter job creation without persistent keys."""
+        import shutil
         tmp_jobs_dir = Path("outputs/test_jobs")
         tmp_jobs_dir.mkdir(parents=True, exist_ok=True)
         orchestrator_inst = JobOrchestrator(base_jobs_dir=str(tmp_jobs_dir))
@@ -194,10 +195,16 @@ class TestDatasetAdapterLayer(unittest.TestCase):
             subset_size=20,
             epochs=1
         )
-        job = orchestrator_inst.get_job(job_id)
-        self.assertIsNotNone(job)
-        self.assertEqual(job["dataset_type"], "ai4privacy")
-        self.assertEqual(job["subset_size"], 20)
+        try:
+            job = orchestrator_inst.get_job(job_id)
+            self.assertIsNotNone(job)
+            self.assertEqual(job["dataset_type"], "ai4privacy")
+            self.assertEqual(job["subset_size"], 20)
+            # Ensure no persistent plaintext secrets.key is created on disk
+            self.assertFalse((tmp_jobs_dir / job_id / "secrets.key").exists())
+            self.assertIsNotNone(orchestrator_inst.get_job_key(job_id))
+        finally:
+            shutil.rmtree(tmp_jobs_dir / job_id, ignore_errors=True)
 
 
 if __name__ == "__main__":

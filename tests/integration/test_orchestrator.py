@@ -29,7 +29,8 @@ def test_orchestrator_job_lifecycle(custom_orchestrator):
     job_dir = custom_orchestrator.base_jobs_dir / job_id
     assert (job_dir / "raw_inputs").exists()
     assert (job_dir / "encrypted").exists()
-    assert (job_dir / "secrets.key").exists()
+    assert not (job_dir / "secrets.key").exists()
+    assert custom_orchestrator.get_job_key(job_id) is not None
     
     # 2. Add dataset file
     dataset_content = b'{"instruction": "test", "output": "response"}\n'

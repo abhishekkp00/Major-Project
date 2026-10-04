@@ -233,6 +233,59 @@ def decrypted_temporary_file(encrypted_file_path: Union[str, Path], key: bytes) 
         shred_file(temp_path)
 
 
+@contextmanager
+def temporary_key_file(
+    key: bytes,
+    parent_dir: Optional[Union[str, Path]] = None,
+    prefix: str = ".ephemeral_key_"
+) -> Iterator[Path]:
+    """
+    Context manager that temporarily persists a symmetric key to a job-specific
+    or restricted temporary location with strict permissions (0600 on POSIX).
+    Yields the Path to the temporary key file, and guarantees secure shredding
+    and deletion upon exit (whether normal or during an exception).
+    """
+    if not isinstance(key, (bytes, bytearray)):
+        raise TypeError("Key must be bytes or bytearray.")
+    if len(key) != 32:
+        raise ValueError(f"Key must be exactly 32 bytes (256 bits), got {len(key)}")
+
+    p_dir = Path(parent_dir) if parent_dir is not None else None
+    if p_dir:
+        p_dir.mkdir(parents=True, exist_ok=True)
+        temp_fd, temp_path_str = tempfile.mkstemp(prefix=prefix, suffix=".key", dir=str(p_dir))
+    else:
+        temp_fd, temp_path_str = tempfile.mkstemp(prefix=prefix, suffix=".key")
+
+    temp_path = Path(temp_path_str)
+    try:
+        if os.name == 'posix':
+            try:
+                os.fchmod(temp_fd, 0o600)
+            except OSError:
+                pass
+        with os.fdopen(temp_fd, "wb") as f:
+            f.write(key)
+            f.flush()
+            os.fsync(f.fileno())
+        temp_fd = None
+
+        if os.name == 'posix':
+            try:
+                temp_path.chmod(0o600)
+            except OSError:
+                pass
+
+        yield temp_path
+    finally:
+        if temp_fd is not None:
+            try:
+                os.close(temp_fd)
+            except OSError:
+                pass
+        shred_file(temp_path)
+
+
 # ── Block-level AES-GCM (Phase 3 & 4 Adapter Weights) ─────────────────────────
 
 def _archive_directory(source_dir: Path, dest_tar: Path) -> None:

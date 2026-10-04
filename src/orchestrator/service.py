@@ -72,7 +72,46 @@ class JobOrchestrator:
         self.db_path = self.base_jobs_dir / "jobs_db.json"
         self.jobs: Dict[str, Dict[str, Any]] = {}
         self.lock = threading.Lock()
+        self._job_keys: Dict[str, bytes] = {}
         self._load_db()
+
+    def get_job_key(self, job_id: str) -> Optional[bytes]:
+        """
+        Retrieves the symmetric encryption key for a job from memory.
+        If not present in memory (e.g. from an existing on-disk job),
+        checks for a legacy key file, loads it into memory, and shreds
+        the plaintext file immediately.
+        """
+        with self.lock:
+            if job_id in self._job_keys:
+                return self._job_keys[job_id]
+
+        # Check for legacy key file on disk, load and shred immediately
+        legacy_key_path = self.base_jobs_dir / job_id / "secrets.key"
+        if legacy_key_path.exists():
+            try:
+                key_bytes = legacy_key_path.read_bytes()
+                from src.security.shred import shred_file
+                shred_file(legacy_key_path)
+                if len(key_bytes) == 32:
+                    with self.lock:
+                        self._job_keys[job_id] = key_bytes
+                    return key_bytes
+            except Exception as e:
+                logger.warning("Failed to recover legacy key file for %s: %s", job_id, e)
+        return None
+
+    def set_job_key(self, job_id: str, key: bytes) -> None:
+        """Sets the symmetric key for a job in volatile memory."""
+        if len(key) != 32:
+            raise ValueError(f"Job encryption key must be 32 bytes, got {len(key)}")
+        with self.lock:
+            self._job_keys[job_id] = key
+
+    def clear_job_key(self, job_id: str) -> None:
+        """Clears the symmetric key for a job from memory."""
+        with self.lock:
+            self._job_keys.pop(job_id, None)
 
     def _load_db(self):
         with self.lock:
@@ -125,12 +164,10 @@ class JobOrchestrator:
         for d in dirs.values():
             d.mkdir(parents=True, exist_ok=True)
 
-        # Generate unique 256-bit encryption key
+        # Generate unique 256-bit encryption key in volatile memory (never written as permanent plaintext file)
         key = generate_key()
-        key_path = job_dir / "secrets.key"
-        key_path.write_bytes(key)
-        if os.name == 'posix':
-            key_path.chmod(0o600)
+        with self.lock:
+            self._job_keys[job_id] = key
 
         job_record = {
             "job_id": job_id,
@@ -166,6 +203,53 @@ class JobOrchestrator:
         target_path = self.base_jobs_dir / job_id / "raw_inputs" / filename
         target_path.write_bytes(content)
         logger.info("Saved dataset file %s to job %s", filename, job_id)
+
+    def add_dataset_file_stream(
+        self,
+        job_id: str,
+        filename: str,
+        stream: Any,
+        max_size_bytes: int = 50 * 1024 * 1024,
+        chunk_size: int = 64 * 1024,
+    ) -> int:
+        """
+        Streams uploaded file directly to the job workspace in bounded chunks,
+        enforcing size bounds and deleting partial artifacts on failure.
+        """
+        job = self.get_job(job_id)
+        if not job:
+            raise ValueError(f"Job {job_id} not found.")
+
+        dest_dir = self.base_jobs_dir / job_id / "raw_inputs"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        target_path = dest_dir / filename
+
+        bytes_written = 0
+        try:
+            with open(target_path, "wb") as f_out:
+                while True:
+                    chunk = stream.read(chunk_size)
+                    if not chunk:
+                        break
+                    bytes_written += len(chunk)
+                    if bytes_written > max_size_bytes:
+                        if target_path.exists():
+                            target_path.unlink()
+                        from werkzeug.exceptions import RequestEntityTooLarge
+                        raise RequestEntityTooLarge(
+                            f"File '{filename}' exceeds maximum allowed upload size ({max_size_bytes} bytes)."
+                        )
+                    f_out.write(chunk)
+
+            logger.info("Saved dataset file %s (%d bytes) to job %s", filename, bytes_written, job_id)
+            return bytes_written
+        except Exception:
+            if target_path.exists():
+                try:
+                    target_path.unlink()
+                except OSError:
+                    pass
+            raise
 
     def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         with self.lock:
@@ -214,7 +298,11 @@ class JobOrchestrator:
             self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=10)
             logger.info("[%s] Phase 1 Ingestion started.", job_id)
 
-            key = (job_dir / "secrets.key").read_bytes()
+            key = self.get_job_key(job_id)
+            if not key:
+                key = generate_key()
+                with self.lock:
+                    self._job_keys[job_id] = key
             raw_dir = job_dir / "raw_inputs"
             enc_dir = job_dir / "encrypted"
 
@@ -292,84 +380,86 @@ class JobOrchestrator:
 
             progress_json_path = job_dir / "progress.json"
             env = os.environ.copy()
-            # Set to empty string (not pop) so load_dotenv inside subprocess
-            # cannot re-inject the global .env key — forcing use of SECURE_LORA_KEY_PATH
-            env["SECURE_LORA_KEY_HEX"] = ""
+            env["SECURE_LORA_KEY_HEX"] = key.hex()
             env["SECURE_LORA_INPUT_DIR"] = str(raw_dir)
             env["SECURE_LORA_OUTPUT_DIR"] = str(enc_dir)
             env["SECURE_LORA_ENCRYPTED_DATA"] = str(enc_dir / "encrypted_dataset.enc")
             env["SECURE_LORA_METADATA_PATH"] = str(enc_dir / "dataset_metadata.json")
             env["SECURE_LORA_CHECKPOINT_DIR"] = str(job_dir / "checkpoints")
             env["SECURE_LORA_OUTPUT_DIR_LORA"] = str(job_dir / "adapter")
-            env["SECURE_LORA_KEY_PATH"] = str(job_dir / "secrets.key")
             env["SECURE_LORA_EPOCHS"] = str(epochs)
             env["SECURE_LORA_BATCH_SIZE"] = "2"
             env["SECURE_LORA_SEED"] = "42"
             env["SECURE_LORA_PROGRESS_FILE"] = str(progress_json_path)
 
-            log_file = job_dir / "training.log"
-            process = subprocess.Popen(
-                [sys.executable, "-m", "src.phase2.train_lora"],
-                cwd=str(Path.cwd()),
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True
-            )
+            from src.security.crypto import temporary_key_file
 
-            # Monitor log output to parse metrics in real-time
-            loss_history = []
-            with open(log_file, "w", encoding="utf-8") as lf:
-                for line in iter(process.stdout.readline, ""):
-                    lf.write(line)
-                    lf.flush()
-                    
-                    if progress_json_path.exists():
-                        try:
-                            prog_data = json.loads(progress_json_path.read_text(encoding="utf-8"))
-                            current_step = prog_data.get("current_step", 0)
-                            total_steps = max(1, prog_data.get("total_steps", 100))
-                            epoch = prog_data.get("epoch", 0.0)
-                            history = prog_data.get("history", [])
-                            
-                            loss_history = [
-                                {
-                                    "epoch": h.get("epoch"),
-                                    "loss": h.get("loss"),
-                                    "eval_loss": h.get("eval_loss")
-                                }
-                                for h in history
-                                if h.get("loss") is not None or h.get("eval_loss") is not None
-                            ]
-                            
-                            fine_tuning_progress = min(70, 30 + int(40 * (current_step / total_steps)))
-                            self.update_job_state(
-                                job_id,
-                                progress=fine_tuning_progress,
-                                loss_history=loss_history,
-                                current_epoch=epoch
-                            )
-                        except Exception:
-                            pass
-                    else:
-                        if "{'loss':" in line or "'loss':" in line:
+            with temporary_key_file(key=key, parent_dir=job_dir) as temp_key_path:
+                env["SECURE_LORA_KEY_PATH"] = str(temp_key_path)
+
+                log_file = job_dir / "training.log"
+                process = subprocess.Popen(
+                    [sys.executable, "-m", "src.phase2.train_lora"],
+                    cwd=str(Path.cwd()),
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True
+                )
+
+                # Monitor log output to parse metrics in real-time
+                loss_history = []
+                with open(log_file, "w", encoding="utf-8") as lf:
+                    for line in iter(process.stdout.readline, ""):
+                        lf.write(line)
+                        lf.flush()
+                        
+                        if progress_json_path.exists():
                             try:
-                                start_idx = line.find("{")
-                                end_idx = line.rfind("}")
-                                if start_idx != -1 and end_idx != -1:
-                                    data_str = line[start_idx:end_idx+1].replace("'", '"')
-                                    metric_data = json.loads(data_str)
-                                    loss = metric_data.get("loss")
-                                    epoch = metric_data.get("epoch")
-                                    if loss is not None and epoch is not None:
-                                        loss_history.append({"epoch": epoch, "loss": loss})
-                                        self.update_job_state(job_id, loss_history=loss_history)
-                            except Exception as parse_err:
-                                logger.debug("Failed parsing training loss line: %s", parse_err)
+                                prog_data = json.loads(progress_json_path.read_text(encoding="utf-8"))
+                                current_step = prog_data.get("current_step", 0)
+                                total_steps = max(1, prog_data.get("total_steps", 100))
+                                epoch = prog_data.get("epoch", 0.0)
+                                history = prog_data.get("history", [])
+                                
+                                loss_history = [
+                                    {
+                                        "epoch": h.get("epoch"),
+                                        "loss": h.get("loss"),
+                                        "eval_loss": h.get("eval_loss")
+                                    }
+                                    for h in history
+                                    if h.get("loss") is not None or h.get("eval_loss") is not None
+                                ]
+                                
+                                fine_tuning_progress = min(70, 30 + int(40 * (current_step / total_steps)))
+                                self.update_job_state(
+                                    job_id,
+                                    progress=fine_tuning_progress,
+                                    loss_history=loss_history,
+                                    current_epoch=epoch
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            if "{'loss':" in line or "'loss':" in line:
+                                try:
+                                    start_idx = line.find("{")
+                                    end_idx = line.rfind("}")
+                                    if start_idx != -1 and end_idx != -1:
+                                        data_str = line[start_idx:end_idx+1].replace("'", '"')
+                                        metric_data = json.loads(data_str)
+                                        loss = metric_data.get("loss")
+                                        epoch = metric_data.get("epoch")
+                                        if loss is not None and epoch is not None:
+                                            loss_history.append({"epoch": epoch, "loss": loss})
+                                            self.update_job_state(job_id, loss_history=loss_history)
+                                except Exception as parse_err:
+                                    logger.debug("Failed parsing training loss line: %s", parse_err)
 
-            process.wait()
-            if process.returncode != 0:
-                raise RuntimeError(f"Training failed with exit code {process.returncode}. See training.log for details.")
+                process.wait()
+                if process.returncode != 0:
+                    raise RuntimeError(f"Training failed with exit code {process.returncode}. See training.log for details.")
 
             # Load evaluation metrics from eval_report.json
             eval_metrics = {}

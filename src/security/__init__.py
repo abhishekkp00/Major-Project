@@ -5,6 +5,7 @@ from .crypto import (
     decrypt_stream,
     decrypt_generator,
     decrypted_temporary_file,
+    temporary_key_file,
     encrypt_adapter,
     decrypt_adapter,
     verify_integrity,
@@ -65,6 +66,16 @@ from .provenance import (
     compute_canonical_manifest_digest,
     AntiReplayTracker,
 )
+from .api_auth import (
+    EndpointClassification,
+    EndpointMetadata,
+    ENDPOINT_INVENTORY,
+    get_endpoint_inventory,
+    get_expected_token,
+    validate_bearer_token,
+    require_bearer_token,
+    AUTH_ENV_VAR,
+)
 
 
 
@@ -75,6 +86,7 @@ __all__ = [
     "decrypt_stream",
     "decrypt_generator",
     "decrypted_temporary_file",
+    "temporary_key_file",
     "encrypt_adapter",
     "decrypt_adapter",
     "verify_integrity",
@@ -117,6 +129,14 @@ __all__ = [
     "validate_manifest_schema",
     "compute_canonical_manifest_digest",
     "AntiReplayTracker",
+    "EndpointClassification",
+    "EndpointMetadata",
+    "ENDPOINT_INVENTORY",
+    "get_endpoint_inventory",
+    "get_expected_token",
+    "validate_bearer_token",
+    "require_bearer_token",
+    "AUTH_ENV_VAR",
 ]
 
 
