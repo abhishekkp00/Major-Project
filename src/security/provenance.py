@@ -95,6 +95,21 @@ def validate_manifest_schema(manifest: Dict[str, Any]) -> None:
     if manifest["digest_algorithm"] != "sha256":
         raise ManifestSchemaError(f"Unsupported digest algorithm: {manifest['digest_algorithm']}")
 
+    if not isinstance(manifest.get("adapter_id"), str) or not manifest["adapter_id"].strip():
+        raise ManifestSchemaError("Invalid 'adapter_id': must be a non-empty string.")
+
+    if not isinstance(manifest.get("base_model_id"), str) or not manifest["base_model_id"].strip():
+        raise ManifestSchemaError("Invalid 'base_model_id': must be a non-empty string.")
+
+    if not isinstance(manifest.get("package_version"), str) or not manifest["package_version"].strip():
+        raise ManifestSchemaError("Invalid 'package_version': must be a non-empty string.")
+
+    if not isinstance(manifest.get("deployment_policy"), dict):
+        raise ManifestSchemaError("Invalid 'deployment_policy': must be a dictionary.")
+
+    if not isinstance(manifest.get("encrypted_adapter_digest"), str) or not manifest["encrypted_adapter_digest"].strip():
+        raise ManifestSchemaError("Invalid 'encrypted_adapter_digest': must be a non-empty string.")
+
     logger.debug("Package manifest schema validation PASSED (package_id=%s).", manifest["package_id"])
 
 
