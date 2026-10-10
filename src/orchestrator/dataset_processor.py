@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 from datetime import datetime, timezone
 
-from src.common.exceptions import DatasetValidationError
+from src.common.exceptions import DatasetValidationError, PIIMaskingError
 from src.security.crypto import encrypt_stream, compute_sha256
 from src.security.shred import shred_file
 
@@ -16,14 +16,19 @@ logger = logging.getLogger("secure_lora.orchestrator.dataset_processor")
 
 
 def _get_pii_masker():
-    """Lazy-loads the PII masker so it doesn't block Flask startup."""
+    """
+    Lazy-loads the canonical PII masker so it doesn't block Flask startup.
+    Fail-closed: if the masker cannot be loaded, PIIMaskingError is raised.
+    There is deliberately no weaker fallback masker.
+    """
     try:
         from src.security.pii_engine import mask_pii_advanced
         return mask_pii_advanced
-    except Exception:
-        # Regex-only fallback if ML models unavailable
-        from src.orchestrator.chat_engine import _regex_mask
-        return lambda text: _regex_mask(text)
+    except Exception as exc:
+        raise PIIMaskingError(
+            f"PII masker unavailable (cause={type(exc).__name__}); refusing to process data.",
+            cause_type=type(exc).__name__,
+        ) from None
 
 
 # Common PII Regex patterns for security auditing
@@ -252,24 +257,37 @@ def preprocess_and_standardize(
     Strips control characters, normalizes whitespace.
     When mask_pii=True (default), runs the HybridPIIEngine on every text field
     before returning to reduce sensitive entity exposure.
+    Fail-closed: raises PIIMaskingError if masking fails for any field.
     """
     masker = _get_pii_masker() if mask_pii else None
     pii_entity_counts: Dict[str, int] = {}
     standardized: List[Dict[str, Any]] = []
 
-    def _apply_mask(text: str) -> str:
+    current_idx = {"i": 0}
+
+    def _apply_mask(text: str, field: str = None) -> str:
         if not masker or not text:
             return text
         try:
             masked, counts = masker(text)
+            if not isinstance(masked, str):
+                raise TypeError("masker returned non-string output")
             for k, v in counts.items():
                 pii_entity_counts[k] = pii_entity_counts.get(k, 0) + v
             return masked
         except Exception as e:
-            logger.warning("PII masking failed on record, returning as-is: %s", e)
-            return text
+            # Fail closed: never return the original text; never log its content.
+            cause = type(e).__name__
+            logger.error("PII masking failed (record_index=%s, field=%s, cause=%s); aborting.",
+                         current_idx["i"], field, cause)
+            raise PIIMaskingError(
+                f"PII masking failed at record_index={current_idx['i']} field={field} "
+                f"(cause={cause}); dataset rejected (fail-closed).",
+                record_index=current_idx["i"], field=field, cause_type=cause,
+            ) from None
 
     for idx, record in enumerate(raw_records, 1):
+        current_idx["i"] = idx
         instruction = (
             record.get("instruction") or
             record.get("prompt") or
@@ -297,13 +315,13 @@ def preprocess_and_standardize(
 
         if instruction and output:
             # Mask PII in every text field before it can reach training
-            clean_rec["instruction"] = _apply_mask(clean_text(instruction))
-            clean_rec["input"]       = _apply_mask(clean_text(input_val))
-            clean_rec["output"]      = _apply_mask(clean_text(output))
+            clean_rec["instruction"] = _apply_mask(clean_text(instruction), "instruction")
+            clean_rec["input"]       = _apply_mask(clean_text(input_val), "input")
+            clean_rec["output"]      = _apply_mask(clean_text(output), "output")
             standardized.append(clean_rec)
         elif "text" in record or "content" in record:
             text_content = record.get("text") or record.get("content")
-            clean_rec["text"] = _apply_mask(clean_text(text_content))
+            clean_rec["text"] = _apply_mask(clean_text(text_content), "text")
             standardized.append(clean_rec)
         else:
             # Fallback: combine remaining fields and mask the whole blob
@@ -311,12 +329,12 @@ def preprocess_and_standardize(
                 "source_file", "row_index", "line_number", "record_index", "block_index"
             }]
             if len(filtered_keys) == 1:
-                clean_rec["text"] = _apply_mask(clean_text(record[filtered_keys[0]]))
+                clean_rec["text"] = _apply_mask(clean_text(record[filtered_keys[0]]), "text")
                 standardized.append(clean_rec)
             elif len(filtered_keys) > 1:
                 combined = [f"{k.capitalize()}: {clean_text(record[k])}" for k in filtered_keys if record[k]]
                 if combined:
-                    clean_rec["text"] = _apply_mask("\n".join(combined))
+                    clean_rec["text"] = _apply_mask("\n".join(combined), "text")
                     standardized.append(clean_rec)
 
     if pii_entity_counts:

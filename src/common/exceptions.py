@@ -108,3 +108,19 @@ class SecurityScreeningFailedError(AdapterSecurityGateError):
 
 
 
+
+
+class PIIMaskingError(SecureLoraError):
+    """
+    Raised when PII masking cannot be completed for a record/field.
+
+    Fail-closed contract: the affected data MUST NOT enter the training dataset.
+    The message never contains raw field content; only a location hint
+    (record index / field name) and the underlying exception class name.
+    """
+
+    def __init__(self, message: str, record_index=None, field=None, cause_type=None):
+        super().__init__(message)
+        self.record_index = record_index
+        self.field = field
+        self.cause_type = cause_type
