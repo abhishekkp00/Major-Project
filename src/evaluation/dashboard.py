@@ -26,7 +26,13 @@ from src.orchestrator.transparency import build_transparency_trace
 from src.orchestrator.dataset_processor import validate_dataset_file, preprocess_and_standardize
 from src.orchestrator.chat_engine import answer_question
 from src.evaluation.research_api import research_api_bp
-from src.security.api_auth import require_bearer_token
+from src.orchestrator.job_security import redact_text
+from src.security.api_auth import (
+    require_bearer_token,
+    enforce_default_auth,
+    current_principal,
+    job_visible_to_principal,
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -74,6 +80,15 @@ def handle_request_entity_too_large(error):
 app.register_blueprint(orchestrator_bp)
 app.register_blueprint(research_api_bp)
 
+# Default-deny: any route not listed as public in ENDPOINT_INVENTORY requires a Bearer token.
+enforce_default_auth(app)
+
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    """Public liveness probe. Returns a constant payload (no versions, paths, or job data)."""
+    return jsonify({"status": "ok"})
+
 # Global cache for lazy model loading
 base_model = None
 peft_model = None
@@ -93,6 +108,7 @@ def get_masked_salt(salt: str) -> str:
 
 @app.route('/static/synthetic_pii_benchmark.jsonl')
 @app.route('/static/real_world_pii.jsonl')
+@require_bearer_token
 def get_synthetic_pii_benchmark():
     for candidate in [Path('synthetic_pii_benchmark.jsonl'), Path('real_world_pii.jsonl')]:
         if candidate.exists():
@@ -100,11 +116,13 @@ def get_synthetic_pii_benchmark():
                 with open(candidate, 'r', encoding='utf-8') as f:
                     return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
             except Exception as e:
-                return str(e), 404
+                logger.warning("Error reading benchmark file: %s", type(e).__name__)
+                return "Benchmark dataset file not found", 404
     return "Benchmark dataset file not found", 404
 
 
 @app.route('/api/template/<string:name>')
+@require_bearer_token
 def get_template_dataset(name: str):
     """Serve local dataset template files to avoid browser CORS issues."""
     template_files = {
@@ -136,6 +154,7 @@ def home():
 
 
 @app.route('/api/phase4/status')
+@require_bearer_token
 def get_p4_status():
     global adapter_loaded, last_verification_steps
     
@@ -378,7 +397,7 @@ def trigger_p4_verify():
                 raise
     except Exception as exc:
         error_msg = str(exc)
-        logger.error("API verification failed: %s", error_msg)
+        logger.error("API verification failed: %s", redact_text(error_msg))
         for step in steps_status:
             if steps_status[step] == "PENDING":
                 steps_status[step] = "SKIPPED"
@@ -410,7 +429,7 @@ def trigger_p4_verify():
     return jsonify({
         "success": verification_success,
         "steps": steps_status,
-        "error": error_msg
+        "error": redact_text(error_msg)
     })
 
 
@@ -493,8 +512,8 @@ def transparency_inspect():
 
     if job_id:
         job = orchestrator.get_job(job_id)
-        if not job:
-            return jsonify({"success": False, "error": f"Job '{job_id}' not found."}), 404
+        if not job_visible_to_principal(job, current_principal()):
+            return jsonify({"success": False, "error": "Job not found."}), 404
 
         job_dir = orchestrator.base_jobs_dir / job_id
         raw_inputs = list((job_dir / "raw_inputs").glob("*"))
@@ -507,8 +526,8 @@ def transparency_inspect():
             trace = build_transparency_trace(processed, sample_limit=15)
             return jsonify({"success": True, "trace": trace})
         except Exception as exc:
-            logger.error("Transparency inspect failed for job %s: %s", job_id, exc)
-            return jsonify({"success": False, "error": str(exc)}), 500
+            logger.error("Transparency inspect failed for job %s: %s", job_id, type(exc).__name__)
+            return jsonify({"success": False, "error": "Transparency inspection failed"}), 500
 
     # Option B: inline JSONL text in request body
     raw_jsonl = data.get("raw_jsonl", "")
@@ -526,7 +545,8 @@ def transparency_inspect():
         except json.JSONDecodeError as jde:
             return jsonify({"success": False, "error": f"Malformed JSONL: {jde}"}), 400
         except Exception as exc:
-            return jsonify({"success": False, "error": str(exc)}), 500
+            logger.error("Inline transparency inspect failed: %s", type(exc).__name__)
+            return jsonify({"success": False, "error": "Transparency inspection failed"}), 500
 
     return jsonify({"success": False, "error": "Provide either job_id or raw_jsonl."}), 400
 
@@ -697,6 +717,8 @@ def secure_chat():
     job_id = data.get("job_id")
     if job_id:
         job = orchestrator.get_job(job_id)
+        if not job_visible_to_principal(job, current_principal()):
+            return jsonify({"success": False, "error": "Job not found."}), 404
         if job and job.get("status") in {"COMPLETED", "RUNNING"}:
             job_dir = orchestrator.base_jobs_dir / job_id
             records = load_records_from_job(job_dir)
@@ -709,7 +731,8 @@ def secure_chat():
             has_pipeline_run = True
 
     if not records:
-        jobs = orchestrator.get_all_jobs()
+        jobs = [j for j in orchestrator.get_all_jobs()
+                if job_visible_to_principal(j, current_principal())]
         if jobs:
             latest_job = jobs[0]
             jid = latest_job.get("job_id") or latest_job.get("id")
@@ -752,7 +775,7 @@ def secure_chat():
         })
     except Exception as exc:
         logger.exception("Chat engine error:")
-        return jsonify({"success": False, "error": str(exc)}), 500
+        return jsonify({"success": False, "error": "Chat request failed"}), 500
 
 
 @app.route('/api/security/simulate-attack', methods=['POST'])

@@ -147,7 +147,8 @@ class JobOrchestrator:
         epochs: int = 1,
         salt: Optional[str] = None,
         dataset_type: Optional[str] = None,
-        subset_size: Optional[int] = 1000
+        subset_size: Optional[int] = 1000,
+        owner_id: Optional[str] = None
     ) -> str:
         job_id = f"job_{int(datetime.now(timezone.utc).timestamp())}_{uuid.uuid4().hex[:8]}"
         job_dir = self.base_jobs_dir / job_id
@@ -171,6 +172,7 @@ class JobOrchestrator:
 
         job_record = {
             "job_id": job_id,
+            "owner_id": owner_id,
             "dataset_name": dataset_name,
             "dataset_type": dataset_type or dataset_name,
             "subset_size": subset_size or 1000,
@@ -341,6 +343,7 @@ class JobOrchestrator:
 
             uploaded_file = uploaded_files[0]
             
+            from src.common.exceptions import PIIMaskingError
             from src.orchestrator.dataset_processor import (
                 validate_dataset_file,
                 preprocess_and_standardize,
@@ -351,7 +354,14 @@ class JobOrchestrator:
             raw_records, file_meta = validate_dataset_file(uploaded_file)
             
             self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=20)
-            processed_records = preprocess_and_standardize(raw_records)
+            try:
+                processed_records = preprocess_and_standardize(raw_records)
+            except PIIMaskingError:
+                # Fail closed: nothing is encrypted/saved and training is never started.
+                shutil_enc = enc_dir / "encrypted_dataset.enc"
+                if shutil_enc.exists():
+                    shutil_enc.unlink()
+                raise
             
             self.update_job_state(job_id, status="INGESTING", stage="dataset_protection", progress=23)
             metadata = encrypt_and_save_dataset(
@@ -511,10 +521,24 @@ class JobOrchestrator:
         except Exception as exc:
             from src.common.exceptions import (
                 AdapterSecurityGateError,
+                PIIMaskingError,
                 SecurityPolicyRejectedError,
                 SecurityScreeningFailedError,
             )
-            if isinstance(exc, SecurityPolicyRejectedError):
+            if isinstance(exc, PIIMaskingError):
+                logger.error("[%s] Pipeline aborted: PII masking failed (fail-closed): %s", job_id, exc)
+                self.update_job_state(
+                    job_id,
+                    status="FAILED",
+                    stage="preprocessing_pii_masking_failed",
+                    progress=0,
+                    error=str(exc),
+                    failed_stage="preprocessing",
+                    failure_reason="pii_masking_failed",
+                    failed_record_index=exc.record_index,
+                    failed_field=exc.field,
+                )
+            elif isinstance(exc, SecurityPolicyRejectedError):
                 logger.error("[%s] Pipeline aborted: Security policy rejected adapter: %s", job_id, exc)
                 self.update_job_state(
                     job_id,

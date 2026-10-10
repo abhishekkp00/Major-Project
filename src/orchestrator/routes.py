@@ -10,7 +10,15 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from .service import orchestrator
 from src.orchestrator.dataset_processor import validate_dataset_file
 from src.common.exceptions import DatasetValidationError
-from src.security.api_auth import require_bearer_token
+from src.security.api_auth import require_bearer_token, current_principal, job_visible_to_principal
+from .job_security import (
+    require_job_access,
+    public_job_view,
+    redact_text,
+    resolve_artifact,
+    is_blocked_artifact_name,
+    ALLOWED_ARTIFACT_SUFFIXES,
+)
 
 logger = logging.getLogger("secure_lora.orchestrator.routes")
 orchestrator_bp = Blueprint("orchestrator", __name__)
@@ -100,7 +108,7 @@ def pre_validate_dataset():
         return jsonify({"success": False, "error": str(re_err)}), 413
     except Exception as e:
         logger.exception("Pre-validation failure:")
-        return jsonify({"success": False, "error": f"Failed to validate dataset: {str(e)}"}), 500
+        return jsonify({"success": False, "error": "Failed to validate dataset"}), 500
     finally:
         if temp_path.exists():
             try:
@@ -118,7 +126,7 @@ def list_datasets():
         return jsonify({"success": True, "datasets": datasets})
     except Exception as e:
         logger.exception("Failed to list datasets:")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/datasets/<dataset_id>", methods=["GET"])
@@ -134,7 +142,7 @@ def get_dataset_details(dataset_id):
         return jsonify({"success": False, "error": str(k_err)}), 404
     except Exception as e:
         logger.exception("Failed to get dataset details:")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs", methods=["POST"])
@@ -159,17 +167,18 @@ def create_job():
             epochs=epochs,
             salt=salt,
             dataset_type=dataset_type,
-            subset_size=subset_size
+            subset_size=subset_size,
+            owner_id=current_principal(),
         )
         return jsonify({"success": True, "job_id": job_id})
     except Exception as e:
         logger.exception("Failed to create job:")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/upload", methods=["POST"])
-@require_bearer_token
+@require_job_access
 def upload_file(job_id):
     """Uploads a raw dataset file to a created job workspace with bounded streaming."""
     job = orchestrator.get_job(job_id)
@@ -242,11 +251,11 @@ def upload_file(job_id):
             except OSError:
                 pass
         logger.exception("Failed to upload dataset file:")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/start", methods=["POST"])
-@require_bearer_token
+@require_job_access
 def start_job(job_id):
     """Starts the full end-to-end secure pipeline execution."""
     try:
@@ -256,30 +265,37 @@ def start_job(job_id):
         return jsonify({"success": False, "error": str(val_err)}), 400
     except Exception as e:
         logger.exception("Failed to start job:")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs", methods=["GET"])
+@require_bearer_token
 def get_jobs():
     """Lists all created orchestration jobs."""
     try:
-        jobs = orchestrator.get_all_jobs()
+        principal = current_principal()
+        jobs = [
+            public_job_view(j) for j in orchestrator.get_all_jobs()
+            if job_visible_to_principal(j, principal)
+        ]
         return jsonify({"success": True, "jobs": jobs})
     except Exception as e:
         logger.exception("Failed to list jobs:")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>", methods=["GET"])
+@require_job_access
 def get_job_status(job_id):
     """Polls detailed status for a specific job."""
     job = orchestrator.get_job(job_id)
     if not job:
         return jsonify({"success": False, "error": "Job not found"}), 404
-    return jsonify({"success": True, "job": job})
+    return jsonify({"success": True, "job": public_job_view(job)})
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/logs", methods=["GET"])
+@require_job_access
 def get_job_logs(job_id):
     """Retrieves standard training logs for a running fine-tuning job."""
     job = orchestrator.get_job(job_id)
@@ -294,12 +310,14 @@ def get_job_logs(job_id):
         logs = log_file.read_text(encoding="utf-8")
         # Tail logs to prevent large bandwidth consumption
         lines = logs.splitlines()[-200:]
-        return jsonify({"success": True, "logs": "\n".join(lines)})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": True, "logs": redact_text("\n".join(lines))})
+    except Exception:
+        logger.exception("Failed to read training log for job %s", job_id)
+        return jsonify({"success": False, "error": "Unable to read job logs"}), 500
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/metrics", methods=["GET"])
+@require_job_access
 def get_job_metrics(job_id):
     """Exposes training and dataset metrics for a job."""
     job = orchestrator.get_job(job_id)
@@ -317,6 +335,7 @@ def get_job_metrics(job_id):
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/artifacts", methods=["GET"])
+@require_job_access
 def list_job_artifacts(job_id):
     """Lists safe downloadable package artifacts generated for the job."""
     job = orchestrator.get_job(job_id)
@@ -324,48 +343,42 @@ def list_job_artifacts(job_id):
         return jsonify({"success": False, "error": "Job not found"}), 404
 
     protected_dir = orchestrator.base_jobs_dir / job_id / "protected"
-    if not protected_dir.exists():
+    if not protected_dir.is_dir():
         return jsonify({"success": True, "artifacts": []})
 
     artifacts = []
-    # Exclude secret keys (e.g. .pem, .key)
-    safe_extensions = [".enc", ".hash", ".sig", ".json", ".gz", ".pem"]
-    for path in protected_dir.iterdir():
-        if path.is_file() and path.suffix in safe_extensions:
-            # Never expose private key
-            if "private" in path.name or (path.name.endswith(".pem") and path.name != "public.pem"):
-                continue
-            artifacts.append({
-                "name": path.name,
-                "size_bytes": path.stat().st_size,
-                "download_url": f"/api/orchestrator/jobs/{job_id}/download/{path.name}"
-            })
+    for path in sorted(protected_dir.iterdir()):
+        approved = resolve_artifact(protected_dir, path.name, orchestrator.base_jobs_dir)
+        if approved is None:
+            continue
+        artifacts.append({
+            "name": approved.name,
+            "size_bytes": approved.stat().st_size,
+            "download_url": f"/api/orchestrator/jobs/{job_id}/download/{approved.name}"
+        })
 
     return jsonify({"success": True, "artifacts": artifacts})
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/download/<filename>", methods=["GET"])
+@require_job_access
 def download_job_artifact(job_id, filename):
-    """Serves a specific safe package artifact for download."""
+    """Serves an allow-listed package artifact located directly inside the job's protected/ directory."""
     from flask import send_from_directory
     job = orchestrator.get_job(job_id)
     if not job:
         return jsonify({"success": False, "error": "Job not found"}), 404
 
     protected_dir = orchestrator.base_jobs_dir / job_id / "protected"
-    safe_extensions = [".enc", ".hash", ".sig", ".json", ".gz", ".pem"]
-    target_path = protected_dir / filename
-
-    if not target_path.exists() or target_path.suffix not in safe_extensions:
+    approved = resolve_artifact(protected_dir, filename, orchestrator.base_jobs_dir)
+    if approved is None:
         return jsonify({"success": False, "error": "Access denied or file not found"}), 403
 
-    if "private" in filename or (filename.endswith(".pem") and filename != "public.pem"):
-        return jsonify({"success": False, "error": "Access denied"}), 403
-
-    return send_from_directory(str(protected_dir), filename, as_attachment=True)
+    return send_from_directory(str(approved.parent), approved.name, as_attachment=True)
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/report", methods=["GET"])
+@require_job_access
 def get_job_report(job_id):
     """Retrieves the final validation report from the deployment verification pipeline."""
     import json
@@ -381,10 +394,12 @@ def get_job_report(job_id):
         report_data = json.loads(report_file.read_text(encoding="utf-8"))
         report_data["security_validation_outcomes"] = job.get("security_metrics", {})
         return jsonify({"success": True, "report": report_data})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    except Exception:
+        logger.exception("Failed to read validation report for job %s", job_id)
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/screening", methods=["GET"])
+@require_job_access
 def get_adapter_screening(job_id):
     """
     Step 3 Endpoint: Returns pre-deployment adapter security screening metrics & decision explanation.
@@ -573,6 +588,7 @@ def get_adapter_screening(job_id):
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/pipeline-summary", methods=["GET"])
+@require_job_access
 def get_pipeline_summary(job_id):
     """
     Returns a structured 10-stage SecureLoRA lifecycle summary for the Pipeline tab.
@@ -607,7 +623,7 @@ def get_pipeline_summary(job_id):
     eval_met    = job.get("eval_metrics") or {}
     created_at  = job.get("created_at")
     updated_at  = job.get("updated_at")
-    error       = job.get("error")
+    error       = redact_text(job.get("error"))
 
     # ── helpers ──────────────────────────────────────────────────────────
     STAGE_ORDER = [
@@ -877,7 +893,7 @@ def get_pipeline_summary(job_id):
 
 
 @orchestrator_bp.route("/api/orchestrator/jobs/<job_id>/stream", methods=["GET"])
-
+@require_job_access
 def stream_job_events(job_id):
     """Exposes a Server-Sent Events (SSE) stream for real-time progress updates."""
     import time
@@ -906,7 +922,7 @@ def stream_job_events(job_id):
                 "num_records": current_job.get("num_records"),
                 "security_metrics": current_job.get("security_metrics"),
                 "verification_steps": current_job.get("verification_steps"),
-                "error": current_job.get("error")
+                "error": redact_text(current_job.get("error"))
             }
 
             yield f"data: {json.dumps(payload)}\n\n"
@@ -1033,6 +1049,7 @@ def orchestrator_chat():
 
 
 @orchestrator_bp.route("/api/orchestrator/model-status", methods=["GET"])
+@require_bearer_token
 def get_model_status():
     """Returns the backend ModelRegistry status."""
     from src.orchestrator.model_registry import model_registry

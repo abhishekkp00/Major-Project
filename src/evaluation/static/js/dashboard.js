@@ -26,6 +26,26 @@ function getAuthHeaders(extraHeaders = {}) {
   return headers;
 }
 
+// Attach the Bearer token to every same-origin /api/ request that does not set one.
+(function installAuthFetch() {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    try {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if (url.startsWith('/api/') || url.startsWith('/static/synthetic_pii') || url.startsWith('/static/real_world')) {
+        init = init || {};
+        const merged = new Headers(init.headers || {});
+        if (!merged.has('Authorization')) {
+          const auth = getAuthHeaders();
+          if (auth['Authorization']) merged.set('Authorization', auth['Authorization']);
+        }
+        init.headers = merged;
+      }
+    } catch (e) { /* fall through to unmodified fetch */ }
+    return nativeFetch(input, init);
+  };
+})();
+
 // Initialize default dataset templates & metrics
 function initDashboard() {
   initDatasetTemplates();
@@ -221,24 +241,45 @@ async function startSecurePipeline() {
 }
 
 function connectJobStream(jobId) {
+  // EventSource cannot send an Authorization header, so the SSE stream is read
+  // with fetch() and parsed manually. Falls back to polling on any failure.
   if (sseSource) sseSource.close();
+  const controller = new AbortController();
+  controller.close = () => controller.abort();
+  sseSource = controller;
 
-  sseSource = new EventSource(`/api/orchestrator/jobs/${jobId}/stream`);
-
-  sseSource.onmessage = (event) => {
+  (async () => {
     try {
-      const data = JSON.parse(event.data);
-      updatePipelineUI(data);
-    } catch (e) {
-      console.error('Error parsing SSE event:', e);
+      const res = await fetch(`/api/orchestrator/jobs/${jobId}/stream`, {
+        headers: getAuthHeaders({ 'Accept': 'text/event-stream' }),
+        signal: controller.signal
+      });
+      if (!res.ok || !res.body) throw new Error(`stream status ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          const line = frame.split('\n').find(l => l.startsWith('data:'));
+          if (!line) continue;
+          try {
+            updatePipelineUI(JSON.parse(line.slice(5).trim()));
+          } catch (e) {
+            console.error('Error parsing SSE event:', e);
+          }
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      pollPipelineSummary(jobId);
     }
-  };
-
-  sseSource.onerror = () => {
-    if (sseSource) sseSource.close();
-    // Fallback poll summary
-    pollPipelineSummary(jobId);
-  };
+  })();
 }
 
 async function pollPipelineSummary(jobId) {

@@ -20,7 +20,9 @@ def client():
     os.environ.setdefault("SECURE_LORA_DASHBOARD_PORT", "5099")
     from src.evaluation.dashboard import app
     app.testing = True
+    token = os.environ.get("SECURELORA_API_TOKEN") or "test-bearer-token-securing-lora-2026"
     with app.test_client() as c:
+        c.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
         yield c
 
 

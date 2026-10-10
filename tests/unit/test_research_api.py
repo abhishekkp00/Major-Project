@@ -76,7 +76,9 @@ def test_research_endpoints_registered(client):
 # ---------------------------------------------------------------------------
 
 def test_phase4_status_still_works(client):
-    resp = client.get("/api/phase4/status")
+    assert client.get("/api/phase4/status").status_code == 401  # operational data requires auth
+    token = os.environ.get("SECURELORA_API_TOKEN") or "test-bearer-token-securing-lora-2026"
+    resp = client.get("/api/phase4/status", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     data = resp.get_json()
     assert "loaded" in data

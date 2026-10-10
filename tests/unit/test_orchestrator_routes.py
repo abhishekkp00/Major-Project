@@ -17,7 +17,11 @@ def app():
 
 @pytest.fixture()
 def client(app):
-    return app.test_client()
+    import os
+    token = os.environ.get("SECURELORA_API_TOKEN") or "test-bearer-token-securing-lora-2026"
+    c = app.test_client()
+    c.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    return c
 
 
 def test_get_jobs(client, monkeypatch):
