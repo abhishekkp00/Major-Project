@@ -1,3 +1,4 @@
+import io
 import os
 import tarfile
 import pytest
@@ -6,6 +7,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from src.phase4.decryptor import DecryptedAdapterContext
+from src.common.exceptions import SecurityError
 
 
 @pytest.fixture
@@ -68,3 +70,108 @@ def test_decryption_wrong_key_fails(keys_and_payloads):
     with pytest.raises(ValueError, match="Decryption or extraction failed"):
         with DecryptedAdapterContext(enc_path, wrong_key):
             pass
+
+
+def _encrypt_tar_payload(tar_bytes: bytes, key: bytes, enc_path: Path):
+    nonce = os.urandom(12)
+    aesgcm = AESGCM(key)
+    ciphertext = aesgcm.encrypt(nonce, tar_bytes, associated_data=None)
+    enc_path.write_bytes(nonce + ciphertext)
+
+
+def test_decryptor_rejects_oversized_archive_and_cleans_up(tmp_path: Path):
+    key = AESGCM.generate_key(bit_length=256)
+    enc_path = tmp_path / "oversized.enc"
+
+    # Tarball containing adapter_config.json
+    tar_buf = io.BytesIO()
+    with tarfile.open(fileobj=tar_buf, mode="w:gz") as tar:
+        ti = tarfile.TarInfo(name="adapter_config.json")
+        content = b'{"r": 8}' * 20
+        ti.size = len(content)
+        tar.addfile(ti, io.BytesIO(content))
+
+    tar_bytes = tar_buf.getvalue()
+    _encrypt_tar_payload(tar_bytes, key, enc_path)
+
+    # Set max_archive_size below the tar size
+    context = DecryptedAdapterContext(enc_path, key, max_archive_size=len(tar_bytes) - 1)
+    with pytest.raises(SecurityError, match="exceeds limit"):
+        with context:
+            pass
+
+    assert context.temp_dir is None
+
+
+def test_decryptor_rejects_traversal_and_cleans_up(tmp_path: Path):
+    key = AESGCM.generate_key(bit_length=256)
+    enc_path = tmp_path / "traversal.enc"
+
+    tar_buf = io.BytesIO()
+    with tarfile.open(fileobj=tar_buf, mode="w:gz") as tar:
+        ti1 = tarfile.TarInfo(name="adapter_config.json")
+        ti1.size = 8
+        tar.addfile(ti1, io.BytesIO(b'{"r": 8}'))
+
+        ti2 = tarfile.TarInfo(name="../escape.txt")
+        ti2.size = 5
+        tar.addfile(ti2, io.BytesIO(b'evil!'))
+
+    _encrypt_tar_payload(tar_buf.getvalue(), key, enc_path)
+
+    context = DecryptedAdapterContext(enc_path, key)
+    with pytest.raises(SecurityError, match="Directory traversal"):
+        with context:
+            pass
+
+    assert context.temp_dir is None
+    assert not (tmp_path / "escape.txt").exists()
+
+
+def test_decryptor_rejects_symlink_escape_and_cleans_up(tmp_path: Path):
+    key = AESGCM.generate_key(bit_length=256)
+    enc_path = tmp_path / "symlink.enc"
+
+    tar_buf = io.BytesIO()
+    with tarfile.open(fileobj=tar_buf, mode="w:gz") as tar:
+        ti1 = tarfile.TarInfo(name="adapter_config.json")
+        ti1.size = 8
+        tar.addfile(ti1, io.BytesIO(b'{"r": 8}'))
+
+        ti2 = tarfile.TarInfo(name="evil_symlink")
+        ti2.type = tarfile.SYMTYPE
+        ti2.linkname = "/etc/passwd"
+        tar.addfile(ti2)
+
+    _encrypt_tar_payload(tar_buf.getvalue(), key, enc_path)
+
+    context = DecryptedAdapterContext(enc_path, key)
+    with pytest.raises(SecurityError, match="Absolute symlink target"):
+        with context:
+            pass
+
+    assert context.temp_dir is None
+
+
+def test_decryptor_rejects_special_file_and_cleans_up(tmp_path: Path):
+    key = AESGCM.generate_key(bit_length=256)
+    enc_path = tmp_path / "special.enc"
+
+    tar_buf = io.BytesIO()
+    with tarfile.open(fileobj=tar_buf, mode="w:gz") as tar:
+        ti1 = tarfile.TarInfo(name="adapter_config.json")
+        ti1.size = 8
+        tar.addfile(ti1, io.BytesIO(b'{"r": 8}'))
+
+        ti2 = tarfile.TarInfo(name="evil_fifo")
+        ti2.type = tarfile.FIFOTYPE
+        tar.addfile(ti2)
+
+    _encrypt_tar_payload(tar_buf.getvalue(), key, enc_path)
+
+    context = DecryptedAdapterContext(enc_path, key)
+    with pytest.raises(SecurityError, match="Unsupported special"):
+        with context:
+            pass
+
+    assert context.temp_dir is None

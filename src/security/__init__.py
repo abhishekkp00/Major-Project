@@ -76,10 +76,19 @@ from .api_auth import (
     require_bearer_token,
     AUTH_ENV_VAR,
 )
-
+from .safe_extract import (
+    safe_extract_tar,
+    validate_archive_member,
+    DEFAULT_MAX_ARCHIVE_SIZE,
+    DEFAULT_MAX_TOTAL_UNCOMPRESSED_SIZE,
+    DEFAULT_MAX_MEMBER_SIZE,
+    DEFAULT_MAX_MEMBER_COUNT,
+)
 
 
 __all__ = [
+    "safe_extract_tar",
+    "validate_archive_member",
     "generate_key",
     "compute_sha256",
     "encrypt_stream",

@@ -34,7 +34,15 @@ from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from src.security import shred_file, shred_directory
+from src.security import (
+    shred_file,
+    shred_directory,
+    safe_extract_tar,
+    DEFAULT_MAX_ARCHIVE_SIZE,
+    DEFAULT_MAX_TOTAL_UNCOMPRESSED_SIZE,
+    DEFAULT_MAX_MEMBER_SIZE,
+    DEFAULT_MAX_MEMBER_COUNT,
+)
 from src.common.exceptions import SecurityError
 
 logger = logging.getLogger("secure_lora.phase4.decryptor")
@@ -65,9 +73,21 @@ class DecryptedAdapterContext:
         Called on both success and exception.
     """
 
-    def __init__(self, enc_path: Path, key: bytes):
+    def __init__(
+        self,
+        enc_path: Path,
+        key: bytes,
+        max_archive_size: int = DEFAULT_MAX_ARCHIVE_SIZE,
+        max_total_uncompressed_size: int = DEFAULT_MAX_TOTAL_UNCOMPRESSED_SIZE,
+        max_member_size: int = DEFAULT_MAX_MEMBER_SIZE,
+        max_member_count: int = DEFAULT_MAX_MEMBER_COUNT,
+    ):
         self.enc_path = Path(enc_path)
         self.key = key
+        self.max_archive_size = max_archive_size
+        self.max_total_uncompressed_size = max_total_uncompressed_size
+        self.max_member_size = max_member_size
+        self.max_member_count = max_member_count
         self.temp_dir: Optional[Path] = None
         self.tar_path: Optional[Path] = None
 
@@ -84,7 +104,7 @@ class DecryptedAdapterContext:
         )
 
         # Create temp folder for decrypted adapter files (mode 0o700 on POSIX)
-        self.temp_dir = Path(tempfile.mkdtemp(prefix="secure_lora_decrypted_"))
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="secure_lora_decrypted_")).resolve()
         self.tar_path = self.temp_dir / "adapter.tar.gz"
 
         try:
@@ -97,17 +117,26 @@ class DecryptedAdapterContext:
             # decrypt() raises cryptography.exceptions.InvalidTag if auth check fails.
             plaintext = aesgcm.decrypt(nonce, ciphertext, associated_data=None)
 
+            # Enforce decrypted archive size quota before disk write
+            if len(plaintext) > self.max_archive_size:
+                raise SecurityError(
+                    f"Decrypted archive size ({len(plaintext)} bytes) exceeds limit of "
+                    f"{self.max_archive_size} bytes."
+                )
+
             # Step 2: Write decrypted tarball to disk (required for tarfile.extractall).
             self.tar_path.write_bytes(plaintext)
             del plaintext  # Release in-memory plaintext reference as early as possible.
 
-            # Step 3: Extract — validate paths to prevent directory traversal.
+            # Step 3: Extract — validate paths and resource limits before extracting.
             with tarfile.open(self.tar_path, "r:gz") as tar:
-                for member in tar.getmembers():
-                    target_path = (self.temp_dir / member.name).resolve()
-                    if not str(target_path).startswith(str(self.temp_dir)):
-                        raise SecurityError(f"Directory traversal detected: {member.name}")
-                tar.extractall(path=self.temp_dir)
+                safe_extract_tar(
+                    tar=tar,
+                    destination_dir=self.temp_dir,
+                    max_total_uncompressed_size=self.max_total_uncompressed_size,
+                    max_member_size=self.max_member_size,
+                    max_member_count=self.max_member_count,
+                )
 
             # Step 4: Shred the tar.gz immediately after extraction.
             shred_file(self.tar_path)
@@ -141,8 +170,14 @@ class DecryptedAdapterContext:
     def _cleanup_internal(self):
         """Shred all temporary files and remove the temporary directory."""
         if self.tar_path and self.tar_path.exists():
-            shred_file(self.tar_path)
+            try:
+                shred_file(self.tar_path)
+            except Exception as e:
+                logger.warning("Failed to shred temporary tar file %s: %s", self.tar_path, e)
         if self.temp_dir and self.temp_dir.exists():
             logger.info("Shredding temporary decrypted adapter files from disk...")
-            shred_directory(self.temp_dir)
+            try:
+                shred_directory(self.temp_dir)
+            except Exception as e:
+                logger.warning("Failed to shred temporary directory %s: %s", self.temp_dir, e)
             self.temp_dir = None

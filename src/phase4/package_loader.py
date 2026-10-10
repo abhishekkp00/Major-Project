@@ -8,8 +8,9 @@ from typing import Optional
 from src.common.exceptions import (
     IncompletePackageError,
     InvalidArchiveError,
-    SecurityError
+    SecurityError,
 )
+from src.security import safe_extract_tar
 
 logger = logging.getLogger("secure_lora.phase4.package_loader")
 
@@ -55,22 +56,21 @@ class PackageLoader:
     def _extract_archive(self):
         archive_size = self.package_path.stat().st_size
         if archive_size > self.max_bytes:
-            raise InvalidArchiveError(
+            raise SecurityError(
                 f"Archive size ({archive_size} bytes) exceeds safety limit of {self.max_bytes} bytes."
             )
 
         self.temp_dir = tempfile.TemporaryDirectory(prefix="secure_lora_deploy_")
-        self.extracted_path = Path(self.temp_dir.name)
+        self.extracted_path = Path(self.temp_dir.name).resolve()
 
         try:
             with tarfile.open(self.package_path, "r:gz") as tar:
-                # Security: inspect members to prevent path traversal (Slip vulnerabilities)
-                for member in tar.getmembers():
-                    target_path = (self.extracted_path / member.name).resolve()
-                    if not str(target_path).startswith(str(self.extracted_path)):
-                        raise SecurityError(f"Directory traversal attempt detected in archive member: {member.name}")
-
-                tar.extractall(path=self.extracted_path)
+                safe_extract_tar(
+                    tar=tar,
+                    destination_dir=self.extracted_path,
+                    max_total_uncompressed_size=self.max_bytes * 2,
+                    max_member_size=self.max_bytes,
+                )
 
             subdirs = list(self.extracted_path.iterdir())
             if len(subdirs) == 1 and subdirs[0].is_dir():

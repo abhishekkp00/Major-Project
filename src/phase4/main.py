@@ -35,6 +35,7 @@ from src.security import AntiReplayTracker
 from src.common.exceptions import (
     IncompletePackageError,
     InvalidArchiveError,
+    SecurityError,
     IntegrityValidationError,
     SignatureValidationError,
     DeviceAuthorizationError,
@@ -231,7 +232,7 @@ def run_deployment_pipeline(
                         steps_status["Step 8: Decryption & Extraction"] = "FAILED"
                     raise
 
-        except (IncompletePackageError, InvalidArchiveError):
+        except (IncompletePackageError, InvalidArchiveError, SecurityError):
             steps_status["Step 1: Package Completeness"] = "FAILED"
             raise
 

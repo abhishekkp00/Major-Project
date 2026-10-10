@@ -3,7 +3,11 @@ import pytest
 from pathlib import Path
 
 from src.phase4.package_loader import PackageLoader
-from src.common.exceptions import IncompletePackageError, InvalidArchiveError
+from src.common.exceptions import (
+    IncompletePackageError,
+    InvalidArchiveError,
+    SecurityError,
+)
 
 
 @pytest.fixture
@@ -48,10 +52,18 @@ def test_package_loader_tar_gz_success(valid_package_files, tmp_dir):
         for p in valid_package_files.iterdir():
             tar.add(p, arcname=p.name)
 
-    with PackageLoader(archive_path) as extracted_path:
+    loader = PackageLoader(archive_path)
+    with loader as extracted_path:
         assert extracted_path != archive_path
         assert (extracted_path / "adapter.enc").exists()
         assert (extracted_path / "package_manifest.json").exists()
+        temp_dir_path = Path(loader.temp_dir.name) if loader.temp_dir else None
+        assert temp_dir_path is not None
+        assert temp_dir_path.exists()
+
+    # Verify deterministic cleanup on success
+    assert loader.temp_dir is None
+    assert not temp_dir_path.exists()
 
 
 def test_package_loader_corrupted_archive(tmp_dir):
@@ -61,3 +73,76 @@ def test_package_loader_corrupted_archive(tmp_dir):
     with pytest.raises(InvalidArchiveError):
         with PackageLoader(corrupt_archive):
             pass
+
+
+def test_package_loader_rejects_oversized_archive(valid_package_files, tmp_dir):
+    archive_path = tmp_dir / "oversized.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as tar:
+        for p in valid_package_files.iterdir():
+            tar.add(p, arcname=p.name)
+
+    file_size = archive_path.stat().st_size
+    # Set limit below actual archive size
+    loader = PackageLoader(archive_path, max_bytes=file_size - 1)
+    with pytest.raises(SecurityError, match="exceeds safety limit"):
+        with loader:
+            pass
+
+    assert loader.temp_dir is None
+
+
+def test_package_loader_rejects_traversal_and_cleans_up(valid_package_files, tmp_dir):
+    archive_path = tmp_dir / "traversal_pkg.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as tar:
+        for p in valid_package_files.iterdir():
+            tar.add(p, arcname=p.name)
+        # Add evil traversal member
+        ti = tarfile.TarInfo(name="../evil.txt")
+        ti.size = 5
+        import io
+        tar.addfile(ti, io.BytesIO(b"evil!"))
+
+    loader = PackageLoader(archive_path)
+    with pytest.raises(SecurityError, match="Directory traversal"):
+        with loader:
+            pass
+
+    # Verify cleanup on failure
+    assert loader.temp_dir is None
+    assert not (tmp_dir / "evil.txt").exists()
+
+
+def test_package_loader_rejects_absolute_path_and_cleans_up(valid_package_files, tmp_dir):
+    archive_path = tmp_dir / "absolute_pkg.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as tar:
+        for p in valid_package_files.iterdir():
+            tar.add(p, arcname=p.name)
+        ti = tarfile.TarInfo(name="/tmp/evil_pkg.txt")
+        ti.size = 5
+        import io
+        tar.addfile(ti, io.BytesIO(b"evil!"))
+
+    loader = PackageLoader(archive_path)
+    with pytest.raises(SecurityError, match="Absolute path member"):
+        with loader:
+            pass
+
+    assert loader.temp_dir is None
+
+
+def test_package_loader_rejects_symlink_escape_and_cleans_up(valid_package_files, tmp_dir):
+    archive_path = tmp_dir / "symlink_pkg.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as tar:
+        for p in valid_package_files.iterdir():
+            tar.add(p, arcname=p.name)
+        ti = tarfile.TarInfo(name="evil_link")
+        ti.type = tarfile.SYMTYPE
+        ti.linkname = "/etc/passwd"
+        tar.addfile(ti)
+
+    loader = PackageLoader(archive_path)
+    with pytest.raises(SecurityError, match="Absolute symlink target"):
+        with loader:
+            pass
+
+    assert loader.temp_dir is None
