@@ -59,6 +59,7 @@ eval_report.json               # root-level legacy copy
 outputs/jobs/
 raw_inputs/
 raw_shred/
+*.lock
 
 # ── Phase 3 / 4 Protected Adapter Outputs (contain keys / ciphertext) ─────────
 outputs/protected_adapter/adapter.enc

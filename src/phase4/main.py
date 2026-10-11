@@ -41,6 +41,7 @@ from src.common.exceptions import (
     DeviceAuthorizationError,
     ManifestSchemaError,
     ReplayAttackError,
+    DeploymentStateIntegrityError,
     PackageExpiredError,
     ModelMismatchError,
     AdapterMismatchError,
@@ -143,7 +144,7 @@ def run_deployment_pipeline(
                     )
                     steps_status["Step 5: Replay & Version Validation"] = "PASSED"
                     logger.info("[5/9] PASS — Package is fresh, un-replayed, and model-matched.")
-                except (ReplayAttackError, PackageExpiredError, ModelMismatchError, AdapterMismatchError) as e:
+                except (ReplayAttackError, DeploymentStateIntegrityError, PackageExpiredError, ModelMismatchError, AdapterMismatchError) as e:
                     steps_status["Step 5: Replay & Version Validation"] = "FAILED"
                     raise
 

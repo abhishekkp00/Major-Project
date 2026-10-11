@@ -63,6 +63,17 @@ class ReplayAttackError(SecurityError):
     pass
 
 
+class DeploymentStateIntegrityError(ReplayAttackError):
+    """
+    Raised when the anti-replay deployment-state store is corrupted, unreadable,
+    tampered with, or schema-invalid.
+
+    Fail-closed policy: Deployment MUST be aborted immediately. Replay history
+    must never be automatically erased or reset.
+    """
+    pass
+
+
 class PackageExpiredError(SecurityError):
     """Raised when a package is executed past its expiration timestamp."""
     pass

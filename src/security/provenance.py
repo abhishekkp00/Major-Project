@@ -23,12 +23,22 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
+import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+try:
+    import fcntl
+    _HAS_FCNTL = True
+except ImportError:
+    _HAS_FCNTL = False
+
 from src.common.exceptions import (
     AdapterMismatchError,
+    DeploymentStateIntegrityError,
     ManifestSchemaError,
     ModelMismatchError,
     PackageExpiredError,
@@ -159,38 +169,236 @@ def compute_sha256_text(text: str) -> str:
 # 3. Offline Anti-Replay & Provenance Validator
 # ─────────────────────────────────────────────────────────────────────────────
 
+def validate_deployment_state_schema(state: Any) -> None:
+    """
+    Validates deployment state structure and types before trusting state.
+
+    Schema:
+    {
+        "schema_version": int,
+        "adapters": {
+            "<adapter_id>": {
+                "last_sequence": int,
+                "processed_packages": List[str],
+                "last_deployed_utc": Optional[str]
+            }
+        }
+    }
+
+    Raises DeploymentStateIntegrityError on any structural or type violation.
+    """
+    if not isinstance(state, dict):
+        raise DeploymentStateIntegrityError(
+            f"Deployment state root must be a JSON object, got {type(state).__name__}."
+        )
+
+    if "adapters" not in state:
+        raise DeploymentStateIntegrityError(
+            "Deployment state schema violation: missing required 'adapters' mapping."
+        )
+
+    adapters = state["adapters"]
+    if not isinstance(adapters, dict):
+        raise DeploymentStateIntegrityError(
+            f"Deployment state 'adapters' must be a dictionary, got {type(adapters).__name__}."
+        )
+
+    schema_version = state.get("schema_version")
+    if schema_version is not None and (
+        isinstance(schema_version, bool) or not isinstance(schema_version, (int, str))
+    ):
+        raise DeploymentStateIntegrityError(
+            f"Deployment state 'schema_version' must be an integer or string, got {type(schema_version).__name__}."
+        )
+
+    for adapter_id, record in adapters.items():
+        if not isinstance(adapter_id, str) or not adapter_id.strip():
+            raise DeploymentStateIntegrityError(
+                f"Deployment state contains invalid or empty adapter_id: {adapter_id!r}."
+            )
+        if not isinstance(record, dict):
+            raise DeploymentStateIntegrityError(
+                f"Deployment state record for adapter '{adapter_id}' must be a dictionary, got {type(record).__name__}."
+            )
+
+        last_seq = record.get("last_sequence")
+        if (
+            last_seq is None
+            or isinstance(last_seq, bool)
+            or not isinstance(last_seq, int)
+            or last_seq < 0
+        ):
+            raise DeploymentStateIntegrityError(
+                f"Deployment state record for adapter '{adapter_id}' has invalid 'last_sequence': {last_seq!r}."
+            )
+
+        processed = record.get("processed_packages")
+        if processed is None or not isinstance(processed, list):
+            raise DeploymentStateIntegrityError(
+                f"Deployment state record for adapter '{adapter_id}' has invalid 'processed_packages': {processed!r}."
+            )
+
+        for pkg in processed:
+            if not isinstance(pkg, str) or not pkg.strip():
+                raise DeploymentStateIntegrityError(
+                    f"Deployment state record for adapter '{adapter_id}' contains invalid package ID in history: {pkg!r}."
+                )
+
+        last_deployed = record.get("last_deployed_utc")
+        if last_deployed is not None and (not isinstance(last_deployed, str) or not last_deployed.strip()):
+            raise DeploymentStateIntegrityError(
+                f"Deployment state record for adapter '{adapter_id}' has invalid 'last_deployed_utc': {last_deployed!r}."
+            )
+
+
 class AntiReplayTracker:
     """
     Manages local deployment state tracking to prevent replay attacks in offline/edge scenarios.
+
+    CONTROLLED RECOVERY PROCEDURE FOR CORRUPTED REPLAY STATE
+    =========================================================
+    If AntiReplayTracker raises DeploymentStateIntegrityError due to state corruption,
+    malformed JSON, or an unreadable state file:
+      1. DO NOT delete, truncate, or overwrite the existing state file automatically.
+         Automatic reset enables replay attacks where an adversary corrupts state to replay
+         revoked packages.
+      2. The security operator must investigate and quarantine the damaged file:
+           mv outputs/.deployment_state.json outputs/.deployment_state.json.corrupt.<timestamp>
+      3. Reconstruct deployment history from audited offline deployment ledgers or provenance
+         logs to identify the highest deployed sequence number for each adapter.
+      4. Perform an explicit, authorized administrative initialization using
+         tracker.initialize_state(force=True, initial_adapters={...}).
     """
+
+    _thread_locks: Dict[Path, threading.RLock] = {}
+    _meta_lock = threading.Lock()
+
     def __init__(self, state_file_path: Optional[Path] = None):
-        self.state_file_path = state_file_path or DEFAULT_STATE_FILE
+        self.state_file_path = Path(state_file_path or DEFAULT_STATE_FILE).resolve()
+
+    @classmethod
+    def _get_thread_lock(cls, path: Path) -> threading.RLock:
+        canonical = path.resolve()
+        with cls._meta_lock:
+            if canonical not in cls._thread_locks:
+                cls._thread_locks[canonical] = threading.RLock()
+            return cls._thread_locks[canonical]
+
+    @contextmanager
+    def _state_lock(self):
+        """
+        Acquires both process-level thread lock and OS-level file lock (via fcntl.flock)
+        to prevent race conditions between concurrent threads or processes.
+        """
+        self.state_file_path.parent.mkdir(parents=True, exist_ok=True)
+        lock_file = self.state_file_path.with_name(f"{self.state_file_path.name}.lock")
+        thread_lock = self._get_thread_lock(self.state_file_path)
+
+        with thread_lock:
+            with open(lock_file, "a+", encoding="utf-8") as f:
+                try:
+                    if _HAS_FCNTL:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                    yield
+                finally:
+                    if _HAS_FCNTL:
+                        try:
+                            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                        except OSError:
+                            pass
 
     def _load_state(self) -> Dict[str, Any]:
+        """
+        Loads and validates deployment state.
+
+        Distinguishes:
+          - Missing file (first-time deployment): returns initial state.
+          - Existing file:
+            * unreadable -> raises DeploymentStateIntegrityError
+            * empty / whitespace -> raises DeploymentStateIntegrityError
+            * malformed JSON -> raises DeploymentStateIntegrityError
+            * invalid schema/types -> raises DeploymentStateIntegrityError
+
+        Never resets corrupt state to an empty dictionary.
+        """
         if not self.state_file_path.exists():
-            return {"adapters": {}}
+            return {
+                "schema_version": 1,
+                "adapters": {},
+            }
+
         try:
-            return json.loads(self.state_file_path.read_text(encoding="utf-8"))
-        except Exception:
-            logger.warning("Corrupted deployment state file; re-initializing.")
-            return {"adapters": {}}
+            raw_text = self.state_file_path.read_text(encoding="utf-8")
+        except Exception as exc:
+            raise DeploymentStateIntegrityError(
+                f"Deployment state file '{self.state_file_path}' exists but cannot be read: {exc}"
+            ) from exc
+
+        if not raw_text.strip():
+            raise DeploymentStateIntegrityError(
+                f"Deployment state file '{self.state_file_path}' exists but is empty or truncated."
+            )
+
+        try:
+            state = json.loads(raw_text)
+        except Exception as exc:
+            raise DeploymentStateIntegrityError(
+                f"Deployment state file '{self.state_file_path}' is corrupted or malformed JSON: {exc}"
+            ) from exc
+
+        validate_deployment_state_schema(state)
+        return state
 
     def _save_state(self, state: Dict[str, Any]) -> None:
+        """
+        Atomically commits validated state to disk using a unique temporary file,
+        flush, fsync, and atomic rename.
+        """
+        validate_deployment_state_schema(state)
         self.state_file_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.state_file_path.with_suffix(".tmp")
+        tmp = self.state_file_path.with_name(
+            f"{self.state_file_path.name}.tmp.{os.getpid()}_{uuid.uuid4().hex}"
+        )
         try:
-            tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+            data = json.dumps(state, indent=2, sort_keys=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(tmp, self.state_file_path)
-        except Exception:
+        except Exception as exc:
             tmp.unlink(missing_ok=True)
+            logger.error("Failed to commit deployment state to %s: %s", self.state_file_path, exc)
             raise
 
-    def get_next_sequence_number(self, adapter_id: str) -> int:
-        state = self._load_state()
-        adapters_state = state.get("adapters", {})
-        adapter_record = adapters_state.get(adapter_id, {"last_sequence": 0})
-        return adapter_record.get("last_sequence", 0) + 1
+    def initialize_state(
+        self,
+        force: bool = False,
+        initial_adapters: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Explicit, safe initialization path for anti-replay state.
 
+        If state already exists, requires force=True to overwrite.
+        """
+        with self._state_lock():
+            if self.state_file_path.exists() and not force:
+                raise DeploymentStateIntegrityError(
+                    f"Deployment state file '{self.state_file_path}' already exists. "
+                    "Refusing to overwrite without explicit force=True."
+                )
+            new_state = {
+                "schema_version": 1,
+                "adapters": initial_adapters or {},
+            }
+            self._save_state(new_state)
+
+    def get_next_sequence_number(self, adapter_id: str) -> int:
+        with self._state_lock():
+            state = self._load_state()
+            adapters_state = state.get("adapters", {})
+            adapter_record = adapters_state.get(adapter_id, {"last_sequence": 0})
+            return adapter_record.get("last_sequence", 0) + 1
 
     def check_and_update(
         self,
@@ -201,8 +409,11 @@ class AntiReplayTracker:
     ) -> None:
         """
         Validates timestamp expiration, target model ID, target adapter ID, and anti-replay status.
-        Updates state atomically upon success.
+        Updates state atomically upon success under an exclusive lock.
         """
+        if not isinstance(manifest, dict):
+            raise ManifestSchemaError("Manifest must be a dictionary.")
+
         # A. Check Timestamp Expiration
         current_time = now_utc or datetime.now(timezone.utc)
         exp_str = manifest.get("expiration_timestamp")
@@ -236,38 +447,51 @@ class AntiReplayTracker:
                     f"Package adapter ID '{pkg_adapter}' does not match target adapter ID '{target_adapter_id}'."
                 )
 
-        # D. Monotonic Anti-Replay Validation
-        adapter_id = manifest["adapter_id"]
-        package_id = manifest["package_id"]
-        sequence_num = manifest["sequence_number"]
+        # D. Monotonic Anti-Replay Validation under exclusive lock
+        adapter_id = manifest.get("adapter_id")
+        package_id = manifest.get("package_id")
+        sequence_num = manifest.get("sequence_number")
 
-        state = self._load_state()
-        adapters_state = state.get("adapters", {})
-        adapter_record = adapters_state.get(adapter_id, {"last_sequence": 0, "processed_packages": []})
+        if not adapter_id or not isinstance(adapter_id, str):
+            raise ManifestSchemaError(f"Invalid adapter_id in manifest: {adapter_id!r}")
+        if not package_id or not isinstance(package_id, str):
+            raise ManifestSchemaError(f"Invalid package_id in manifest: {package_id!r}")
+        if (
+            sequence_num is None
+            or isinstance(sequence_num, bool)
+            or not isinstance(sequence_num, int)
+            or sequence_num < 1
+        ):
+            raise ManifestSchemaError(f"Invalid sequence_number in manifest: {sequence_num!r}")
 
-        if package_id in adapter_record.get("processed_packages", []):
-            raise ReplayAttackError(
-                f"Replay attack detected! Package ID '{package_id}' has already been deployed."
+        with self._state_lock():
+            state = self._load_state()
+            adapters_state = state.get("adapters", {})
+            adapter_record = adapters_state.get(adapter_id, {"last_sequence": 0, "processed_packages": []})
+
+            if package_id in adapter_record.get("processed_packages", []):
+                raise ReplayAttackError(
+                    f"Replay attack detected! Package ID '{package_id}' has already been deployed."
+                )
+
+            last_seq = adapter_record.get("last_sequence", 0)
+            if sequence_num <= last_seq:
+                raise ReplayAttackError(
+                    f"Replay attack detected! Monotonic sequence number {sequence_num} is stale "
+                    f"(last deployed sequence for '{adapter_id}' was {last_seq})."
+                )
+
+            # Record deployment state
+            processed = list(adapter_record.get("processed_packages", []))
+            processed.append(package_id)
+            adapters_state[adapter_id] = {
+                "last_sequence": sequence_num,
+                "processed_packages": processed,
+                "last_deployed_utc": current_time.isoformat(),
+            }
+            state["adapters"] = adapters_state
+            self._save_state(state)
+            logger.info(
+                "Anti-replay check PASSED & state recorded (adapter=%s, seq=%d, pkg_id=%s).",
+                adapter_id, sequence_num, package_id
             )
-
-        last_seq = adapter_record.get("last_sequence", 0)
-        if sequence_num <= last_seq:
-            raise ReplayAttackError(
-                f"Replay attack detected! Monotonic sequence number {sequence_num} is stale "
-                f"(last deployed sequence for '{adapter_id}' was {last_seq})."
-            )
-
-        # Record deployment state
-        processed = adapter_record.get("processed_packages", [])
-        processed.append(package_id)
-        adapters_state[adapter_id] = {
-            "last_sequence": sequence_num,
-            "processed_packages": processed,
-            "last_deployed_utc": current_time.isoformat(),
-        }
-        state["adapters"] = adapters_state
-        self._save_state(state)
-        logger.info(
-            "Anti-replay check PASSED & state recorded (adapter=%s, seq=%d, pkg_id=%s).",
-            adapter_id, sequence_num, package_id
-        )

@@ -24,6 +24,7 @@ from src.phase4.package_validator import validate_package_provenance
 from src.common.exceptions import (
     ManifestSchemaError,
     ReplayAttackError,
+    DeploymentStateIntegrityError,
     PackageExpiredError,
     ModelMismatchError,
     AdapterMismatchError,
@@ -152,6 +153,168 @@ class TestAntiReplayTracker:
             tracker = AntiReplayTracker(state_file_path=Path(tmp) / "state.json")
             with pytest.raises(AdapterMismatchError):
                 tracker.check_and_update(valid_manifest_dict, target_adapter_id="foreign-adapter-id")
+
+    def test_anti_replay_reused_equal_sequence_number_rejected(self, valid_manifest_dict):
+        with tempfile.TemporaryDirectory() as tmp:
+            tracker = AntiReplayTracker(state_file_path=Path(tmp) / "state.json")
+            tracker.check_and_update(valid_manifest_dict)
+
+            # Package with different ID but same sequence number (10)
+            reused_seq_manifest = valid_manifest_dict.copy()
+            reused_seq_manifest["package_id"] = "33334444-5555-6666-7777-888899990000"
+            reused_seq_manifest["sequence_number"] = 10
+            with pytest.raises(ReplayAttackError) as exc_info:
+                tracker.check_and_update(reused_seq_manifest)
+            assert "stale" in str(exc_info.value).lower()
+
+    def test_anti_replay_corrupt_json_fails_closed_without_auto_reset(self, valid_manifest_dict):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+            corrupt_content = '{"adapters": { "corrupted": true, ... invalid json'
+            state_p.write_text(corrupt_content, encoding="utf-8")
+
+            tracker = AntiReplayTracker(state_file_path=state_p)
+
+            # Must fail closed with typed DeploymentStateIntegrityError
+            with pytest.raises(DeploymentStateIntegrityError) as exc_info:
+                tracker.check_and_update(valid_manifest_dict)
+            assert "corrupt" in str(exc_info.value).lower() or "malformed" in str(exc_info.value).lower()
+
+            # Must NOT have replaced or erased the corrupt file
+            assert state_p.read_text(encoding="utf-8") == corrupt_content
+
+            # get_next_sequence_number must also fail closed
+            with pytest.raises(DeploymentStateIntegrityError):
+                tracker.get_next_sequence_number("test-adapter")
+
+    def test_anti_replay_truncated_file_fails_closed(self, valid_manifest_dict):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+            state_p.write_text("", encoding="utf-8")  # 0-byte truncated file
+
+            tracker = AntiReplayTracker(state_file_path=state_p)
+            with pytest.raises(DeploymentStateIntegrityError) as exc_info:
+                tracker.check_and_update(valid_manifest_dict)
+            assert "empty" in str(exc_info.value).lower() or "truncated" in str(exc_info.value).lower()
+            assert state_p.read_text(encoding="utf-8") == ""
+
+    @pytest.mark.parametrize(
+        "invalid_state",
+        [
+            ["not", "a", "dict"],
+            {"missing_adapters_key": 1},
+            {"adapters": "not-a-dict"},
+            {"adapters": {"": {"last_sequence": 1, "processed_packages": []}}},
+            {"adapters": {"adapter-1": "not-a-dict-record"}},
+            {"adapters": {"adapter-1": {"last_sequence": "not-int", "processed_packages": []}}},
+            {"adapters": {"adapter-1": {"last_sequence": True, "processed_packages": []}}},
+            {"adapters": {"adapter-1": {"last_sequence": -5, "processed_packages": []}}},
+            {"adapters": {"adapter-1": {"last_sequence": 1, "processed_packages": "not-a-list"}}},
+            {"adapters": {"adapter-1": {"last_sequence": 1, "processed_packages": [123]}}},
+            {"adapters": {"adapter-1": {"last_sequence": 1, "processed_packages": [""]}}},
+            {"adapters": {"adapter-1": {"last_sequence": 1, "processed_packages": [], "last_deployed_utc": 123}}},
+            {"schema_version": [1], "adapters": {}},
+        ],
+    )
+    def test_anti_replay_invalid_schema_fails_closed(self, valid_manifest_dict, invalid_state):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+            state_p.write_text(json.dumps(invalid_state), encoding="utf-8")
+
+            tracker = AntiReplayTracker(state_file_path=state_p)
+            with pytest.raises(DeploymentStateIntegrityError):
+                tracker.check_and_update(valid_manifest_dict)
+
+    def test_anti_replay_unreadable_file_fails_closed(self, valid_manifest_dict, monkeypatch):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+            state_p.write_text(json.dumps({"adapters": {}}), encoding="utf-8")
+
+            tracker = AntiReplayTracker(state_file_path=state_p)
+
+            def mock_read_text(self, *args, **kwargs):
+                raise PermissionError("EACCES: permission denied")
+
+            monkeypatch.setattr(Path, "read_text", mock_read_text)
+
+            with pytest.raises(DeploymentStateIntegrityError) as exc_info:
+                tracker.check_and_update(valid_manifest_dict)
+            assert "cannot be read" in str(exc_info.value) or "permission" in str(exc_info.value).lower()
+
+    def test_anti_replay_failed_write_fails_closed(self, valid_manifest_dict, monkeypatch):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+            tracker = AntiReplayTracker(state_file_path=state_p)
+
+            def mock_replace(src, dst):
+                raise OSError("Simulated disk write I/O error")
+
+            import os
+            monkeypatch.setattr(os, "replace", mock_replace)
+
+            with pytest.raises(OSError, match="Simulated disk write I/O error"):
+                tracker.check_and_update(valid_manifest_dict)
+
+            # Ensure state file was not committed
+            assert not state_p.exists()
+
+    def test_anti_replay_concurrent_duplicate_deployments_cannot_both_commit(self, valid_manifest_dict):
+        import concurrent.futures
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+
+            def try_deploy(seq_num):
+                m = valid_manifest_dict.copy()
+                m["sequence_number"] = seq_num
+                # Each thread creates its own tracker instance pointing to same file
+                t = AntiReplayTracker(state_file_path=state_p)
+                t.check_and_update(m)
+                return True
+
+            success_count = 0
+            replay_error_count = 0
+
+            # 10 concurrent deployment attempts of the EXACT same package
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                futures = [executor.submit(try_deploy, valid_manifest_dict["sequence_number"]) for _ in range(10)]
+                for f in concurrent.futures.as_completed(futures):
+                    try:
+                        f.result()
+                        success_count += 1
+                    except ReplayAttackError:
+                        replay_error_count += 1
+
+            assert success_count == 1
+            assert replay_error_count == 9
+
+            # Verify final state reflects exactly 1 entry in processed_packages
+            state_data = json.loads(state_p.read_text(encoding="utf-8"))
+            adapter_rec = state_data["adapters"][valid_manifest_dict["adapter_id"]]
+            assert adapter_rec["processed_packages"] == [valid_manifest_dict["package_id"]]
+            assert adapter_rec["last_sequence"] == valid_manifest_dict["sequence_number"]
+
+    def test_anti_replay_explicit_initialize_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_p = Path(tmp) / "state.json"
+            tracker = AntiReplayTracker(state_file_path=state_p)
+
+            # Explicit clean initialization
+            tracker.initialize_state()
+            assert state_p.exists()
+            data = json.loads(state_p.read_text())
+            assert data["schema_version"] == 1
+            assert data["adapters"] == {}
+
+            # Calling initialize_state without force when file exists must fail
+            with pytest.raises(DeploymentStateIntegrityError):
+                tracker.initialize_state(force=False)
+
+            # Calling with force=True succeeds
+            tracker.initialize_state(force=True, initial_adapters={"preseeded": {"last_sequence": 5, "processed_packages": ["p1"]}})
+            data2 = json.loads(state_p.read_text())
+            assert "preseeded" in data2["adapters"]
+            assert data2["adapters"]["preseeded"]["last_sequence"] == 5
 
 
 class TestPackageProvenanceVerificationOrder:

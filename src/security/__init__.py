@@ -65,6 +65,8 @@ from .provenance import (
     validate_manifest_schema,
     compute_canonical_manifest_digest,
     AntiReplayTracker,
+    DeploymentStateIntegrityError,
+    validate_deployment_state_schema,
 )
 from .api_auth import (
     EndpointClassification,
@@ -138,6 +140,8 @@ __all__ = [
     "validate_manifest_schema",
     "compute_canonical_manifest_digest",
     "AntiReplayTracker",
+    "DeploymentStateIntegrityError",
+    "validate_deployment_state_schema",
     "EndpointClassification",
     "EndpointMetadata",
     "ENDPOINT_INVENTORY",
