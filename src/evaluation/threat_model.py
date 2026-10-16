@@ -167,7 +167,7 @@ THREAT_CATALOG = [
         "asset_at_risk": "Plaintext LoRA adapter weights",
         "likelihood": "Medium (if no secure cleanup is enforced)",
         "impact": "Critical (full weight exposure without decryption)",
-        "countermeasure": "Zero-Plaintext-at-Rest mandate: weights are processed only in volatile RAM buffers. Any temporary plaintext files are immediately shredded via 3-pass DoD-style overwrite (urandom × 3 + rename + unlink).",
+        "countermeasure": "Bounded Ephemeral Plaintext Lifecycle: Decrypted adapter weights exist on disk only within a restricted-permission temporary directory (mode 0700) for the duration of PEFT model loading, and are shredded (3-pass overwrite + rename + unlink) upon context exit. Physical erasure limitations on SSDs and CoW filesystems apply; configurable to tmpfs.",
         "cryptographic_primitive": "3-pass random overwrite (src.security.shred)",
         "testable": False,
         "test_id": None,

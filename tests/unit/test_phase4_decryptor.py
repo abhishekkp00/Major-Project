@@ -175,3 +175,135 @@ def test_decryptor_rejects_special_file_and_cleans_up(tmp_path: Path):
             pass
 
     assert context.temp_dir is None
+
+
+def test_decryptor_permissions_restrictive_on_posix(keys_and_payloads):
+    """Verifies that temporary directory is 0700 and extracted files are 0600 on POSIX."""
+    if os.name != "posix":
+        pytest.skip("POSIX permissions test only applies to POSIX platforms")
+
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+
+    with DecryptedAdapterContext(enc_path, key) as decrypted_dir:
+        dir_mode = decrypted_dir.stat().st_mode & 0o777
+        assert dir_mode == 0o700, f"Expected 0700 on decrypted adapter dir, got {oct(dir_mode)}"
+
+        config_file = decrypted_dir / "adapter_config.json"
+        assert config_file.exists()
+        file_mode = config_file.stat().st_mode & 0o777
+        assert file_mode == 0o600, f"Expected 0600 on extracted file, got {oct(file_mode)}"
+
+    assert not decrypted_dir.exists()
+
+
+def test_decryptor_cleans_up_on_model_load_exception(keys_and_payloads):
+    """Cleanup executes when model loading raises an exception inside the context."""
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+    recorded_dir = None
+
+    with pytest.raises(RuntimeError, match="Model loading crashed"):
+        with DecryptedAdapterContext(enc_path, key) as decrypted_dir:
+            recorded_dir = decrypted_dir
+            assert decrypted_dir.exists()
+            raise RuntimeError("Model loading crashed")
+
+    assert recorded_dir is not None
+    assert not recorded_dir.exists()
+
+
+def test_decryptor_cleans_up_on_inference_exception(keys_and_payloads):
+    """Cleanup executes when an inference execution error occurs inside the context."""
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+    recorded_dir = None
+
+    with pytest.raises(ValueError, match="Inference execution aborted"):
+        with DecryptedAdapterContext(enc_path, key) as decrypted_dir:
+            recorded_dir = decrypted_dir
+            assert decrypted_dir.exists()
+            raise ValueError("Inference execution aborted")
+
+    assert recorded_dir is not None
+    assert not recorded_dir.exists()
+
+
+def test_decryptor_configurable_temp_storage(keys_and_payloads, tmp_path):
+    """DecryptedAdapterContext respects configurable temp_storage_dir / SECURELORA_TEMP_DIR."""
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+
+    custom_storage = tmp_path / "custom_ramdisk"
+    custom_storage.mkdir()
+    if os.name == "posix":
+        custom_storage.chmod(0o700)
+
+    recorded_dir = None
+    with DecryptedAdapterContext(enc_path, key, temp_storage_dir=custom_storage) as decrypted_dir:
+        recorded_dir = decrypted_dir
+        assert custom_storage in decrypted_dir.parents
+        assert decrypted_dir.exists()
+
+    assert recorded_dir is not None
+    assert not recorded_dir.exists()
+
+
+def test_decryptor_rejects_insecure_temp_storage_dir(keys_and_payloads, tmp_path):
+    """DecryptedAdapterContext rejects world-writable temp storage directories without sticky bit."""
+    if os.name != "posix":
+        pytest.skip("POSIX permissions test")
+
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+
+    insecure_dir = tmp_path / "insecure_world_writable"
+    insecure_dir.mkdir()
+    insecure_dir.chmod(0o777)  # World-writable without sticky bit (0o1777)
+
+    with pytest.raises(SecurityError, match="world-writable without sticky bit"):
+        with DecryptedAdapterContext(enc_path, key, temp_storage_dir=insecure_dir):
+            pass
+
+
+def test_decryptor_cleanup_preserves_primary_exception(keys_and_payloads, tmp_path, monkeypatch):
+    """Primary exception in with-block is NOT masked by cleanup failures."""
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+
+    mock_storage = tmp_path / "failing_cleanup_dir"
+    mock_storage.mkdir()
+    if os.name == "posix":
+        mock_storage.chmod(0o700)
+
+    # Mock shred_directory to simulate a cleanup failure
+    def mock_failing_shred_dir(path):
+        raise OSError("Simulated cleanup disk failure")
+
+    monkeypatch.setattr("src.phase4.decryptor.shred_directory", mock_failing_shred_dir)
+
+    with pytest.raises(RuntimeError, match="Primary model failure"):
+        with DecryptedAdapterContext(enc_path, key, temp_storage_dir=mock_storage) as decrypted_dir:
+            raise RuntimeError("Primary model failure")
+
+
+def test_decryptor_surfaces_cleanup_failure_on_clean_exit(keys_and_payloads, tmp_path, monkeypatch):
+    """Cleanup failure is surfaced when with-block finishes normally without exception."""
+    enc_path = keys_and_payloads["enc_path"]
+    key = keys_and_payloads["key"]
+
+    mock_storage = tmp_path / "failing_clean_dir"
+    mock_storage.mkdir()
+    if os.name == "posix":
+        mock_storage.chmod(0o700)
+
+    # Mock shred_directory to simulate a failure and leave directory existing
+    def mock_failing_shred_dir(path):
+        raise OSError("Disk hardware failure during shred")
+
+    monkeypatch.setattr("src.phase4.decryptor.shred_directory", mock_failing_shred_dir)
+
+    with pytest.raises(SecurityError, match="Decrypted plaintext cleanup failed"):
+        with DecryptedAdapterContext(enc_path, key, temp_storage_dir=mock_storage):
+            pass
+

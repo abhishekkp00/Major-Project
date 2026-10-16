@@ -31,8 +31,9 @@ from src.phase4.decryptor import DecryptedAdapterContext
 from src.phase4.adapter_loader import load_base_model_and_tokenizer, load_peft_adapter
 from src.phase4.inference_runner import run_side_by_side_inference
 from src.phase4.validation_report import generate_validation_reports
-from src.security import AntiReplayTracker
+from src.security import AntiReplayTracker, validate_salt_length
 from src.common.exceptions import (
+    CryptoError,
     IncompletePackageError,
     InvalidArchiveError,
     SecurityError,
@@ -172,10 +173,15 @@ def run_deployment_pipeline(
                     # For v1 packages (legacy), fall back to salt string converted to bytes.
                     hkdf_salt_hex = manifest.get("hkdf_salt_hex") or manifest.get("encryption", {}).get("hkdf_salt_hex")
                     if hkdf_salt_hex:
-                        hkdf_salt_bytes = bytes.fromhex(hkdf_salt_hex)
+                        try:
+                            hkdf_salt_bytes = bytes.fromhex(hkdf_salt_hex)
+                        except (ValueError, TypeError) as hex_err:
+                            raise CryptoError(f"Malformed hex encoding in package salt: {hex_err}") from hex_err
+                        validate_salt_length(hkdf_salt_bytes)
                     elif salt:
                         logger.warning("[7/9] No hkdf_salt_hex in package manifest; using legacy salt string for v1 package.")
                         hkdf_salt_bytes = salt.encode("utf-8")[:32].ljust(32, b"\x00") if isinstance(salt, str) else salt
+                        validate_salt_length(hkdf_salt_bytes)
                     else:
                         raise ValueError("HKDF salt missing from package manifest and no salt provided.")
                     key = get_device_bound_key(hkdf_salt_bytes, kdf_version=kdf_ver)
@@ -189,7 +195,9 @@ def run_deployment_pipeline(
                 logger.info("[8/9] Decrypting adapter archive via AES-256-GCM...")
                 try:
                     enc_path = extracted_dir / "adapter.enc"
-                    decryptor = DecryptedAdapterContext(enc_path, key)
+                    decryptor = DecryptedAdapterContext(
+                        enc_path, key, temp_storage_dir=Phase4Config.TEMP_STORAGE_DIR
+                    )
                     with decryptor as decrypted_adapter_dir:
                         steps_status["Step 8: Decryption & Extraction"] = "PASSED"
                         logger.info("[8/9] PASS — Adapter decrypted to temporary context.")

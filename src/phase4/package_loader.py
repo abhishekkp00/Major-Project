@@ -60,8 +60,14 @@ class PackageLoader:
                 f"Archive size ({archive_size} bytes) exceeds safety limit of {self.max_bytes} bytes."
             )
 
-        self.temp_dir = tempfile.TemporaryDirectory(prefix="secure_lora_deploy_")
+        base_dir = os.environ.get("SECURELORA_TEMP_DIR", "").strip() or None
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="secure_lora_deploy_", dir=base_dir)
         self.extracted_path = Path(self.temp_dir.name).resolve()
+        if os.name == "posix":
+            try:
+                os.chmod(self.extracted_path, 0o700)
+            except OSError:
+                pass
 
         try:
             with tarfile.open(self.package_path, "r:gz") as tar:

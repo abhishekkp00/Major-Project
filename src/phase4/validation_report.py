@@ -35,7 +35,10 @@ def generate_validation_reports(
         },
         "target_device": {
             "fingerprint_hash_prefix": fp_prefix,
-            "device_matched": steps_status.get("Step 4: Device Authorization") == "PASSED"
+            "device_matched": (
+                steps_status.get("Step 6: Device Authorization") == "PASSED"
+                or steps_status.get("Step 4: Device Authorization") == "PASSED"
+            )
         },
         "verification_pipeline": {
             "success": verification_success,
@@ -48,8 +51,11 @@ def generate_validation_reports(
             "adapter_active": inference_result.get("adapter_active", False)
         },
         "security_guarantees": {
-            "zero_plaintext_at_rest": True,
+            "zero_plaintext_at_rest": False,
+            "ephemeral_plaintext_lifecycle": "temporary_directory_shredded_on_exit",
+            "bounded_disk_exposure": True,
             "cryptographic_shredding_applied": True,
+            "physical_erasure_limitations_acknowledged": True,
             "secrets_masked_in_logs": True
         }
     }

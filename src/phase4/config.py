@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 from pathlib import Path
 from src.common.config_loader import config
 
@@ -31,6 +32,11 @@ class Phase4Config:
     MAX_NEW_TOKENS: int = 64
     MAX_PACKAGE_BYTES: int = 512 * 1024 * 1024
     REQUIRED_PACKAGE_FILES = REQUIRED_PACKAGE_FILES
+    TEMP_STORAGE_DIR: Optional[Path] = (
+        Path(os.environ["SECURELORA_TEMP_DIR"]).resolve()
+        if os.environ.get("SECURELORA_TEMP_DIR")
+        else None
+    )
 
     @classmethod
     def validate(cls) -> None:
