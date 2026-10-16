@@ -38,6 +38,11 @@ class DeviceAuthorizationError(DeviceFingerprintError):
     pass
 
 
+class SigningKeyError(CryptoError, FileNotFoundError):
+    """Raised when the private signing key is missing, unreadable, or unusable."""
+    pass
+
+
 class PackageError(SecureLoraError, FileNotFoundError):
     """Raised when package parsing, extraction, or completeness checks fail."""
     pass
@@ -45,6 +50,11 @@ class PackageError(SecureLoraError, FileNotFoundError):
 
 class IncompletePackageError(PackageError):
     """Raised when a package is missing required files."""
+    pass
+
+
+class PackageArtifactError(PackageError, ValueError):
+    """Raised when a package artifact is unreadable, empty, or has an invalid format."""
     pass
 
 

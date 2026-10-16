@@ -47,9 +47,11 @@ def test_rsa_private_key_excluded_from_exported_package(tmp_path):
     pkg_dir = tmp_path / "protected_adapter"
     pkg_dir.mkdir()
 
+    from src.security import compute_sha256
+
     # Create dummy artifacts
     (pkg_dir / "adapter.enc").write_bytes(b"dummy_ciphertext")
-    (pkg_dir / "adapter.hash").write_text("dummy_hash")
+    (pkg_dir / "adapter.hash").write_text(compute_sha256(pkg_dir / "adapter.enc"))
     (pkg_dir / "metadata.json").write_text("{}")
 
     priv_key_path = tmp_path / "keys" / "dev_private.pem"

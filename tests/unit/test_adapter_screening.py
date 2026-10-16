@@ -307,8 +307,10 @@ def test_phase3_packaging_integration_gate(tmp_path):
     from src.security.signature import generate_dev_keypair
     generate_dev_keypair(priv_key, pub_key)
 
+    from src.security import compute_sha256
+
     (pkg_dir / "adapter.enc").write_bytes(b"CIPHERTEXT_12345")
-    (pkg_dir / "adapter.hash").write_text("dummy_hash")
+    (pkg_dir / "adapter.hash").write_text(compute_sha256(pkg_dir / "adapter.enc"))
     (pkg_dir / "adapter.sig").write_bytes(b"dummy_sig")
     (pkg_dir / "metadata.json").write_text("{}")
 
