@@ -47,49 +47,69 @@ def verify_and_decrypt(
         raise VerificationError(f"[Step 2-3] Provenance / signature verification failed: {exc}") from exc
     logger.info("[2-3/6] PASS — manifest schema & signature verified.")
 
-    # ── Step 4: Device fingerprint ───────────────────────────────────────────
-    logger.info("[4/6] Generating local device fingerprint…")
+    # ── Step 4: Device fingerprint & binding authorization ───────────────────
+    logger.info("[4/6] Generating local device fingerprint and verifying binding…")
     try:
         local_fp_hash = get_fingerprint_hash()
     except Exception as exc:
         raise VerificationError(f"[Step 4] Fingerprint generation failed: {exc}") from exc
-    logger.info("[4/6] PASS — fingerprint computed (hash_prefix=%s…).", local_fp_hash[:8])
+
+    expected_fp_ref = manifest.get("device_fingerprint_hash_ref")
+    if expected_fp_ref and expected_fp_ref != local_fp_hash:
+        raise VerificationError(
+            f"[Step 4] Device authorization check FAILED: host fingerprint ({local_fp_hash[:12]}…) "
+            f"does not match package device ({expected_fp_ref[:12]}…)."
+        )
+    logger.info("[4/6] PASS — device binding verified (hash_prefix=%s…).", local_fp_hash[:8])
 
     # ── Step 5: Key derivation ───────────────────────────────────────────────
     logger.info("[5/6] Deriving device-bound decryption key…")
     try:
         import json
+        from src.security.key_derivation import (
+            derive_key_for_device,
+            validate_salt_length,
+            check_kdf_version,
+        )
+
+        kdf_ver = manifest.get("kdf_version")
+        if kdf_ver:
+            check_kdf_version(kdf_ver)
+
         hkdf_salt_bytes = None
         manifest_path = package_dir / "package_manifest.json"
         meta_path = package_dir / "metadata.json"
 
         if manifest_path.exists():
-            try:
-                mdata = json.loads(manifest_path.read_text())
-                salt_hex = mdata.get("hkdf_salt_hex")
-                if salt_hex:
+            mdata = json.loads(manifest_path.read_text())
+            salt_hex = mdata.get("hkdf_salt_hex")
+            if salt_hex:
+                try:
                     hkdf_salt_bytes = bytes.fromhex(salt_hex)
-            except Exception:
-                pass
+                except (ValueError, TypeError) as hex_err:
+                    raise VerificationError(f"[Step 5] Malformed hex encoding in package salt: {hex_err}") from hex_err
+                validate_salt_length(hkdf_salt_bytes)
 
         if not hkdf_salt_bytes and meta_path.exists():
-            try:
-                mdata = json.loads(meta_path.read_text())
-                salt_hex = mdata.get("hkdf_salt_hex")
-                if salt_hex:
+            mdata = json.loads(meta_path.read_text())
+            salt_hex = mdata.get("hkdf_salt_hex")
+            if salt_hex:
+                try:
                     hkdf_salt_bytes = bytes.fromhex(salt_hex)
-            except Exception:
-                pass
+                except (ValueError, TypeError) as hex_err:
+                    raise VerificationError(f"[Step 5] Malformed hex encoding in package salt: {hex_err}") from hex_err
+                validate_salt_length(hkdf_salt_bytes)
 
         if hkdf_salt_bytes:
-            from src.security.key_derivation import derive_key_for_device
-            key = derive_key_for_device(local_fp_hash, hkdf_salt_bytes)
+            key = derive_key_for_device(local_fp_hash, hkdf_salt_bytes, kdf_version=kdf_ver)
         elif salt:
             key = derive_key_from_env(local_fp_hash, salt)
         else:
             raise VerificationError("[Step 5] Key derivation failed: HKDF salt missing from package manifest and no salt provided.")
 
-    except (ValueError, EnvironmentError) as exc:
+    except (ValueError, EnvironmentError, VerificationError) as exc:
+        raise VerificationError(f"[Step 5] Key derivation failed: {exc}") from exc
+    except Exception as exc:
         raise VerificationError(f"[Step 5] Key derivation failed: {exc}") from exc
     logger.info("[5/6] PASS — key derived.")
 

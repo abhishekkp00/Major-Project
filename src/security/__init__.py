@@ -20,6 +20,7 @@ from .fingerprint import (
 from .key_derivation import (
     derive_key,
     validate_key_length,
+    validate_salt_length,
     derive_key_from_env,
     derive_key_for_device,
     generate_hkdf_salt,
@@ -108,6 +109,7 @@ __all__ = [
     "get_fingerprint_hash",
     "derive_key",
     "validate_key_length",
+    "validate_salt_length",
     "derive_key_from_env",
     "derive_key_for_device",
     "generate_hkdf_salt",

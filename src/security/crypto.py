@@ -381,6 +381,16 @@ def encrypt_adapter(
     if hkdf_salt is not None:
         metadata["hkdf_salt_hex"] = hkdf_salt.hex()
 
+    # Defense-in-depth: Ensure package metadata never contains secret or raw key material
+    forbidden_secret_keys = {"secret", "device_secret", "raw_secret", "aes_key", "raw_key", "private_key"}
+    for f_key in forbidden_secret_keys:
+        if f_key in metadata:
+            del metadata[f_key]
+    key_hex = key.hex()
+    for k, v in metadata.items():
+        if isinstance(v, str) and (key_hex in v or key_hex.lower() in v.lower()):
+            raise CryptoError("CRITICAL: Raw key material detected in metadata serialization.")
+
     if metadata_path is not None:
         tmp_meta = metadata_path.with_suffix(".tmp")
         try:

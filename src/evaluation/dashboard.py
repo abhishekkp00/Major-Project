@@ -110,8 +110,9 @@ def get_masked_salt(salt: str) -> str:
 @app.route('/static/real_world_pii.jsonl')
 @require_bearer_token
 def get_synthetic_pii_benchmark():
-    for candidate in [Path('synthetic_pii_benchmark.jsonl'), Path('real_world_pii.jsonl')]:
-        if candidate.exists():
+    target = 'real_world_pii.jsonl' if 'real_world' in request.path else 'synthetic_pii_benchmark.jsonl'
+    for candidate in [Path('samples') / target, Path(target)]:
+        if candidate.exists() and candidate.is_file():
             try:
                 with open(candidate, 'r', encoding='utf-8') as f:
                     return f.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}

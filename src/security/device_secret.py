@@ -106,12 +106,12 @@ def _enforce_permissions(path: Path) -> None:
 def _verify_permissions(path: Path) -> None:
     """
     Verifies that *path* has at most 0600 permissions on POSIX.
-    Raises DeviceSecretError if other users can read the file.
+    Raises DeviceSecretError if other users can read/write the file or if execute bits are set.
     """
     if os.name != "posix":
         return
     mode = path.stat().st_mode
-    if mode & (stat.S_IRGRP | stat.S_IROTH | stat.S_IWGRP | stat.S_IWOTH):
+    if mode & (stat.S_IRGRP | stat.S_IROTH | stat.S_IWGRP | stat.S_IWOTH | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):
         raise DeviceSecretError(
             f"Device secret file '{path}' has insecure permissions "
             f"({oct(mode & 0o777)}). Expected at most 0600. "

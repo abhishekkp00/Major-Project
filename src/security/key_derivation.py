@@ -84,6 +84,17 @@ def validate_key_length(key: bytes, expected: int = _REQUIRED_KEY_BYTES) -> None
         )
 
 
+def validate_salt_length(salt: bytes, expected: int = HKDF_SALT_LENGTH) -> None:
+    """Asserts that *salt* has the correct length for HKDF."""
+    if not isinstance(salt, (bytes, bytearray)):
+        raise TypeError(f"Package salt must be bytes, got {type(salt).__name__}.")
+    if len(salt) != expected:
+        raise CryptoError(
+            f"Package salt has unexpected length {len(salt)} bytes (expected {expected}). "
+            "Salt may be corrupted or modified."
+        )
+
+
 def check_kdf_version(version: str) -> None:
     """
     Raises CryptoError if *version* is not in the set of supported KDF versions.
@@ -119,6 +130,7 @@ def derive_key(
     arg1: Union[bytes, str],
     arg2: Union[str, bytes],
     arg3: Optional[bytes] = None,
+    kdf_version: Optional[str] = None,
 ) -> bytes:
     """
     Derives a 32-byte AES-256-compatible key via HKDF-SHA256 (v2).
@@ -128,11 +140,15 @@ def derive_key(
     1. Primary (v2): derive_key(device_secret: bytes, fingerprint_hash: str, hkdf_salt: bytes) -> bytes
     2. Legacy shim: derive_key(fingerprint_hash: str, salt: Union[str, bytes]) -> bytes
     """
-    if isinstance(arg1, bytes) and isinstance(arg2, str) and arg3 is not None:
-        device_secret = arg1
+    if kdf_version is not None:
+        check_kdf_version(kdf_version)
+
+    if isinstance(arg1, (bytes, bytearray)) and isinstance(arg2, str) and arg3 is not None:
+        device_secret = bytes(arg1)
         fingerprint_hash = arg2
         hkdf_salt = arg3
-    elif isinstance(arg1, str) and isinstance(arg2, (str, bytes)) and arg3 is None:
+        validate_salt_length(hkdf_salt)
+    elif isinstance(arg1, str) and isinstance(arg2, (str, bytes, bytearray)) and arg3 is None:
         fingerprint_hash = arg1
         raw_salt = arg2
         if not fingerprint_hash:
@@ -146,7 +162,7 @@ def derive_key(
         if isinstance(raw_salt, str):
             salt_bytes = raw_salt.encode("utf-8")
         else:
-            salt_bytes = raw_salt
+            salt_bytes = bytes(raw_salt)
 
         if len(salt_bytes) < 32:
             hkdf_salt = salt_bytes.ljust(32, b"\x00")
@@ -188,21 +204,29 @@ def derive_key(
     return key_bytes
 
 
-def derive_key_for_device(arg1: Union[str, bytes], arg2: Union[str, bytes]) -> bytes:
+def derive_key_for_device(
+    arg1: Union[str, bytes],
+    arg2: Union[str, bytes],
+    kdf_version: Optional[str] = None,
+) -> bytes:
     """
     Convenience wrapper that loads the device secret automatically and calls
     ``derive_key``. Accepts (fingerprint_hash, hkdf_salt) or (hkdf_salt, fingerprint_hash).
     """
-    if isinstance(arg1, str) and isinstance(arg2, bytes):
-        fingerprint_hash, hkdf_salt = arg1, arg2
-    elif isinstance(arg1, bytes) and isinstance(arg2, str):
-        hkdf_salt, fingerprint_hash = arg1, arg2
+    if isinstance(arg1, str) and isinstance(arg2, (bytes, bytearray)):
+        fingerprint_hash, hkdf_salt = arg1, bytes(arg2)
+    elif isinstance(arg1, (bytes, bytearray)) and isinstance(arg2, str):
+        hkdf_salt, fingerprint_hash = bytes(arg1), arg2
     else:
         raise ValueError("derive_key_for_device requires one fingerprint_hash (str) and one hkdf_salt (bytes).")
 
+    validate_salt_length(hkdf_salt)
+    if kdf_version is not None:
+        check_kdf_version(kdf_version)
+
     from src.security.device_secret import get_device_secret
     device_secret = get_device_secret()
-    return derive_key(device_secret, fingerprint_hash, hkdf_salt)
+    return derive_key(device_secret, fingerprint_hash, hkdf_salt, kdf_version=kdf_version)
 
 
 def derive_key_from_env(fingerprint_hash: str, salt: Optional[str] = None) -> bytes:

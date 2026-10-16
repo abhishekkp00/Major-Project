@@ -26,6 +26,7 @@ from src.security import (
 )
 from src.security.key_derivation import (
     check_kdf_version,
+    validate_salt_length,
     KDF_VERSION,
     derive_key_for_device,
     HKDF_SALT_LENGTH,
@@ -56,7 +57,7 @@ def verify_device_binding(
     result = evaluate_device_authorization(
         expected_fingerprint_hash=expected_fingerprint_hash,
         expected_features=expected_features,
-        current_fingerprint_hash=mock_fingerprint,
+        current_fingerprint_hash=local_hash,
         policy=policy,
     )
 
@@ -110,11 +111,13 @@ def get_device_bound_key(
             "Read it from the package metadata.json field 'hkdf_salt_hex'."
         )
 
+    validate_salt_length(hkdf_salt)
+
     if kdf_version is not None:
         check_kdf_version(kdf_version)
     else:
         logger.debug("No kdf_version supplied by caller; using local default: %s", KDF_VERSION)
 
     local_hash = mock_fingerprint or get_fingerprint_hash()
-    key = derive_key_for_device(local_hash, hkdf_salt)
+    key = derive_key_for_device(local_hash, hkdf_salt, kdf_version=kdf_version)
     return key

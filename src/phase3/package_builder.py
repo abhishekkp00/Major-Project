@@ -206,6 +206,12 @@ def build_manifest(
         },
     }
 
+    # Defense-in-depth: Ensure package manifest never contains secret or raw key material
+    forbidden_secret_keys = {"secret", "device_secret", "raw_secret", "aes_key", "raw_key", "private_key"}
+    for f_key in forbidden_secret_keys:
+        if f_key in manifest:
+            del manifest[f_key]
+
     _atomic_write_json(package_dir / "package_manifest.json", manifest)
     logger.info("Package manifest written → package_manifest.json (pkg_id=%s, seq=%d)", pkg_id, sequence_number)
     return manifest

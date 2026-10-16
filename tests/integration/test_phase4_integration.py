@@ -108,7 +108,8 @@ def test_integration_unauthorized_device(valid_package_bundle, temp_validation_d
 
     report = json.loads((temp_validation_dir / "validation_report.json").read_text())
     assert report["verification_pipeline"]["success"] is False
-    assert report["verification_pipeline"]["steps"]["Step 8: Decryption & Extraction"] == "FAILED"
+    assert report["verification_pipeline"]["steps"]["Step 6: Device Authorization"] == "FAILED"
+    assert report["verification_pipeline"]["steps"]["Step 8: Decryption & Extraction"] == "SKIPPED"
     assert report["verification_pipeline"]["steps"]["Step 9: Adapter Load & Inference"] == "SKIPPED"
 
 
