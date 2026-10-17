@@ -660,6 +660,10 @@ def tamper_simulate():
 
     return jsonify({
         "success": True,
+        "is_simulated": True,
+        "simulation_type": "INTERACTIVE_DEMONSTRATION",
+        "execution_status": "SIMULATED",
+        "metric_status": "SIMULATED",
         "attack_stage": attack_stage,
         "original_text": original_text,
         "corrupted_text": corrupted_text,
@@ -886,9 +890,15 @@ def simulate_security_attack():
 
     res = sim_map.get(attack_id, sim_map["tampering"])
     res["timestamp"] = now_iso
+    res["is_simulated"] = True
+    res["simulation_type"] = "INTERACTIVE_SECURITY_SIMULATION"
+    res["execution_status"] = "SIMULATED"
+    res["metric_status"] = "SIMULATED"
 
     return jsonify({
         "success": True,
+        "is_simulated": True,
+        "simulation_type": "INTERACTIVE_SECURITY_SIMULATION",
         "attack": res
     })
 
