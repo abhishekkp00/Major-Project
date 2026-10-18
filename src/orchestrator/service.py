@@ -15,6 +15,7 @@ import math
 from src.phase1.pipeline import SecureDatasetPipeline
 from src.security import generate_key
 from src.common.config_loader import config
+from src.orchestrator.job_store import SqliteJobStore, JobsDictProxy, JobStoreError
 
 logger = logging.getLogger("secure_lora.orchestrator.service")
 
@@ -70,7 +71,9 @@ class JobOrchestrator:
         self.base_jobs_dir = Path(base_jobs_dir)
         self.base_jobs_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.base_jobs_dir / "jobs_db.json"
-        self.jobs: Dict[str, Dict[str, Any]] = {}
+        self.sqlite_path = self.base_jobs_dir / "jobs.sqlite3"
+        self.store = SqliteJobStore(self.base_jobs_dir)
+        self.jobs = JobsDictProxy(self.store)
         self.lock = threading.Lock()
         self._job_keys: Dict[str, bytes] = {}
         self._load_db()
@@ -114,31 +117,24 @@ class JobOrchestrator:
             self._job_keys.pop(job_id, None)
 
     def _load_db(self):
+        """Recovers any interrupted jobs from persistent store on startup."""
         with self.lock:
-            if self.db_path.exists():
-                try:
-                    raw = self.db_path.read_text(encoding="utf-8")
-                    self.jobs = _sanitize_json_values(json.loads(raw))
-                    # Any training job that was interrupted on restart is marked as failed
-                    for job_id, job in self.jobs.items():
-                        if job.get("status") in ["INGESTING", "TRAINING", "PACKAGING", "DEPLOYING"]:
-                            job["status"] = "FAILED"
-                            job["error"] = "System restarted during job execution."
-                except Exception as e:
-                    logger.error("Failed to load jobs database: %s", e)
-                    self.jobs = {}
-            else:
-                self.jobs = {}
+            if hasattr(self, "store"):
+                self.store.recover_interrupted_jobs()
 
     def _save_db(self):
+        """Flushes SQLite state to jobs_db.json for backward compatibility with external tools."""
         with self.lock:
-            try:
-                sanitized_jobs = _sanitize_json_values(self.jobs)
-                temp_path = self.db_path.with_suffix(".tmp")
-                temp_path.write_text(json.dumps(sanitized_jobs, indent=4), encoding="utf-8")
-                temp_path.replace(self.db_path)
-            except Exception as e:
-                logger.error("Failed to save jobs database: %s", e)
+            if isinstance(self.jobs, JobsDictProxy):
+                self.store.export_json(self.db_path)
+            else:
+                try:
+                    sanitized_jobs = _sanitize_json_values(self.jobs)
+                    temp_path = self.db_path.with_suffix(".tmp")
+                    temp_path.write_text(json.dumps(sanitized_jobs, indent=4), encoding="utf-8")
+                    temp_path.replace(self.db_path)
+                except Exception as e:
+                    logger.error("Failed to save jobs database: %s", e)
 
     def create_job(
         self,
@@ -190,6 +186,7 @@ class JobOrchestrator:
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
+        # Atomically write to SQLite store or dictionary proxy
         with self.lock:
             self.jobs[job_id] = job_record
         self._save_db()
@@ -259,22 +256,39 @@ class JobOrchestrator:
 
     def get_all_jobs(self) -> List[Dict[str, Any]]:
         with self.lock:
-            return sorted(self.jobs.values(), key=lambda x: x["created_at"], reverse=True)
+            return sorted(self.jobs.values(), key=lambda x: x.get("created_at", ""), reverse=True)
 
     def update_job_state(self, job_id: str, **kwargs):
-        with self.lock:
-            if job_id in self.jobs:
-                self.jobs[job_id].update(kwargs)
-                self.jobs[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
-        self._save_db()
+        if isinstance(self.jobs, JobsDictProxy):
+            self.store.update_job_state(job_id, **kwargs)
+        else:
+            with self.lock:
+                if job_id in self.jobs:
+                    self.jobs[job_id].update(kwargs)
+                    self.jobs[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+            self._save_db()
 
     def start_job(self, job_id: str):
         job = self.get_job(job_id)
         if not job:
             raise ValueError(f"Job {job_id} not found.")
 
-        if job["status"] != "CREATED":
-            raise ValueError(f"Job {job_id} is already in status {job['status']}")
+        if isinstance(self.jobs, JobsDictProxy):
+            # Atomic transition from CREATED to STARTING protects against concurrent multi-process start races
+            transitioned = self.store.atomic_status_transition(
+                job_id=job_id,
+                from_status="CREATED",
+                to_status="STARTING",
+                stage="dataset_protection"
+            )
+            if not transitioned:
+                fresh = self.get_job(job_id)
+                current_status = fresh.get("status") if fresh else "UNKNOWN"
+                raise ValueError(f"Job {job_id} is already in status {current_status}")
+        else:
+            if job["status"] != "CREATED":
+                raise ValueError(f"Job {job_id} is already in status {job['status']}")
+            self.update_job_state(job_id, status="STARTING", stage="dataset_protection")
 
         thread = threading.Thread(target=self._run_pipeline, args=(job_id,), daemon=True)
         thread.start()
