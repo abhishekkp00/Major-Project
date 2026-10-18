@@ -1,18 +1,24 @@
 {
-  "dataset": "SecureLoRA Synthetic PII/PHI Benchmark",
-  "dataset_id": "synthetic",
-  "model": "google/gemma-2b",
+  "dataset": "SecureLoRA Controlled Canary Memorization Benchmark",
+  "dataset_id": "canary_synthetic_benchmark",
+  "model": "JackFram/llama-68m",
   "adapter": "none",
   "seed": 42,
   "sample_count": 5,
-  "timestamp": "2026-10-04T08:50:20.173336+00:00",
+  "timestamp": "2026-10-17T16:39:02.078590+00:00",
   "status": "NOT_EXECUTED",
-  "reason": "Model or adapter instance for variant 'base_model' was not loaded or executed.",
+  "reason": "Checkpoint or adapter instance for variant 'base_model' has not been trained or constructed on this canary benchmark.",
   "ground_truth_available": true,
   "configuration": {
     "split": "test",
     "subset_size": 5,
     "seed": 42
   },
-  "metrics": null
+  "differential_privacy_guarantee": {
+    "dp_enabled": false,
+    "formal_guarantee_note": "No DP mechanism configured."
+  },
+  "observed_extraction_metrics": null,
+  "metrics": null,
+  "raw_probes": []
 }

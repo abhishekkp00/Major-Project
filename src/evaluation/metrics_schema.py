@@ -23,6 +23,11 @@ class MLUtilityMetrics:
     perplexity: float = 1.0
     task_accuracy: float = 1.0
     f1_score: float = 1.0
+    exact_match: Optional[float] = None
+    redaction_retention_rate: Optional[float] = None
+    num_eval_samples: Optional[int] = None
+    scoring_protocol: Optional[str] = None
+
 
 
 @dataclass

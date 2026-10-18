@@ -1,18 +1,29 @@
 {
-  "dataset": "SecureLoRA Synthetic PII/PHI Benchmark",
-  "dataset_id": "synthetic",
-  "model": "google/gemma-2b",
+  "dataset": "SecureLoRA Controlled Canary Memorization Benchmark",
+  "dataset_id": "canary_synthetic_benchmark",
+  "model": "JackFram/llama-68m",
   "adapter": "secure_lora_adapter",
   "seed": 42,
   "sample_count": 5,
-  "timestamp": "2026-10-04T08:50:20.173336+00:00",
+  "timestamp": "2026-10-17T16:39:02.078590+00:00",
   "status": "NOT_EXECUTED",
-  "reason": "Model or adapter instance for variant 'dp_lora' was not loaded or executed.",
+  "reason": "Checkpoint or adapter instance for variant 'dp_lora' has not been trained or constructed on this canary benchmark.",
   "ground_truth_available": true,
   "configuration": {
     "split": "test",
     "subset_size": 5,
     "seed": 42
   },
-  "metrics": null
+  "differential_privacy_guarantee": {
+    "dp_enabled": true,
+    "epsilon": 2.443,
+    "delta": 1e-05,
+    "clipping_norm": 1.0,
+    "noise_multiplier": 1.2,
+    "accounting_method": "R\u00e9nyi DP (Opacus)",
+    "formal_guarantee_note": "Differential privacy (\u03b5, \u03b4) is an algorithmic worst-case bound guaranteed by DP-SGD noise addition and gradient clipping. It is not inferred from, and must not be conflated with, empirical extraction rates."
+  },
+  "observed_extraction_metrics": null,
+  "metrics": null,
+  "raw_probes": []
 }

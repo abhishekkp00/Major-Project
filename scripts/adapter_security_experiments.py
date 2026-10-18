@@ -15,14 +15,21 @@ Saves results to outputs/evaluation/adapter_security_experiments.json.
 
 import json
 import logging
+import math
+import sys
 import time
 from pathlib import Path
 from typing import Dict, Any, List
 
 import numpy as np
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.evaluation.adapter_security import (
     ScreeningConfig,
+    ScreeningMode,
     evaluate_adapter_security,
     _generate_mock_lora_weights,
 )
@@ -118,7 +125,7 @@ def run_experiments() -> Dict[str, Any]:
             reference_source=ref_weights,
             candidate_model_fn=cand_fn,
             cfg=cfg,
-            allow_mock_fallback=True,
+            mode=ScreeningMode.RESEARCH,
         )
         lat_ms = (time.perf_counter() - t0) * 1000.0
         latencies.append(lat_ms)
@@ -165,8 +172,25 @@ def run_experiments() -> Dict[str, Any]:
     except Exception:
         roc_auc = 1.0
 
+    # Wilson 95% confidence intervals for small-sample reporting
+    def _wilson_ci(k: int, n: int) -> Dict[str, float]:
+        if n == 0:
+            return {"lower": 0.0, "upper": 0.0, "center": 0.0}
+        z = 1.95996
+        p = float(k / n)
+        denom = 1.0 + (z**2 / n)
+        centre = (p + (z**2 / (2.0 * n))) / denom
+        spread = (z * math.sqrt((p * (1.0 - p) + (z**2 / (4.0 * n))) / n)) / denom
+        return {"lower": round(max(0.0, centre - spread), 4), "upper": round(min(1.0, centre + spread), 4), "center": round(centre, 4)}
+
     summary_metrics = {
+        "execution_status": "COMPLETED",
+        "evaluation_input_type": "RESEARCH_MOCK_FIXTURE",
         "total_evaluations": len(results_per_adapter),
+        "true_positives": tp,
+        "false_positives": fp,
+        "true_negatives": tn,
+        "false_negatives": fn,
         "precision": round(precision, 4),
         "recall": round(recall, 4),
         "f1_score": round(f1, 4),
@@ -175,12 +199,23 @@ def run_experiments() -> Dict[str, Any]:
         "false_negative_rate": round(fnr, 4),
         "mean_latency_ms": round(float(np.mean(latencies)), 3),
         "max_latency_ms": round(float(np.max(latencies)), 3),
+        "uncertainty_intervals_95": {
+            "precision": _wilson_ci(tp, tp + fp),
+            "recall": _wilson_ci(tp, tp + fn),
+            "false_positive_rate": _wilson_ci(fp, fp + tn),
+        },
     }
 
     final_report = {
         "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "evaluation_input_type": "RESEARCH_MOCK_FIXTURE",
+        "execution_status": "COMPLETED",
         "research_question": "Can lightweight structural and behavioral screening detect suspicious LoRA adapters before cryptographic packaging and deployment?",
-        "answer": "Yes. Lightweight pre-packaging screening successfully detects both structural parameter anomalies and trigger-conditioned behavioral deviations with high accuracy (< 5ms latency).",
+        "answer": "Under isolated research test fixtures, lightweight screening detects structural parameter anomalies and trigger-conditioned probe divergences (< 5ms latency).",
+        "empirical_notice": (
+            "This experiment operates on synthetic research fixtures and controlled test probes. "
+            "It must not be cited as empirical proof that the detector defeats arbitrary in-the-wild neural backdoors."
+        ),
         "summary_metrics": summary_metrics,
         "adapter_evaluations": results_per_adapter,
     }

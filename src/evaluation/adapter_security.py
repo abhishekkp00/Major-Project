@@ -194,12 +194,21 @@ def screen_adapter_behavior(
     )
 
     # ── REAL evaluation mode check: require a real inference callback ──────────────────────
-    if is_real_eval and not callable(candidate_model_fn):
-        raise SecurityScreeningFailedError(
-            "Behavioral security screening requires a real model inference callback "
-            "(candidate_model_fn) for REAL_BEHAVIORAL_EVALUATION / PRODUCTION mode. "
-            "No callback was provided. Screening aborted."
-        )
+    is_forced_fixture = (
+        (isinstance(candidate_model_fn, dict) and candidate_model_fn.get("force_trigger_activation", False))
+        or getattr(candidate_model_fn, "force_trigger_activation", False)
+    )
+    if is_real_eval:
+        if is_forced_fixture:
+            raise SecurityScreeningFailedError(
+                "Forced test fixtures cannot enter real behavioral evaluation or production screening."
+            )
+        if not callable(candidate_model_fn):
+            raise SecurityScreeningFailedError(
+                "Behavioral security screening requires a real model inference callback "
+                "(candidate_model_fn) for REAL_BEHAVIORAL_EVALUATION / PRODUCTION mode. "
+                "No callback was provided. Screening aborted."
+            )
 
     # ── RESEARCH mode only: define synthetic fallback ────────────────────────────
     def _research_default_response(prompt: str, is_cand: bool = False, is_trigger_cand: bool = False) -> str:
@@ -716,9 +725,27 @@ def evaluate_adapter_security(
 
     t0 = time.perf_counter()
 
+    # ── PRODUCTION guard: Reject forced test fixtures before any processing ────────
+    is_forced_fixture = (
+        (isinstance(adapter_source, dict) and adapter_source.get("force_trigger_activation", False))
+        or (isinstance(candidate_model_fn, dict) and candidate_model_fn.get("force_trigger_activation", False))
+        or getattr(adapter_source, "force_trigger_activation", False)
+        or getattr(candidate_model_fn, "force_trigger_activation", False)
+    )
+    if mode is ScreeningMode.PRODUCTION and is_forced_fixture:
+        raise SecurityScreeningFailedError(
+            f"Forced test fixtures cannot enter production screening for adapter '{adapter_id}'. "
+            "Production screening requires authentic weights and genuine candidate model evaluation."
+        )
+
+    # In research mode, unwrap adapter_source if passed as a fixture dict {"weights": dict, ...}
+    actual_weights_source = adapter_source
+    if isinstance(adapter_source, dict) and "weights" in adapter_source and isinstance(adapter_source["weights"], dict):
+        actual_weights_source = adapter_source["weights"]
+
     # Layer 1 — Structural Analysis (runs first; structural errors raise before behavioral check)
     struct_rep = analyze_adapter_structure(
-        weights_source=adapter_source,
+        weights_source=actual_weights_source,
         reference_weights_source=reference_source,
         cfg=cfg,
         mode=mode,
@@ -732,8 +759,6 @@ def evaluate_adapter_security(
             eval_input_str = EvaluationInputType.RESEARCH_SYNTHETIC.value
 
     # ── PRODUCTION mode check: behavioral screening requires a real callback ──────
-    # Placed AFTER structural analysis so that structural failures (missing file,
-    # corrupt file) raise their correct SecurityScreeningFailedError first.
     if mode is ScreeningMode.PRODUCTION and not callable(candidate_model_fn):
         raise SecurityScreeningFailedError(
             "evaluate_adapter_security in PRODUCTION mode requires a real model inference "

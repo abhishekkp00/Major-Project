@@ -53,6 +53,13 @@ class StructuralDistanceMetrics:
 
 @dataclass
 class AdaptiveAdapterSample:
+    """
+    Synthetic benchmark adapter sample for structural anomaly and adaptive evasion research.
+
+    NOTE: Structural metrics evaluate matrix parameter distances (Wasserstein-1, Frobenius, Z-score).
+    `force_trigger_activation` is retained strictly as an isolated unit-test fixture flag and
+    must not be cited as empirical proof of detecting arbitrary in-the-wild neural backdoors.
+    """
     sample_id: str
     category: str  # "CLEAN", "BASIC_SUSPICIOUS", "ADAPTIVE_SUSPICIOUS"
     evasion_level: int  # 0, 1, 2, 3
@@ -60,6 +67,8 @@ class AdaptiveAdapterSample:
     force_trigger_activation: bool
     ground_truth_anomalous: bool
     structural_distance: StructuralDistanceMetrics
+    is_synthetic_fixture: bool = True
+    evaluation_input_type: str = "SYNTHETIC_SIMULATION"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

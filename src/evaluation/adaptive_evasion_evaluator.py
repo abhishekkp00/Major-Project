@@ -303,6 +303,10 @@ def run_adaptive_evasion_evaluation(
         attack_key = "baseline" if attack_type == "random_perturbation" else ("nonadaptive" if attack_type == "non_adaptive" else "adaptive")
         attack_report = {
             "attack_type": attack_type,
+            "execution_status": "COMPLETED",
+            "evaluation_input_type": "SYNTHETIC_SIMULATION",
+            "synthetic_label": "SYNTHETIC",
+            "headline_evaluation_eligible": False,
             "seed": seed,
             "max_iterations": max_iterations,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -318,6 +322,15 @@ def run_adaptive_evasion_evaluation(
     # --- Write comparison.json ---
     comp_file = out_dir / "comparison.json"
     comp_data = {
+        "execution_status": "COMPLETED",
+        "evaluation_input_type": "SYNTHETIC_SIMULATION",
+        "synthetic_label": "SYNTHETIC",
+        "headline_evaluation_eligible": False,
+        "evaluation_scope_notice": (
+            "Evaluates parameter-level structural evasion and bounded optimization against matrix screening thresholds. "
+            "Behavioral detector metrics reflect missing inference / uninstrumented weight dictionaries (0% behavioral detection), "
+            "NOT empirical neural backdoor evasion."
+        ),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "seed": seed,
         "max_iterations": max_iterations,

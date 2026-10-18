@@ -1,5 +1,13 @@
 {
+  "execution_status": "COMPLETED",
+  "evaluation_input_type": "CONTROLLED_BENCHMARK_EVALUATION",
   "total_test_samples": 40,
+  "sample_sizes_by_baseline": {
+    "baseline_A_clean": 10,
+    "baseline_B_perturbed": 10,
+    "baseline_C_structural_outlier": 10,
+    "baseline_D_controlled_trigger": 10
+  },
   "true_positives": 20,
   "false_positives": 0,
   "true_negatives": 20,
@@ -9,6 +17,30 @@
   "f1_score": 1.0,
   "false_positive_rate": 0.0,
   "false_negative_rate": 0.0,
-  "mean_latency_ms": 1.13,
-  "roc_auc": 1.0
+  "mean_latency_ms": 1.43,
+  "roc_auc": 1.0,
+  "uncertainty_intervals_95": {
+    "precision": {
+      "lower": 0.8389,
+      "upper": 1.0,
+      "center": 0.9194
+    },
+    "recall": {
+      "lower": 0.8389,
+      "upper": 1.0,
+      "center": 0.9194
+    },
+    "false_positive_rate": {
+      "lower": 0.0,
+      "upper": 0.1611,
+      "center": 0.0806
+    }
+  },
+  "evaluation_protocol": {
+    "evaluator_script": "scripts/run_adapter_screening_eval.py",
+    "base_model": "JackFram/llama-68m",
+    "dataset_probe_suite": "DEFAULT_PROBE_SUITE (normal, paraphrase, trigger, random)",
+    "forced_outcomes_used": false,
+    "empirical_scope_notice": "Evaluates structural outlier detection and controlled trigger-conditioned behavioral divergence. Does not claim general zero-day backdoor prevention on arbitrary wild neural networks."
+  }
 }

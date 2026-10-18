@@ -142,6 +142,19 @@ class ScreeningPipeline:
         t0 = time.perf_counter()
         timestamp_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
+        # ── Check for forced test fixtures ──────────────────────────────────
+        is_forced_fixture = (
+            (isinstance(adapter_source, dict) and adapter_source.get("force_trigger_activation", False))
+            or (isinstance(candidate_model_fn, dict) and candidate_model_fn.get("force_trigger_activation", False))
+            or getattr(adapter_source, "force_trigger_activation", False)
+            or getattr(candidate_model_fn, "force_trigger_activation", False)
+        )
+        if mode == "production" and is_forced_fixture:
+            raise SecurityScreeningError(
+                f"Forced test fixtures cannot enter production screening for adapter '{adapter_id}'. "
+                "Production screening strictly requires authentic weights and real model evaluation."
+            )
+
         # ── 1. Resolve adapter weight file to a weights dict ─────────────────
         weights = self._resolve_weights(adapter_source, mode=mode)
         # Determine whether we loaded real weights (not synthetic fallback)
@@ -169,7 +182,7 @@ class ScreeningPipeline:
 
         # ── 3. Layer 2: Behavioral Analysis ─────────────────────────────────
         # candidate_model_fn (explicit inference callable) takes precedence over
-        # adapter_source for behavioral probing.  In production mode without a
+        # adapter_source for behavioral probing. In production mode without a
         # callable we emit a WARN and run behavioral analysis in research mode
         # (synthetic baseline), but the report is marked real_callable_used=False
         # so callers can detect the limitation.

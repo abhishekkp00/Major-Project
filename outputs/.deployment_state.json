@@ -1,7 +1,120 @@
 {
   "adapters": {
+    "job_1786882160_9540133a": {
+      "last_deployed_utc": "2026-08-16T12:10:00.673416+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "bf7488e1-b612-487a-bbcd-3321c523eb72"
+      ]
+    },
+    "job_1786882311_20228121": {
+      "last_deployed_utc": "2026-08-16T12:12:30.992207+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "023c3e95-319d-46f3-8546-443d5e330ac6"
+      ]
+    },
+    "job_1786882991_607802dc": {
+      "last_deployed_utc": "2026-08-16T12:23:33.411767+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "96da3032-8490-4479-b911-5a4e626f86f1"
+      ]
+    },
+    "job_1786883070_46b64fe7": {
+      "last_deployed_utc": "2026-08-16T12:25:04.821174+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "ac1fb078-34fd-464a-810d-00783e08b1bd"
+      ]
+    },
+    "job_1786883636_5a52f34c": {
+      "last_deployed_utc": "2026-08-16T12:34:30.877533+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "5d0409fa-fbb6-44ad-9fed-5dd5912386f3"
+      ]
+    },
+    "job_1786884188_d94d1695": {
+      "last_deployed_utc": "2026-08-16T12:44:40.194317+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "4363e9e0-947f-4538-9758-fae4b39e998a"
+      ]
+    },
+    "job_1787050135_03c94b60": {
+      "last_deployed_utc": "2026-08-18T10:50:15.903931+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "c7bae587-b76d-4492-9f76-4c5ab65ad1ce"
+      ]
+    },
+    "job_1787050884_663be35d": {
+      "last_deployed_utc": "2026-08-18T11:02:08.571061+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "7349684f-8ece-4d5c-925a-e4b65405b7ee"
+      ]
+    },
+    "job_1787053412_3e32b7ec": {
+      "last_deployed_utc": "2026-08-18T11:44:33.065334+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "8b888ab1-86a7-4a42-aea1-4a48b7c9d509"
+      ]
+    },
+    "job_1787055453_c6db9027": {
+      "last_deployed_utc": "2026-08-18T12:18:32.036278+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "e741db51-136d-4e7e-8625-39e67c35b972"
+      ]
+    },
+    "job_1787057148_d5eeddc8": {
+      "last_deployed_utc": "2026-08-18T12:46:53.070439+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "498603c2-cb96-4a03-a5f9-a3fecc6b00ee"
+      ]
+    },
+    "job_1787132915_d95b21aa": {
+      "last_deployed_utc": "2026-08-19T09:50:01.602685+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "18e9fd7b-4729-4671-8295-126fc1bcb7bc"
+      ]
+    },
+    "job_1787135911_cabc125f": {
+      "last_deployed_utc": "2026-08-19T10:39:17.740085+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "a56b02db-740c-402f-8759-3451c0b88fa7"
+      ]
+    },
+    "job_1787137539_9c34f12b": {
+      "last_deployed_utc": "2026-08-19T11:06:48.369753+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "3ec70be3-d51c-4a42-93cf-c010b6c302d7"
+      ]
+    },
+    "job_1787155174_6b17bcfd": {
+      "last_deployed_utc": "2026-08-19T16:00:14.357315+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "e06ee4d1-c480-4e1b-9fb1-c806c6d22782"
+      ]
+    },
+    "job_1787216868_bbbeb166": {
+      "last_deployed_utc": "2026-08-20T09:08:33.450479+00:00",
+      "last_sequence": 1,
+      "processed_packages": [
+        "91fa5158-7b34-4d92-a5cc-3b3c78423c9c"
+      ]
+    },
     "job_test_security_123": {
-      "last_sequence": 63,
+      "last_deployed_utc": "2026-10-17T11:52:41.757112+00:00",
+      "last_sequence": 65,
       "processed_packages": [
         "aa7107b2-1a3f-42b5-ba3a-21f095b47c75",
         "58317050-db0e-4c63-940c-1e0b01a71c98",
@@ -65,12 +178,14 @@
         "6a002638-5609-4def-ba44-e22daa9c3232",
         "f64b8cbe-ce0f-4473-8713-72f248aaafdf",
         "956432b8-ba14-446c-977d-05531e7b2255",
-        "afd17bdf-9029-4fa6-9837-0b80571f704a"
-      ],
-      "last_deployed_utc": "2026-10-04T09:02:41.581652+00:00"
+        "afd17bdf-9029-4fa6-9837-0b80571f704a",
+        "985e0f79-2458-4893-afd4-375a35c51af7",
+        "ebbaf789-38f5-45a5-8042-90700742c223"
+      ]
     },
     "lora-adapter-v1": {
-      "last_sequence": 140,
+      "last_deployed_utc": "2026-10-17T11:51:32.634589+00:00",
+      "last_sequence": 148,
       "processed_packages": [
         "c335f061-1c8b-4416-b0e4-5c4fca3ad1ad",
         "acaa83d5-e84b-4d9c-b902-20d5cd1b4b25",
@@ -211,121 +326,16 @@
         "2e90c5ea-8d9d-4291-aeef-c28f6a436f25",
         "46caf374-0574-4f0c-a0bd-9a10b10a7d77",
         "67bf9441-1b87-4c30-ac26-6800362e6771",
-        "09d78679-9eec-4f4d-b16d-fd793cf0b404"
-      ],
-      "last_deployed_utc": "2026-10-04T08:57:36.558507+00:00"
-    },
-    "job_1786882160_9540133a": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "bf7488e1-b612-487a-bbcd-3321c523eb72"
-      ],
-      "last_deployed_utc": "2026-08-16T12:10:00.673416+00:00"
-    },
-    "job_1786882311_20228121": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "023c3e95-319d-46f3-8546-443d5e330ac6"
-      ],
-      "last_deployed_utc": "2026-08-16T12:12:30.992207+00:00"
-    },
-    "job_1786882991_607802dc": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "96da3032-8490-4479-b911-5a4e626f86f1"
-      ],
-      "last_deployed_utc": "2026-08-16T12:23:33.411767+00:00"
-    },
-    "job_1786883070_46b64fe7": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "ac1fb078-34fd-464a-810d-00783e08b1bd"
-      ],
-      "last_deployed_utc": "2026-08-16T12:25:04.821174+00:00"
-    },
-    "job_1786883636_5a52f34c": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "5d0409fa-fbb6-44ad-9fed-5dd5912386f3"
-      ],
-      "last_deployed_utc": "2026-08-16T12:34:30.877533+00:00"
-    },
-    "job_1786884188_d94d1695": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "4363e9e0-947f-4538-9758-fae4b39e998a"
-      ],
-      "last_deployed_utc": "2026-08-16T12:44:40.194317+00:00"
-    },
-    "job_1787050135_03c94b60": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "c7bae587-b76d-4492-9f76-4c5ab65ad1ce"
-      ],
-      "last_deployed_utc": "2026-08-18T10:50:15.903931+00:00"
-    },
-    "job_1787050884_663be35d": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "7349684f-8ece-4d5c-925a-e4b65405b7ee"
-      ],
-      "last_deployed_utc": "2026-08-18T11:02:08.571061+00:00"
-    },
-    "job_1787053412_3e32b7ec": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "8b888ab1-86a7-4a42-aea1-4a48b7c9d509"
-      ],
-      "last_deployed_utc": "2026-08-18T11:44:33.065334+00:00"
-    },
-    "job_1787055453_c6db9027": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "e741db51-136d-4e7e-8625-39e67c35b972"
-      ],
-      "last_deployed_utc": "2026-08-18T12:18:32.036278+00:00"
-    },
-    "job_1787057148_d5eeddc8": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "498603c2-cb96-4a03-a5f9-a3fecc6b00ee"
-      ],
-      "last_deployed_utc": "2026-08-18T12:46:53.070439+00:00"
-    },
-    "job_1787132915_d95b21aa": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "18e9fd7b-4729-4671-8295-126fc1bcb7bc"
-      ],
-      "last_deployed_utc": "2026-08-19T09:50:01.602685+00:00"
-    },
-    "job_1787135911_cabc125f": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "a56b02db-740c-402f-8759-3451c0b88fa7"
-      ],
-      "last_deployed_utc": "2026-08-19T10:39:17.740085+00:00"
-    },
-    "job_1787137539_9c34f12b": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "3ec70be3-d51c-4a42-93cf-c010b6c302d7"
-      ],
-      "last_deployed_utc": "2026-08-19T11:06:48.369753+00:00"
-    },
-    "job_1787155174_6b17bcfd": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "e06ee4d1-c480-4e1b-9fb1-c806c6d22782"
-      ],
-      "last_deployed_utc": "2026-08-19T16:00:14.357315+00:00"
-    },
-    "job_1787216868_bbbeb166": {
-      "last_sequence": 1,
-      "processed_packages": [
-        "91fa5158-7b34-4d92-a5cc-3b3c78423c9c"
-      ],
-      "last_deployed_utc": "2026-08-20T09:08:33.450479+00:00"
+        "09d78679-9eec-4f4d-b16d-fd793cf0b404",
+        "b795f02a-511b-45b1-aa71-86d252b139d2",
+        "57642935-fec2-4842-82de-7f9989cfa925",
+        "33c29efb-cb18-42d2-9ecc-53a39fe198cd",
+        "6d1dbe4b-db8b-4a3d-9989-8dc0eb40b54a",
+        "58eb19ed-8b08-4329-9a38-a8a0034c7346",
+        "be5a12b0-dee6-4ab3-9d85-48d47e64ddb3",
+        "1954228a-5aea-4c3f-995d-98ef37a44add",
+        "50dfcb68-354b-4117-8725-2f7e127e92fc"
+      ]
     }
   }
 }

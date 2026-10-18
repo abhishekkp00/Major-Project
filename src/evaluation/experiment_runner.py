@@ -200,43 +200,50 @@ def run_single_baseline(
             from transformers import AutoTokenizer, AutoModelForCausalLM
             from peft import LoraConfig, get_peft_model, TaskType
 
+            from src.evaluation.utility_evaluator import (
+                prepare_task_dataset,
+                evaluate_causal_lm_utility,
+                train_lora_on_split,
+            )
+
+            # 2. ML Training & Utility measurement:
+            # Prepare documented, disjoint train and held-out test splits to prevent data leakage.
+            splits = prepare_task_dataset(
+                dataset_name="synthetic",
+                subset_size=8 if quick_mode else 16,
+                train_ratio=0.7,
+                seed=seed,
+                pii_sanitization=defn["pii"],
+                force_offline=True,
+            )
+            splits.verify_split_integrity()
+
+            meta.dataset_identifier = splits.dataset_name
+            meta.dataset_split = f"held_out_test_n{splits.n_test}"
+            meta.hardware["split_hash_train"] = splits.train_hash
+            meta.hardware["split_hash_test"] = splits.test_hash
+            meta.hardware["num_train_samples"] = splits.n_train
+            meta.hardware["num_test_samples"] = splits.n_test
+
             tokenizer = AutoTokenizer.from_pretrained("JackFram/llama-68m")
             if tokenizer.pad_token is None:
                 tokenizer.pad_token = tokenizer.eos_token
 
             model = AutoModelForCausalLM.from_pretrained("JackFram/llama-68m")
 
-            eval_texts = [
-                "The quick brown fox jumps over the lazy dog.",
-                "SecureLoRA provides privacy-preserving LoRA adapter deployment.",
-                "Differential privacy guarantees membership inference protection.",
-                "Cryptographic device binding prevents unauthorized model execution.",
-            ]
-            if defn["pii"]:
-                from src.security.pii_engine import mask_pii_advanced
-                eval_texts = [mask_pii_advanced(txt)[0] for txt in eval_texts]
-
-            encodings = tokenizer(eval_texts, return_tensors="pt", padding=True, truncation=True)
-            encodings["labels"] = encodings["input_ids"].clone()
-
             if not defn["train"]:  # E0: Base model zero-shot
-                model.eval()
-                t0_inf = time.perf_counter()
-                with torch.no_grad():
-                    outputs = model(**encodings)
-                    v_loss = float(outputs.loss.item())
-                inf_lat_ms = (time.perf_counter() - t0_inf) * 1000.0
-
-                val_loss = v_loss
-                train_loss = v_loss
-                perplexity = float(math.exp(val_loss))
-
-                with torch.no_grad():
-                    logits = outputs.logits
-                    preds = torch.argmax(logits, dim=-1)
-                    correct = (preds == encodings["labels"]).float()
-                    accuracy = float(correct.mean().item())
-                    f1 = accuracy
+                util_res = evaluate_causal_lm_utility(
+                    model=model,
+                    tokenizer=tokenizer,
+                    eval_records=splits.test_records,
+                    max_new_tokens=24 if quick_mode else 32,
+                )
+                val_loss = util_res.val_loss
+                train_loss = util_res.val_loss  # baseline zero-shot convention
+                perplexity = util_res.perplexity
+                accuracy = util_res.task_accuracy
+                f1 = util_res.f1_score
+                inf_lat_ms = util_res.inference_latency_ms
                 train_time_s = 0.0
 
             else:  # E1-E9 training experiments
@@ -249,91 +256,36 @@ def run_single_baseline(
                 )
                 model = get_peft_model(model, peft_config)
 
+                epochs = 1 if quick_mode else 2
+                model, train_loss, train_time_s, dp_eps = train_lora_on_split(
+                    model=model,
+                    tokenizer=tokenizer,
+                    train_records=splits.train_records,
+                    dp_enabled=defn["dp"],
+                    epochs=epochs,
+                    learning_rate=1e-4,
+                    batch_size=2,
+                    dp_delta=1e-5,
+                    dp_clip=1.0,
+                    dp_noise=1.0,
+                )
                 if defn["dp"]:
-                    from opacus import PrivacyEngine
-                    from torch.utils.data import DataLoader, TensorDataset
-
-                    ds = TensorDataset(encodings["input_ids"], encodings["attention_mask"], encodings["labels"])
-                    dl = DataLoader(ds, batch_size=2)
-
-                    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
-                    privacy_engine = PrivacyEngine()
-                    model, optimizer, dl = privacy_engine.make_private(
-                        module=model,
-                        optimizer=optimizer,
-                        data_loader=dl,
-                        noise_multiplier=1.0,
-                        max_grad_norm=1.0,
-                    )
                     dp_delta = 1e-5
                     dp_clip = 1.0
                     dp_noise = 1.0
 
-                    model.train()
-                    t0_tr = time.perf_counter()
-                    epochs = 1 if quick_mode else 2
-                    last_tr_loss = 0.0
-                    for _ in range(epochs):
-                        for b_ids, b_mask, b_labels in dl:
-                            if b_ids.size(0) == 0:
-                                continue
-                            optimizer.zero_grad()
-                            b_out = model(b_ids, attention_mask=b_mask, labels=b_labels)
-                            b_loss = b_out.loss
-                            b_loss.backward()
-                            optimizer.step()
-                            last_tr_loss = float(b_loss.item())
-
-                    train_time_s = time.perf_counter() - t0_tr
-                    train_loss = last_tr_loss
-                    dp_eps = float(privacy_engine.get_epsilon(delta=dp_delta))
-
-                    model.eval()
-                    eval_mod = getattr(model, "_module", model)
-                    with torch.no_grad():
-                        val_out = eval_mod(**encodings)
-                        val_loss = float(val_out.loss.item())
-                        perplexity = float(math.exp(val_loss))
-                        logits = val_out.logits
-                        preds = torch.argmax(logits, dim=-1)
-                        correct = (preds == encodings["labels"]).float()
-                        accuracy = float(correct.mean().item())
-                        f1 = accuracy
-
-                else:
-                    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
-                    model.train()
-                    t0_tr = time.perf_counter()
-                    epochs = 1 if quick_mode else 2
-                    last_tr_loss = 0.0
-                    for _ in range(epochs):
-                        optimizer.zero_grad()
-                        outputs = model(**encodings)
-                        loss = outputs.loss
-                        loss.backward()
-                        optimizer.step()
-                        last_tr_loss = float(loss.item())
-
-                    train_time_s = time.perf_counter() - t0_tr
-                    train_loss = last_tr_loss
-
-                    model.eval()
-                    with torch.no_grad():
-                        outputs = model(**encodings)
-                        val_loss = float(outputs.loss.item())
-                        perplexity = float(math.exp(val_loss))
-                        logits = outputs.logits
-                        preds = torch.argmax(logits, dim=-1)
-                        correct = (preds == encodings["labels"]).float()
-                        accuracy = float(correct.mean().item())
-                        f1 = accuracy
-
-                # Measure inference latency
-                eval_mod = getattr(model, "_module", model)
-                t0_inf = time.perf_counter()
-                with torch.no_grad():
-                    _ = eval_mod(**encodings)
-                inf_lat_ms = (time.perf_counter() - t0_inf) * 1000.0
+                # Evaluate trained adapter on the exact same held-out test split under identical conditions
+                util_res = evaluate_causal_lm_utility(
+                    model=model,
+                    tokenizer=tokenizer,
+                    eval_records=splits.test_records,
+                    max_new_tokens=24 if quick_mode else 32,
+                )
+                val_loss = util_res.val_loss
+                perplexity = util_res.perplexity
+                accuracy = util_res.task_accuracy
+                f1 = util_res.f1_score
+                inf_lat_ms = util_res.inference_latency_ms
 
             peak_mem_mb = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) / 1024.0
             if torch.cuda.is_available():
@@ -700,6 +652,10 @@ def run_single_baseline(
             perplexity=round(perplexity, 4),
             task_accuracy=round(accuracy, 4),
             f1_score=round(f1, 4),
+            exact_match=round(util_res.exact_match, 4) if "util_res" in locals() and util_res is not None else None,
+            redaction_retention_rate=round(util_res.redaction_retention_rate, 4) if "util_res" in locals() and util_res is not None else None,
+            num_eval_samples=util_res.num_eval_samples if "util_res" in locals() and util_res is not None else None,
+            scoring_protocol=util_res.scoring_protocol if "util_res" in locals() and util_res is not None else None,
         )
 
         priv_metrics = PrivacyMetrics(
