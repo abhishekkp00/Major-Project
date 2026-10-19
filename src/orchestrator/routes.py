@@ -845,7 +845,8 @@ def get_pipeline_summary(job_id):
             "name": "Deployment Gate (Steps 1–8)",
             "status": (
                 "PASSED" if len(vsteps) >= 8 and all(vsteps.get(k) == "PASSED" for k in vsteps)
-                else ("FAILED" if any(v == "FAILED" for v in vsteps.values()) else _stage_status("running_secure_deployment_check"))
+                else ("FAILED" if any(v == "FAILED" for v in vsteps.values())
+                      else ("PENDING" if status == "COMPLETED" else _stage_status("running_secure_deployment_check")))
             ),
             "purpose": "Run all 8 cryptographic verification gates: Package Completeness → SHA-256 → RSA-PSS → Device Auth → HKDF Key → AES-GCM Decrypt → PEFT Load → Inference.",
             "metrics": {k: v for k, v in vsteps.items()} if vsteps else {},
