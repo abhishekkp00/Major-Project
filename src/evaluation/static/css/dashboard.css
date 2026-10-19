@@ -2942,3 +2942,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     transition-duration: .01ms !important;
   }
 }
+
+.run-feedback {
+  margin: 1rem 0 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--rose-border);
+  border-radius: 10px;
+  background: var(--rose-bg);
+  color: #fecdd3;
+  font-size: .84rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.run-feedback--success {
+  border-color: var(--emerald-border);
+  background: var(--emerald-bg);
+  color: #a7f3d0;
+}
+.run-feedback--warning {
+  border-color: var(--amber-border);
+  background: var(--amber-bg);
+  color: #fde68a;
+}
