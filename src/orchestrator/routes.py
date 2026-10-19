@@ -709,7 +709,7 @@ def get_pipeline_summary(job_id):
     structural_check = risk_breakdown.get("structural_risk_score") or sec.get("adapter_screening_structural")
     behavioral_check = risk_breakdown.get("behavioral_risk_score") or sec.get("adapter_screening_behavioral")
     risk_score = sec.get("security_screening_risk_score") or sec.get("adapter_risk_score") or scr_rep.get("security_screening_risk_score")
-    screening_outcome = sec.get("security_screening") or sec.get("adapter_screening_outcome") or ("APPROVED" if status == "COMPLETED" else None)
+    screening_outcome = sec.get("security_screening") or sec.get("adapter_screening_outcome")
 
     stages = [
         {
@@ -864,7 +864,7 @@ def get_pipeline_summary(job_id):
             "purpose": "Side-by-side inference test comparing baseline model vs. secured LoRA adapter. Validates adapter is active and functional.",
             "metrics": {
                 "inference_check": _vstep("Step 8: Inference Validation") if vsteps else None,
-                "adapter_active": status == "COMPLETED",
+                "adapter_active": vsteps.get("Step 8: Inference Validation") == "PASSED" if vsteps else None,
             },
             "security_significance": "Confirms the decrypted adapter produces different outputs from the base model, proving successful loading.",
             "result": _vstep("Step 8: Inference Validation") if vsteps else "N/A",
