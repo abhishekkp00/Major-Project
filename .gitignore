@@ -57,9 +57,20 @@ eval_report.json               # root-level legacy copy
 
 # ── Runtime Job Workspace (per-job secrets + ephemeral files) ─────────────────
 outputs/jobs/
+outputs/jobs.db*
+outputs/*.db*
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 raw_inputs/
 raw_shred/
 *.lock
+secure_lora_decrypted_*
+*.decrypted
+outputs/decrypted/
+outputs/restored/
 
 # ── Phase 3 / 4 Protected Adapter Outputs (contain keys / ciphertext) ─────────
 outputs/protected_adapter/adapter.enc
