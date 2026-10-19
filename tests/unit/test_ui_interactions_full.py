@@ -208,6 +208,27 @@ def test_workbench_html_structure_and_templates(client):
     assert 'id="tstep-1"' in html
     assert 'id="tstep-8"' in html
 
+    # Jury-demo clarity and evidence-provenance regressions.
+    assert "DEMO GUIDE" in html
+    assert 'id="run-feedback"' in html
+    assert "RESULT PROVENANCE" in html
+    assert "synthetic baseline" in html
+    assert 'id="dp-noise" class="form-input" value="1.2"' in html
+
+    # Confirm the browser assets serve the code containing the expected safeguards.
+    js_res = client.get("/static/js/dashboard.js")
+    assert js_res.status_code == 200
+    dashboard_js = js_res.get_data(as_text=True)
+    assert "function showRunFeedback(" in dashboard_js
+    assert "not this live run" in dashboard_js
+    assert "seamlessly fall back to benchmark data" not in dashboard_js
+
+    css_res = client.get("/static/css/dashboard.css")
+    assert css_res.status_code == 200
+    dashboard_css = css_res.get_data(as_text=True)
+    assert "Jury-demo clarity and responsive polish" in dashboard_css
+    assert ".run-feedback--success" in dashboard_css
+
 
 
 
