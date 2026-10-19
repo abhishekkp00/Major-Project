@@ -457,7 +457,7 @@ def _load_weights_from_file_or_dict(
                 source_desc = f"safetensors:{weights_path.name}"
             except Exception:
                 import torch
-                state_dict = torch.load(str(weights_path), map_location="cpu")
+                state_dict = torch.load(str(weights_path), map_location="cpu", weights_only=True)
                 if isinstance(state_dict, dict):
                     weights_dict = {
                         k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.array(v, dtype=np.float32))
@@ -469,7 +469,7 @@ def _load_weights_from_file_or_dict(
                     raise
         else:
             import torch
-            state_dict = torch.load(str(weights_path), map_location="cpu")
+            state_dict = torch.load(str(weights_path), map_location="cpu", weights_only=True)
             if not isinstance(state_dict, dict):
                 raise ValueError("PyTorch model weight file did not contain a valid state_dict dictionary.")
             weights_dict = {
