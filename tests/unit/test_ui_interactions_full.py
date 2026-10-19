@@ -69,6 +69,8 @@ def test_pipeline_summary_and_stages_endpoint(client, monkeypatch):
     assert pii_stage["metrics"]["precision"] is None
     assert pii_stage["metrics"]["recall"] is None
     assert pii_stage["metrics"]["f1"] is None
+    deployment_stage = next(stage for stage in data["stages"] if stage["id"] == "deployment")
+    assert deployment_stage["status"] != "PASSED"  # Only two of eight gates have evidence.
 
 
 def test_research_workbench_full_flow(client):
