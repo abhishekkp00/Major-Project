@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-**SecureLoRA** is an end-to-end security and privacy framework for Parameter-Efficient Fine-Tuning (PEFT) of Large Language Models (LLMs). It addresses five fundamental threat vectors in open-source fine-tuning and third-party adapter deployment by unifying RAM-first PII redaction, $(\epsilon, \delta)$-Differential Privacy (DP-LoRA), multi-stage Trojan screening (structural $Z$-score norm drift + behavioral activation probes), HKDF-SHA256 device-bound authorization, and RSA-2048-PSS signed package delivery into an integrated deployment pipeline. The system enforces a strict 8-gate verification lifecycle ensuring that low-rank adapters remain private during training, screened before packaging, unreadable in transit, and executable exclusively on authorized host environments.
+**SecureLoRA** is a research prototype for improving privacy and deployment security in Parameter-Efficient Fine-Tuning (PEFT) of Large Language Models (LLMs). It combines PII detection/redaction, an optional DP-LoRA training path, structural adapter analysis, research-mode behavioral probes, HKDF-SHA256-based device binding, AES-256-GCM package encryption, and RSA-2048-PSS package signatures in a staged deployment workflow. These controls mitigate specific risks; they do not guarantee that all training data remains private or that every malicious adapter will be detected. The current packaging orchestrator does not provide a live candidate-model inference callback, so behavioral screening may use a synthetic research baseline rather than live-model behavior. Device binding uses software-derived host attributes and is not TPM-backed attestation. See the [Jury Demo Runbook](docs/JURY_DEMO_RUNBOOK.md) for evidence boundaries and demo guidance.
 
 ---
 
