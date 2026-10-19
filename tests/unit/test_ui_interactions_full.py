@@ -214,7 +214,6 @@ def test_workbench_html_structure_and_templates(client):
     assert "Checking API…" in html
     assert 'id="auth-dialog"' not in html
     assert 'id="auth-token-input"' not in html
-    assert "connectApiSession" not in js
     assert 'id="run-feedback"' in html
     assert "RESULT PROVENANCE" in html
     assert "synthetic baseline" in html
@@ -224,6 +223,8 @@ def test_workbench_html_structure_and_templates(client):
     js_res = client.get("/static/js/dashboard.js")
     assert js_res.status_code == 200
     dashboard_js = js_res.get_data(as_text=True)
+    assert "connectApiSession" not in dashboard_js
+    assert "LOCAL DEMO" in dashboard_js
     assert "function showRunFeedback(" in dashboard_js
     assert "not this live run" in dashboard_js
     assert "seamlessly fall back to benchmark data" not in dashboard_js
