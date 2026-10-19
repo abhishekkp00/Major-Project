@@ -655,8 +655,8 @@ def get_pipeline_summary(job_id):
         """Safe verification step status lookup."""
         if vsteps and key in vsteps:
             return vsteps[key]
-        if status == "COMPLETED":
-            return "PASSED"
+        # A completed orchestration job is not evidence that an unrecorded
+        # verification gate ran successfully.
         return "PENDING"
 
 
@@ -843,11 +843,18 @@ def get_pipeline_summary(job_id):
         {
             "id": "deployment",
             "name": "Deployment Gate (Steps 1–8)",
-            "status": "PASSED" if status == "COMPLETED" else (_stage_status("running_secure_deployment_check")),
+            "status": (
+                "PASSED" if len(vsteps) >= 8 and all(vsteps.get(k) == "PASSED" for k in vsteps)
+                else ("FAILED" if any(v == "FAILED" for v in vsteps.values()) else _stage_status("running_secure_deployment_check"))
+            ),
             "purpose": "Run all 8 cryptographic verification gates: Package Completeness → SHA-256 → RSA-PSS → Device Auth → HKDF Key → AES-GCM Decrypt → PEFT Load → Inference.",
             "metrics": {k: v for k, v in vsteps.items()} if vsteps else {},
             "security_significance": "All 8 gates must pass. Any failure immediately aborts deployment and leaves weights encrypted.",
-            "result": "All 8 gates PASSED" if (status == "COMPLETED" and all(v == "PASSED" for v in vsteps.values())) else ("N/A" if not vsteps else f"{sum(1 for v in vsteps.values() if v=='PASSED')}/8 gates passed"),
+            "result": (
+                "All 8 gates PASSED" if len(vsteps) >= 8 and all(vsteps.get(k) == "PASSED" for k in vsteps)
+                else (f"{sum(1 for v in vsteps.values() if v == 'PASSED')}/8 gates explicitly passed; verification evidence incomplete" if vsteps
+                      else "Verification evidence unavailable")
+            ),
         },
         {
             "id": "inference",
