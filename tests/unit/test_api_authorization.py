@@ -87,10 +87,28 @@ def test_every_non_public_route_rejects_unauthenticated(client):
 
 
 def test_public_routes_stay_available(client):
-    assert client.get("/api/health").get_json() == {"status": "ok"}
+    assert client.get("/api/health").get_json() == {"status": "ok", "auth_mode": "bearer-token"}
     assert client.get("/").status_code == 200
     assert client.get("/api/orchestrator/datasets").status_code != 401
     assert client.get("/api/research/summary").status_code != 401
+
+
+def test_local_demo_mode_allows_tokenless_loopback_requests(client, monkeypatch):
+    monkeypatch.setattr(app, "config", {**app.config, "TESTING": True, "SECURELORA_LOCAL_DEMO_MODE": True})
+    response = client.get("/api/orchestrator/jobs", environ_base={"REMOTE_ADDR": "127.0.0.1"})
+    assert response.status_code == 200
+
+
+def test_local_demo_mode_rejects_non_loopback_requests(client, monkeypatch):
+    monkeypatch.setattr(app, "config", {**app.config, "TESTING": True, "SECURELORA_LOCAL_DEMO_MODE": True})
+    response = client.get("/api/orchestrator/jobs", environ_base={"REMOTE_ADDR": "192.0.2.10"})
+    assert response.status_code == 401
+
+
+def test_local_demo_mode_does_not_ignore_supplied_bad_token(client, monkeypatch):
+    monkeypatch.setattr(app, "config", {**app.config, "TESTING": True, "SECURELORA_LOCAL_DEMO_MODE": True})
+    response = client.get("/api/orchestrator/jobs", headers=H("wrong-token"), environ_base={"REMOTE_ADDR": "127.0.0.1"})
+    assert response.status_code == 401
 
 
 def test_public_routes_have_documented_rationale():
