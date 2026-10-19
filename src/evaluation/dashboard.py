@@ -86,8 +86,11 @@ enforce_default_auth(app)
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    """Public liveness probe. Returns a constant payload (no versions, paths, or job data)."""
-    return jsonify({"status": "ok"})
+    """Public liveness probe and non-sensitive authentication mode indicator."""
+    return jsonify({
+        "status": "ok",
+        "auth_mode": "local-demo" if app.config.get("SECURELORA_LOCAL_DEMO_MODE") else "bearer-token"
+    })
 
 # Global cache for lazy model loading
 base_model = None
@@ -911,5 +914,14 @@ if __name__ == '__main__':
         logger.warning("Could not preload model at startup: %s", e)
 
     port = int(os.getenv("PORT", os.getenv("SECURE_LORA_DASHBOARD_PORT", 5005)))
-    logger.info("Starting professional secure dashboard on port %d...", port)
-    app.run(host='0.0.0.0', port=port, debug=False)
+    host = os.getenv("SECURELORA_DASHBOARD_HOST", "127.0.0.1").strip()
+    loopback_hosts = {"127.0.0.1", "localhost", "::1", "[::1]"}
+    requested_demo = os.getenv("SECURELORA_LOCAL_DEMO_MODE", "1").strip().lower() in {"1", "true", "yes", "on"}
+    # Never enable tokenless demo mode when the server is exposed beyond loopback.
+    app.config["SECURELORA_LOCAL_DEMO_MODE"] = requested_demo and host.lower() in loopback_hosts
+    if app.config["SECURELORA_LOCAL_DEMO_MODE"]:
+        logger.warning("Local demo mode enabled: tokenless API access is limited to loopback clients.")
+    else:
+        logger.info("Bearer-token authentication required.")
+    logger.info("Starting SecureLoRA dashboard on %s:%d...", host, port)
+    app.run(host=host, port=port, debug=False)
