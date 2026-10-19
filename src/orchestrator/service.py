@@ -219,9 +219,15 @@ class JobOrchestrator:
         if not job:
             raise ValueError(f"Job {job_id} not found.")
 
-        dest_dir = self.base_jobs_dir / job_id / "raw_inputs"
+        dest_dir = (self.base_jobs_dir / job_id / "raw_inputs").resolve()
         dest_dir.mkdir(parents=True, exist_ok=True)
-        target_path = dest_dir / filename
+        target_path = (dest_dir / filename).resolve()
+        try:
+            target_path.relative_to(dest_dir)
+        except ValueError as exc:
+            raise ValueError(f"Path containment violation in filename '{filename}': target escapes workspace.") from exc
+        if target_path == dest_dir:
+            raise ValueError(f"Invalid upload filename '{filename}': resolves directly to directory.")
 
         bytes_written = 0
         try:

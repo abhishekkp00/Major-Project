@@ -65,8 +65,16 @@ def pre_validate_dataset():
             "error": f"Upload exceeds maximum allowed size of {max_size} bytes."
         }), 413
 
-    filename = secure_filename(file.filename)
+    filename = secure_filename(file.filename or "")
+    if not filename:
+        return jsonify({"success": False, "error": "Invalid filename"}), 400
+
     suffix = Path(filename).suffix.lower()
+    if suffix not in ALLOWED_DATASET_EXTENSIONS:
+        return jsonify({
+            "success": False,
+            "error": f"Unsupported file format '{suffix}'. Supported formats: {', '.join(sorted(ALLOWED_DATASET_EXTENSIONS))}"
+        }), 400
 
     # Save to a temporary file via bounded streaming
     temp_fd, temp_str = tempfile.mkstemp(suffix=suffix)
@@ -89,15 +97,6 @@ def pre_validate_dataset():
                         "error": f"Upload exceeds maximum allowed size of {max_size} bytes."
                     }), 413
                 f_out.write(chunk)
-
-        # Validate file extension/type after size validation (Requirement 7)
-        if suffix not in ALLOWED_DATASET_EXTENSIONS:
-            if temp_path.exists():
-                temp_path.unlink()
-            return jsonify({
-                "success": False,
-                "error": f"Unsupported file format '{suffix}'. Supported formats: {', '.join(sorted(ALLOWED_DATASET_EXTENSIONS))}"
-            }), 400
 
         # Validate and inspect without loading entire dataset into memory (Requirement 9)
         _, metadata = validate_dataset_file(temp_path, metadata_only=True)
@@ -204,8 +203,16 @@ def upload_file(job_id):
             "error": f"Upload exceeds maximum allowed size of {max_size} bytes."
         }), 413
 
-    filename = secure_filename(file.filename)
+    filename = secure_filename(file.filename or "")
+    if not filename:
+        return jsonify({"success": False, "error": "Invalid filename"}), 400
+
     suffix = Path(filename).suffix.lower()
+    if suffix not in ALLOWED_DATASET_EXTENSIONS:
+        return jsonify({
+            "success": False,
+            "error": f"Unsupported file format '{suffix}'. Supported formats: {', '.join(sorted(ALLOWED_DATASET_EXTENSIONS))}"
+        }), 400
 
     target_path = orchestrator.base_jobs_dir / job_id / "raw_inputs" / filename
 
@@ -218,18 +225,6 @@ def upload_file(job_id):
             max_size_bytes=max_size,
             chunk_size=UPLOAD_CHUNK_SIZE,
         )
-
-        # Validate file extension/type after size validation (Requirement 7)
-        if suffix not in ALLOWED_DATASET_EXTENSIONS:
-            if target_path.exists():
-                try:
-                    target_path.unlink()
-                except OSError:
-                    pass
-            return jsonify({
-                "success": False,
-                "error": f"Unsupported file format '{suffix}'. Supported formats: {', '.join(sorted(ALLOWED_DATASET_EXTENSIONS))}"
-            }), 400
 
         logger.info(
             "Successfully uploaded dataset '%s' (%d bytes) to job '%s'",
