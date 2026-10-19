@@ -3160,3 +3160,10 @@ tr:hover td { background: rgba(177,194,220,.025); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+
+.timeline-step.failed .step-circle {
+  color: var(--rose); border-color: rgba(255,113,135,.7);
+  background: rgba(255,113,135,.09); box-shadow: 0 0 0 4px rgba(255,113,135,.07);
+}
+.timeline-step.failed .step-label { color: var(--rose); }
