@@ -10,9 +10,12 @@ Every metric listed below is directly traceable to a raw source artifact in `out
 
 | Metric | Verified Value | Experiment | Dataset | Model | Sample Count | Seed | Artifact Path |
 |---|---|---|---|---|---|---|---|
-| PII Redaction Precision (Micro-Avg) | **0.9500 (95.00%)** | Redaction Engine Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
-| PII Redaction Recall (Micro-Avg) | **0.9744 (97.44%)** | Redaction Engine Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
-| PII Redaction F1 Score (Micro-Avg) | **0.9620 (96.20%)** | Redaction Engine Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
+| PII Redaction Precision (Paper Benchmark) | **0.9737 (97.37%)** | Paper Redaction Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/paper_results/benchmarks/pii_metrics.json` |
+| PII Redaction Recall (Paper Benchmark) | **0.9487 (94.87%)** | Paper Redaction Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/paper_results/benchmarks/pii_metrics.json` |
+| PII Redaction F1 Score (Paper Benchmark) | **0.9610 (96.10%)** | Paper Redaction Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/paper_results/benchmarks/pii_metrics.json` |
+| PII Redaction Precision (Base Benchmark) | **0.9500 (95.00%)** | Redaction Engine Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
+| PII Redaction Recall (Base Benchmark) | **0.9744 (97.44%)** | Redaction Engine Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
+| PII Redaction F1 Score (Base Benchmark) | **0.9620 (96.20%)** | Redaction Engine Benchmark | Synthetic PII/PHI Benchmark | `HybridPIIEngine` | 48 | 123 | `outputs/benchmarks/pii_metrics.json` |
 | Differential Privacy Epsilon ($\epsilon$) | **2.4430** ($\le 2.5$) | E9 (FULL SECURELORA) | `sample_pii_data.jsonl` | `JackFram/llama-68m` | 100 | 42 | `outputs/research/runs/EXP_E9_seed_42.json` |
 | Differential Privacy Delta ($\delta$) | **$1.0 \times 10^{-5}$** | E9 (FULL SECURELORA) | `sample_pii_data.jsonl` | `JackFram/llama-68m` | 100 | 42 | `outputs/research/runs/EXP_E9_seed_42.json` |
 | DP Gradient Clipping Norm ($C$) | **1.00** | E9 (FULL SECURELORA) | `sample_pii_data.jsonl` | `JackFram/llama-68m` | 100 | 42 | `outputs/research/runs/EXP_E9_seed_42.json` |
@@ -68,4 +71,4 @@ Every metric listed below is directly traceable to a raw source artifact in `out
 
 | Metric | Verified Value | Experiment | Scope | Test Engine | Sample Count | Seed | Artifact Path |
 |---|---|---|---|---|---|---|---|
-| Automated Test Suite Pass Count | **288 / 288 PASS** (100%) | Complete System Test Suite | Full Repository Unit/Integration/Security | `pytest` runner | 288 tests | N/A | `venv/bin/pytest` |
+| Automated Test Suite Pass Count | **575 / 575 PASS** (100%) | Complete System Test Suite | Full Repository Unit/Integration/Security | `pytest` runner | 575 tests | N/A | `venv/bin/pytest tests/` |

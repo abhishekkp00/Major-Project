@@ -4,7 +4,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Encryption](https://img.shields.io/badge/Encryption-AES--256--GCM-critical)](#)
 [![Signature](https://img.shields.io/badge/Signature-RSA--PSS%202048-blue)](#)
-[![Tests](https://img.shields.io/badge/Tests-288%2F288%20PASS-success)](#)
+[![Tests](https://img.shields.io/badge/Tests-575%2F575%20PASS-success)](#)
 
 ---
 
@@ -68,7 +68,7 @@ SecureLoRA structures security not as a post-hoc patch, but as a sequential 8-ga
 [ Gate 7: Nonce Anti-Replay Gate ] ───────> Replay sequence tracking & expiration verification
      │
      ▼
-[ Gate 8: Secure Inference Runtime ] ─────> In-memory adapter loading & real-time response generation
+[ Gate 8: Ephemeral Secure Loading ] ────> Mode 0700/0600 disk isolation & overwrite cleanup
 ```
 
 ---
@@ -77,16 +77,16 @@ SecureLoRA structures security not as a post-hoc patch, but as a sequential 8-ga
 
 The SecureLoRA framework executes across 10 structured pipeline stages:
 
-1. **Stage 0 — Dataset Ingestion**: Ingests unstructured text files, verifies JSONL/CSV schemas, and calculates record counts.
-2. **Stage 1 — Hybrid PII Audit & Masking**: Scans dataset records using SpaCy NER models and ISO/RFC regex patterns (Luhn, SSN, IBAN). Redacts entities entirely in volatile RAM with zero disk leakage.
+1. **Stage 0 — Dataset Ingestion**: Ingests unstructured text files, verifies JSONL/CSV schemas, and validates size limits.
+2. **Stage 1 — Hybrid PII Audit & Masking**: Scans dataset records using SpaCy NER models and ISO/RFC regex patterns (Luhn, SSN, IBAN). Redacts entities in-memory during preprocessing before encrypted datasets are written to disk.
 3. **Stage 2 — Cryptographic Dataset Protection**: Encrypts sanitized datasets at rest using AES-256-GCM with a job-unique 256-bit symmetric key.
 4. **Stage 3 — DP-LoRA Privacy-Aware Fine-Tuning**: Trains low-rank adapter matrices ($A$ and $B$) using Opacus DP-SGD. Applies per-sample gradient clipping ($C=1.00$) and Gaussian noise ($\sigma=1.20$).
 5. **Stage 4 — Pre-Deployment Adapter Screening**: Evaluates trained weights against structural spectral bounds and behavioral activation subspace probes to detect Trojan anomalies.
 6. **Stage 5 — RSA-PSS Provenance Signing**: Computes SHA-256 adapter weight digests and signs package manifests using 2048-bit RSA-PSS keys.
 7. **Stage 6 — HKDF Device-Bound Packaging**: Derives a host-unique AES-256-GCM key via HKDF-SHA256 from system CPU strings, `/etc/machine-id`, and disk UUIDs, encrypting the adapter archive (`.tar.gz`).
 8. **Stage 7 — Device Authorization Check**: Verifies host environment hardware fingerprints against authorized manifest digests upon deployment attempt.
-9. **Stage 8 — Deployment Verification Gate**: Executes all 8 verification gates in sequence. Aborts deployment immediately if any gate fails.
-10. **Stage 9 — Secure Inference Validation**: Loads authorized adapters into volatile RAM for side-by-side inference comparison against baseline models.
+9. **Stage 8 — Deployment Verification Gate**: Executes all verification gates in sequence. Aborts deployment immediately if any gate fails.
+10. **Stage 9 — Ephemeral Inference Validation**: Loads authorized adapters via temporary access-restricted filesystem path (`0700`), executes model evaluation, and immediately overwrites with random bytes and unlinks upon context exit.
 
 ---
 
@@ -128,7 +128,7 @@ $$\text{Key}_{\text{AES}} = \text{HKDF-SHA256}(\text{CPUInfo} \parallel \text{Ma
 
 * **Software Identity Basis**: Collects OS-accessible host attributes (`/etc/machine-id`, `/proc/cpuinfo`, disk UUIDs). It does **not** rely on hardware TPM/TEE chips.
 * **Unauthorized Device Rejection**: Rejects foreign execution environments with a verified **100.0% rejection rate**.
-* **Replay Protection**: Validates monotonically increasing nonces and RSA-PSS signatures, achieving a **100.0% replay rejection rate**.
+* **Replay Protection**: Validates monotonically increasing sequence numbers and RSA-PSS signatures, achieving a **100.0% replay rejection rate** on the local host.
 * **Adaptive Binding Availability**: Reduces false rejection rates (FRR) under non-malicious host environment drift from **80.0% (static policy)** down to **20.0% (adaptive policy)**, representing a **60.0% FRR reduction**.
 
 ---
@@ -167,17 +167,21 @@ The following table summarizes all verified empirical metrics directly extracted
 | **Performance Overhead**| Deployment Gate Overhead | **0.394 ms** | 68M-Tier Model Scale Benchmark | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
 | **Screening Latency** | 68M-Tier Screening Latency | **7.801 ms** | 68M-Tier (22.7M parameters) | 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
 | **Screening Latency** | 350M-Tier Screening Latency | **76.572 ms** | 350M-Tier (267.0M parameters)| 100 | 42 | `outputs/evaluation/model_scale/model_comparison.json` |
-| **System Test Suite** | Test Pass Rate | **288 / 288 PASS** | Complete Repository Test Suite| 288 | N/A | Automated `pytest` Test Runner Log |
+| **System Test Suite** | Test Pass Rate | **575 / 575 PASS** | Complete Repository Test Suite| 575 | N/A | Automated `pytest` Test Runner Log |
 
 ---
 
-## 11. Important Unexecuted Experiments & Limitations
+## 11. Technical Boundaries & Explicit Limitations
 
-To maintain absolute scientific transparency:
+To maintain absolute scientific transparency and defensible claims:
 
-1. **Generative LLM Memorization Leakage**: Comparative generation-level PII memorization under live LLM sampling (previously cited in text as 42.3% for Base Model vs 18.7% for Standard LoRA) was marked `NOT_EXECUTED` in `outputs/evaluation/privacy/comparison.json` due to offline CI execution without pre-loaded live weights. It is recorded as **Not experimentally verified**.
-2. **Software-Derived Identity Limitations**: Device authorization relies on software-derived OS attributes (`/etc/machine-id`, `/proc/cpuinfo`). It protects against software redistribution, but does not provide physical TPM hardware tamper resistance.
-3. **Synthetic Screening Suite**: Adapter screening efficacy ($F1=1.0000$) was evaluated on a synthetic Trojan insertion suite of 50 adapters across 4 evasion levels.
+1. **Generative LLM Memorization Leakage**: Comparative generation-level PII memorization under live LLM sampling was marked `NOT_EXECUTED` in `outputs/evaluation/privacy/comparison.json` due to offline CI execution without downloaded model weights. It is recorded as **Not experimentally verified**.
+2. **Software-Derived Identity Limitations**: Device authorization relies on software-derived OS attributes (`/etc/machine-id`, `/proc/cpuinfo`). It protects against casual file copying, but does **not** provide hardware-rooted TPM 2.0 PCR attestation. Root users or hypervisors can inspect and duplicate these attributes.
+3. **Ephemeral Filesystem Loading vs. RAM-Only Claims**: PyTorch/PEFT requires a local directory path for weight loading. Plaintext weights reside transiently on disk inside a temporary `0700` POSIX directory before being overwritten and unlinked. SecureLoRA does **not** claim RAM-only model execution.
+4. **Best-Effort File Overwrite vs. SSD Sanitization**: Overwrite-before-unlink is a defense-in-depth mitigation. It does **not** guarantee physical media sanitization on solid-state drives with flash translation layer (FTL) wear leveling, copy-on-write filesystems, or snapshot storage.
+5. **Conditional Behavioral Screening**: Full behavioral screening requires a live inference callable (`candidate_model_fn`). In offline packaging where no model is loaded, screening relies on structural SVD checks and records `real_callable_used=False`.
+6. **Local Monotonic Anti-Replay Scope**: Sequence tracking protects against replay attacks on the *local host or shared filesystem*. Multi-region distributed clusters require an external ledger or coordination service.
+7. **Synthetic Benchmark Scope**: The reported PII redaction micro-F1 of 0.9610 was measured on $N=48$ annotated synthetic benchmark records. Performance may vary on unconstrained in-the-wild natural language data.
 
 ---
 
@@ -190,9 +194,9 @@ To maintain absolute scientific transparency:
 | **Spoofing Identity** | Device Authorization Gate | Unauthorized hardware impersonation | Software HKDF fingerprint verification | **Enforced** (100% Rejection) |
 | **Tampering with Data** | Cryptographic Package Archive | Bit-level payload modification | AES-256-GCM auth tags + SHA-256 digest | **Enforced** (100% Rejection) |
 | **Repudiation** | Package Delivery | Unsigned adapter deployment | RSA-2048-PSS digital signatures | **Enforced** (100% Rejection) |
-| **Information Disclosure**| Data Ingestion / Storage | PII memorization & unauthorized readout| RAM-first PII masking + DP-LoRA ($\epsilon=2.4430$) | **Mitigated** (F1=0.9620) |
+| **Information Disclosure**| Data Ingestion / Storage | PII memorization & unauthorized readout| In-memory PII masking + DP-LoRA ($\epsilon=2.4430$) | **Mitigated** (F1=0.9610) |
 | **Denial of Service** | Screening Pipeline | Structural anomaly bypass (Level 2/3) | Joint Structural + Behavioral screening | **Mitigated** (F1=1.0000) |
-| **Elevation of Privilege** | Model Execution Engine | Unauthorized adapter loading | 8-Gate fail-fast deployment runtime | **Enforced** (288/288 Tests) |
+| **Elevation of Privilege** | Model Execution Engine | Unauthorized adapter loading | 8-Gate fail-fast deployment runtime | **Enforced** (575/575 Tests) |
 
 ---
 
@@ -243,8 +247,9 @@ MAJOR_PROJECT/
 │   ├── phase2/                 # DP-LoRA fine-tuning integration
 │   ├── phase3/                 # Cryptographic packaging & device binding
 │   └── security/               # SVD screening, behavioral probes, and policies
-└── tests/                      # PyTest automated test suite (288/288 PASS)
+└── tests/                      # PyTest automated test suite (575/575 PASS)
     ├── integration/            # End-to-end pipeline integration tests
+    ├── security/               # Application security & cryptographic regression tests
     └── unit/                   # Unit test coverage for security, PII, and models
 ```
 
@@ -254,12 +259,13 @@ MAJOR_PROJECT/
 
 For complete deep-dive documentation:
 
-* 📖 **[Setup & Installation Guide](docs/SETUP.md)** — Hardware requirements, virtual environment setup, and dependency installation.
+* 📖 **[Setup & Operational Runbook](docs/SETUP.md)** — Installation, device enrollment, training, packaging, deployment, and failure recovery.
+* 🛡️ **[Technical Assurance & Threat Model Specification](docs/TECHNICAL_ASSURANCE.md)** — Traceability matrix, technical clarifications, and verification rigor.
 * 📊 **[Dataset Governance Specification](docs/DATASETS.md)** — Synthetic benchmark dataset structures, HF integrations, and licensing.
 * 🔬 **[Experimental Reproducibility Matrix](docs/EXPERIMENTS.md)** — Executable CLI commands, seeds, model configurations, and artifact paths.
-* 🛡️ **[Technical Research Specification](docs/RESEARCH.md)** — Mathematical formulations of DP-LoRA, HKDF device binding, and screening proofs.
+* 📐 **[Technical Research Specification](docs/RESEARCH.md)** — Mathematical formulations of DP-LoRA, HKDF device binding, and screening proofs.
 * 📊 **[Verified Publication Results](docs/PUBLICATION_RESULTS.md)** — Complete source-of-truth table of verified numerical metrics.
-* 📋 **[Publication Readiness Audit](docs/PUBLICATION_READINESS_AUDIT.md)** — Phase 6 repository verification audit report.
+* 📋 **[Final Systems Architecture Audit](FINAL_PROJECT_AUDIT.md)** — Complete repository verification audit report.
 
 ---
 
