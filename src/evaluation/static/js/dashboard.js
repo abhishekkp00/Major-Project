@@ -450,14 +450,18 @@ function showStageDetail(stepIndex) {
       <div><strong>Status:</strong> ${stVal}</div>
     `;
   } else if (stepIndex === 2) {
-    const piiDet = piiSt.metrics?.pii_detected != null ? piiSt.metrics.pii_detected : (currentJobMetrics?.kpi?.pii_detected ?? '0');
-    const piiMask = piiSt.metrics?.pii_masked != null ? piiSt.metrics.pii_masked : piiDet;
-    const prec = piiSt.metrics?.precision != null ? Number(piiSt.metrics.precision).toFixed(2) : (piiDet > 0 ? '0.96' : '1.00');
-    const rec = piiSt.metrics?.recall != null ? Number(piiSt.metrics.recall).toFixed(2) : (piiDet > 0 ? '0.97' : '1.00');
-    const f1 = piiSt.metrics?.f1 != null ? Number(piiSt.metrics.f1).toFixed(2) : (piiDet > 0 ? '0.96' : '1.00');
+    const fmtCount = value => value == null ? 'N/A' : String(value);
+    const fmtMetric = value => value == null || !Number.isFinite(Number(value)) ? 'N/A' : Number(value).toFixed(3);
+    const piiDet = piiSt.metrics?.pii_detected ?? currentJobMetrics?.kpi?.pii_detected ?? null;
+    const piiMask = piiSt.metrics?.pii_masked ?? null;
+    // Precision/recall/F1 require labeled ground truth and confusion counts.
+    // Never substitute illustrative constants when the run did not measure them.
+    const prec = fmtMetric(piiSt.metrics?.precision);
+    const rec = fmtMetric(piiSt.metrics?.recall);
+    const f1 = fmtMetric(piiSt.metrics?.f1);
     metricsHtml = `
-      <div><strong>Entities Detected:</strong> ${piiDet}</div>
-      <div><strong>Masked Count:</strong> ${piiMask}</div>
+      <div><strong>Entities Detected:</strong> ${fmtCount(piiDet)}</div>
+      <div><strong>Masked Count:</strong> ${fmtCount(piiMask)}</div>
       <div><strong>PII Precision:</strong> ${prec}</div>
       <div><strong>PII Recall:</strong> ${rec}</div>
       <div><strong>PII F1 Score:</strong> ${f1}</div>
@@ -465,7 +469,7 @@ function showStageDetail(stepIndex) {
   } else if (stepIndex === 3) {
     const mode = trSt.metrics?.mode || activeTrainingMode;
     const isDp = mode === 'DP-LoRA' || trSt.metrics?.dp_enabled;
-    const eps = isDp ? (trSt.metrics?.epsilon != null ? Number(trSt.metrics.epsilon).toFixed(2) : (document.getElementById('dp-epsilon')?.value || '2.44')) : 'N/A';
+    const eps = isDp ? (trSt.metrics?.epsilon != null ? Number(trSt.metrics.epsilon).toFixed(3) : 'Not measured');
     const delta = isDp ? (trSt.metrics?.delta || '1e-5') : 'N/A';
     const trainLoss = trSt.metrics?.final_train_loss != null ? Number(trSt.metrics.final_train_loss).toFixed(4) : (currentJobMetrics?.loss_history?.length ? Number(currentJobMetrics.loss_history[currentJobMetrics.loss_history.length-1].loss).toFixed(4) : 'Running...');
     const valLoss = trSt.metrics?.final_val_loss != null ? Number(trSt.metrics.final_val_loss).toFixed(4) : 'Pending';
