@@ -463,14 +463,15 @@ def run_training(dp_enabled: bool = None) -> dict:
             unwrapped.save_pretrained(config.lora_output_dir)
             tokenizer.save_pretrained(config.lora_output_dir)
         except Exception as e:
-            logger.warning("Could not save adapter in standard format: %s. Saving state dict.", e)
-            import pickle
+            logger.warning("Could not save adapter in standard format: %s. Saving fallback state dict.", e)
             lora_state_dict = {
-                k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k
+                k: v.cpu().contiguous() for k, v in model.state_dict().items() if "lora_" in k
             }
-            pkl_path = Path(config.lora_output_dir) / "adapter_model.pkl"
-            with open(pkl_path, "wb") as f:
-                pickle.dump(lora_state_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+            try:
+                from safetensors.torch import save_file
+                save_file(lora_state_dict, str(Path(config.lora_output_dir) / "adapter_model.safetensors"))
+            except Exception:
+                torch.save(lora_state_dict, str(Path(config.lora_output_dir) / "adapter_model.bin"))
 
     else:
         # ── Mode A: Standard LoRA ─────────────────────────────────────────────
@@ -483,12 +484,6 @@ def run_training(dp_enabled: bool = None) -> dict:
         logger.info("Saving PEFT adapter to %s...", config.lora_output_dir)
         model.save_pretrained(config.lora_output_dir)
         tokenizer.save_pretrained(config.lora_output_dir)
-
-        import pickle
-        lora_state_dict = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
-        pkl_path = Path(config.lora_output_dir) / "adapter_model.pkl"
-        with open(pkl_path, "wb") as f:
-            pickle.dump(lora_state_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # ── Write evaluation report ───────────────────────────────────────────────
     report_file = eval_report_dir / "eval_report.json"
