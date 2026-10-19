@@ -527,6 +527,12 @@
              MODE 4: SECURITY TEST ACTIONS
         ══════════════════════════════════════════════════════════ -->
         <div id="tab-security" class="tab-content">
+            <aside class="jury-demo-note" role="note" aria-label="Screening evidence limitation">
+                <div class="jury-demo-note__title">SCREENING EVIDENCE</div>
+                <div class="jury-demo-note__body">
+                    The packaging orchestrator currently has no live candidate-model inference callback. Its behavioral screening therefore uses a research-mode synthetic baseline; structural screening still checks the actual adapter weights. Treat behavioral scores as research evidence, not as proof of live-model behavior.
+                </div>
+            </aside>
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
