@@ -700,7 +700,7 @@ def get_pipeline_summary(job_id):
     if total_pii_detected is None:
         numeric_counts = [v for k, v in pii.items() if isinstance(v, (int, float))]
         total_pii_detected = sum(numeric_counts) if numeric_counts else None
-    total_pii_masked = pii.get("total_entities_masked", total_pii_detected)
+    total_pii_masked = pii.get("total_entities_masked")
 
     # ── Screening report ─────────────────────────────────────────────────
     scr_rep = sec.get("screening_report") if isinstance(sec, dict) else {}
@@ -736,13 +736,14 @@ def get_pipeline_summary(job_id):
                 "pii_detected": total_pii_detected,
                 "pii_masked": total_pii_masked,
                 "records_with_pii": pii.get("records_with_pii"),
-                "precision": pii.get("estimated_precision") or ((total_pii_masked / max(1, total_pii_detected)) if (total_pii_detected is not None and total_pii_detected > 0) else None),
-                "recall": pii.get("estimated_recall") or (1.0 if (total_pii_detected is not None and total_pii_detected > 0) else None),
-                "f1": pii.get("estimated_f1") or (1.0 if (total_pii_detected is not None and total_pii_detected > 0) else None),
+                # These scores are valid only when computed against labeled ground truth.
+                "precision": pii.get("precision") if pii.get("precision") is not None else pii.get("estimated_precision"),
+                "recall": pii.get("recall") if pii.get("recall") is not None else pii.get("estimated_recall"),
+                "f1": pii.get("f1") if pii.get("f1") is not None else pii.get("estimated_f1"),
                 "entity_types": pii.get("entity_types_found"),
             },
             "security_significance": "Prevents PII from entering the training loop. All masking is in-RAM — no raw PII reaches disk.",
-            "result": f"{total_pii_detected if total_pii_detected is not None else '0'} PII entities detected and masked",
+            "result": (f"{total_pii_detected} detected; {total_pii_masked} masked" if total_pii_detected is not None and total_pii_masked is not None else "PII detection/masking counts unavailable"),
         },
         {
             "id": "data_protect",
