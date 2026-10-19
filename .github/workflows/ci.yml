@@ -87,6 +87,7 @@ jobs:
             tests/unit/test_phase4_package_validator.py \
             tests/unit/test_phase4_trust_boundary.py \
             tests/unit/test_evaluation_provenance_audit.py \
+            tests/security/test_appsec_hardening_regressions.py \
             -v --tb=short
 
   test-matrix:
