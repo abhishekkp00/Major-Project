@@ -367,7 +367,7 @@ function updatePipelineUI(data) {
   }
 
   // Update Stepper Nodes
-  updateTimelineStepper(pct, data.status);
+  updateTimelineStepper(pct, data.status, data.stages);
 
   // Append raw logs
   const logBox = document.getElementById('exec-console-log');
@@ -409,6 +409,7 @@ async function refreshCompletionEvidence(jobId) {
     const stages = Array.isArray(summary.stages) ? summary.stages : [];
     const deployment = stages.find(stage => stage.id === 'deployment');
     const deviceStage = stages.find(stage => stage.id === 'device_auth');
+    updateTimelineStepper(Number(summary.progress || 0), summary.pipeline_status, stages);
     const verified = deployment?.status === 'PASSED';
     if (title) title.textContent = verified ? 'SECURE PIPELINE VERIFIED' : 'PIPELINE FINISHED — VERIFICATION INCOMPLETE';
     if (gate) {
@@ -427,24 +428,35 @@ async function refreshCompletionEvidence(jobId) {
   }
 }
 
-function updateTimelineStepper(pct, status) {
-  // 8 Timeline Nodes Mapping
+function updateTimelineStepper(pct, status, stages = []) {
+  const stageIds = ['dataset', 'pii_audit', 'training', 'screening', 'packaging', 'device_auth', 'deployment', 'inference'];
+  const stageMap = Object.fromEntries((Array.isArray(stages) ? stages : []).map(stage => [stage.id, stage]));
+  const hasStageEvidence = Object.keys(stageMap).length > 0;
   const nodePcts = [12, 25, 37, 50, 62, 75, 87, 100];
-  
-  for (let i = 1; i <= 8; i++) {
-    const node = document.getElementById(`tstep-${i}`);
-    if (!node) continue;
 
-    if (pct >= nodePcts[i - 1] || status === 'COMPLETED') {
+  for (let i = 1; i <= 8; i++) {
+    const node = document.getElementById('tstep-' + i);
+    if (!node) continue;
+    const evidence = stageMap[stageIds[i - 1]];
+    if (hasStageEvidence && evidence) {
+      const stageStatus = String(evidence.status || '').toUpperCase();
+      if (stageStatus === 'PASSED') node.className = 'timeline-step passed';
+      else if (stageStatus === 'RUNNING' || stageStatus === 'STARTING') node.className = 'timeline-step active';
+      else if (stageStatus === 'FAILED') node.className = 'timeline-step failed';
+      else node.className = 'timeline-step';
+      continue;
+    }
+    // Progress is only a running estimate. A terminal job status alone must
+    // not turn every security/deployment step green.
+    if (status !== 'COMPLETED' && status !== 'FAILED' && pct >= nodePcts[i - 1]) {
       node.className = 'timeline-step passed';
-    } else if (pct >= nodePcts[i - 1] - 12) {
+    } else if (status !== 'FAILED' && pct >= nodePcts[i - 1] - 12) {
       node.className = 'timeline-step active';
     } else {
       node.className = 'timeline-step';
     }
   }
 }
-
 function showStageDetail(stepIndex) {
   const panel = document.getElementById('stage-detail-panel');
   if (!panel) return;
