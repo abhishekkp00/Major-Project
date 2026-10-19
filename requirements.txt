@@ -1,12 +1,28 @@
+# Core Security & Cryptography
 cryptography>=41.0.0
 python-dotenv>=1.0.0
+
+# Deep Learning & Parameter-Efficient Fine-Tuning
 torch>=2.0.0
 transformers>=4.30.0
 peft>=0.4.0
 accelerate>=0.20.0
 sentencepiece
+safetensors>=0.3.0
+numpy>=1.24.0,<2.0.0
+scipy>=1.10.0
+pyyaml>=6.0
 
-# Evaluation & benchmarking
+# Web Dashboard & API Orchestration
+flask>=2.3.0
+werkzeug>=2.3.0
+
+# Privacy & Differential Privacy
+opacus>=1.4.0
+datasets>=2.14.0,<5.1.0
+pyarrow>=14.0.0,<25.0.0
+
+# Evaluation, Benchmarking & Analysis
 scikit-learn>=1.3.0
 tabulate>=0.9.0
 seaborn>=0.13.0
@@ -14,6 +30,6 @@ psutil>=5.9.0
 pandas>=2.0.0
 matplotlib>=3.7.0
 
-# Testing and development
+# Testing & Quality Assurance
 pytest>=7.4.0
 pytest-cov>=4.1.0
