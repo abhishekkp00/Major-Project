@@ -24,18 +24,16 @@ def test_phase3_cli_pipeline(tmp_dir, monkeypatch):
     adapter_src.mkdir()
     (adapter_src / "adapter_config.json").write_text('{"r": 8, "peft_type": "LORA"}')
     import torch
-    import numpy as np
-    rng = np.random.RandomState(42)
-    mock_weights = {}
-    for i in range(4):
-        a = rng.normal(0.0, 0.02, size=(8, 64)).astype(np.float32)
-        b = rng.normal(0.0, 0.001, size=(64, 8)).astype(np.float32)
-        mock_weights[f"base_model.model.encoder.layer.{i}.attention.self.query.lora_A.weight"] = torch.from_numpy(a)
-        mock_weights[f"base_model.model.encoder.layer.{i}.attention.self.query.lora_B.weight"] = torch.from_numpy(b)
-    torch.save(mock_weights, adapter_src / "adapter_model.bin")
+    from src.evaluation.adapter_security import _generate_mock_lora_weights
+    mock_weights = _generate_mock_lora_weights(seed=42)
+    torch_state_dict = {k: torch.from_numpy(v) for k, v in mock_weights.items()}
+    torch.save(torch_state_dict, adapter_src / "adapter_model.bin")
 
     output_dir = tmp_dir / "protected"
     output_dir.mkdir()
+
+    def clean_model_fn(prompt, *args, **kwargs):
+        return f"Clinical diagnosis response for: {prompt[:30]}"
 
     # Monkeypatch the Phase3Config class attributes directly for absolute isolation
     monkeypatch.setattr(Phase3Config, "ADAPTER_INPUT_DIR", adapter_src)
@@ -43,7 +41,7 @@ def test_phase3_cli_pipeline(tmp_dir, monkeypatch):
     monkeypatch.setattr(Phase3Config, "RSA_PRIVATE_KEY_PATH", output_dir / "dev_private.pem")
     monkeypatch.setattr(Phase3Config, "RSA_PUBLIC_KEY_PATH", output_dir / "public.pem")
     monkeypatch.setattr(Phase3Config, "DEVICE_SALT", "test-salt-12345")
-    monkeypatch.setattr(Phase3Config, "CANDIDATE_MODEL_FN", lambda prompt: "Clean non-malicious text response", raising=False)
+    monkeypatch.setattr(Phase3Config, "CANDIDATE_MODEL_FN", clean_model_fn, raising=False)
 
     # Set env vars just in case other parts look there
     monkeypatch.setenv("P3_DEVICE_SALT", "test-salt-12345")
