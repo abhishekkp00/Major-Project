@@ -63,6 +63,12 @@ def test_pipeline_summary_and_stages_endpoint(client, monkeypatch):
     assert data["kpi"]["training_mode"] == "DP-LoRA"
     assert data["kpi"]["dp_epsilon"] == 2.44
     assert len(data["stages"]) == 10
+    pii_stage = next(stage for stage in data["stages"] if stage["id"] == "pii_audit")
+    # Counts/scores absent from the job record must remain unavailable, not inferred.
+    assert pii_stage["metrics"]["pii_masked"] is None
+    assert pii_stage["metrics"]["precision"] is None
+    assert pii_stage["metrics"]["recall"] is None
+    assert pii_stage["metrics"]["f1"] is None
 
 
 def test_research_workbench_full_flow(client):
@@ -225,6 +231,9 @@ def test_workbench_html_structure_and_templates(client):
     dashboard_js = js_res.get_data(as_text=True)
     assert "connectApiSession" not in dashboard_js
     assert "LOCAL DEMO" in dashboard_js
+    assert "'0.96'" not in dashboard_js
+    assert "'0.97'" not in dashboard_js
+    assert "Number(eb[k].precision || 1.0)" not in dashboard_js
     assert "function showRunFeedback(" in dashboard_js
     assert "not this live run" in dashboard_js
     assert "seamlessly fall back to benchmark data" not in dashboard_js
