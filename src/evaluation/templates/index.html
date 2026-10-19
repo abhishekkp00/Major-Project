@@ -58,6 +58,16 @@
                 <p class="workbench-subtitle">Privacy-preserving LoRA training and secure deployment</p>
             </div>
 
+            <aside class="jury-demo-note" role="note" aria-label="Demo guidance">
+                <div class="jury-demo-note__title">DEMO GUIDE</div>
+                <div class="jury-demo-note__body">
+                    <strong>Run</strong> a small synthetic dataset first, inspect each pipeline stage, then use
+                    <strong>Security</strong> to demonstrate tamper, wrong-device and replay rejection.
+                    In <strong>Metrics</strong>, distinguish the selected run from historical research artifacts.
+                    Values that were not produced by an executed experiment must remain marked as unavailable.
+                </div>
+            </aside>
+
             <!-- SETUP & LAUNCH CARD -->
             <div class="card" id="run-setup-card">
                 
@@ -108,7 +118,7 @@
                     <div id="dp-params-panel" class="dp-params-panel" style="display:none;">
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Privacy Budget (Epsilon ε)</label>
+                                <label class="form-label">Target Privacy Budget (ε)</label>
                                 <input type="number" id="dp-epsilon" class="form-input" value="2.44" step="0.01" min="0.1">
                             </div>
                             <div class="form-group">
@@ -117,7 +127,8 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Noise Multiplier (σ)</label>
-                                <input type="number" id="dp-noise" class="form-input" value="1.1" step="0.1" min="0.1">
+                                <input type="number" id="dp-noise" class="form-input" value="1.2" step="0.1" min="0.1">
+                                <small class="form-help">The reported ε must come from the training accountant; this field is a configuration value, not a measured guarantee.</small>
                             </div>
                         </div>
                     </div>
@@ -255,8 +266,11 @@
                             <option value="b8_historical">Historical Research (B8 Multi-Seed)</option>
                         </select>
                     </div>
-                    <div style="font-size:0.75rem; color:var(--text-muted);" id="metrics-source-tag">
-                        Source: Real Backend Job Context
+                    <div class="metrics-provenance" aria-live="polite">
+                        <span class="metrics-provenance__label">RESULT PROVENANCE</span>
+                        <div style="font-size:0.75rem; color:var(--text-muted);" id="metrics-source-tag">
+                            Source: Select an executed run or historical research artifact
+                        </div>
                     </div>
                 </div>
             </div>
@@ -518,7 +532,7 @@
                         OPTIONAL SECURITY ACTIONS & THREAT TESTING
                     </div>
                     <div style="font-size:0.8rem; color:var(--text-muted);">
-                        Interactive attack triggers to audit cryptographic fail-fast logic.
+                        Each result should be read from the backend response. A displayed rejection is evidence for that specific test only; it is not a universal security guarantee.
                     </div>
                 </div>
 
