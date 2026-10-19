@@ -4,9 +4,10 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Encryption](https://img.shields.io/badge/Encryption-AES--256--GCM-critical)](#)
 [![Signature](https://img.shields.io/badge/Signature-RSA--PSS%202048-blue)](#)
-[![Tests](https://img.shields.io/badge/Tests-575%2F575%20PASS-success)](#)
 
 ---
+
+> **Presentation:** See the [Jury Demo Runbook](docs/JURY_DEMO_RUNBOOK.md) for the recommended live sequence, result provenance rules, and limitations to state accurately. Test status should be taken from a current test run or CI result, not a static badge.
 
 ## 1. Executive Summary
 
