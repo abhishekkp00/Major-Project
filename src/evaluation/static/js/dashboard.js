@@ -180,9 +180,18 @@ function selectTrainingMode(mode) {
 /* ---------------------------------------------------------------------------
    PIPELINE EXECUTION & SSE STREAM
    --------------------------------------------------------------------------- */
+/* Inline, accessible feedback for the primary demo workflow. */
+function showRunFeedback(message, type = 'error') {
+  const panel = document.getElementById('run-feedback');
+  if (!panel) return;
+  panel.textContent = message;
+  panel.className = `run-feedback run-feedback--${type}`;
+  panel.style.display = 'block';
+}
+
 async function startSecurePipeline() {
   if (!activeDataset) {
-    alert('Please select a dataset template first.');
+    showRunFeedback('Select a dataset template before starting the pipeline.');
     return;
   }
 
@@ -206,12 +215,12 @@ async function startSecurePipeline() {
         training_mode: activeTrainingMode,
         dp_enabled: activeTrainingMode === 'DP-LoRA',
         dp_epsilon: parseFloat(document.getElementById('dp-epsilon')?.value || 2.44),
-        dp_noise: parseFloat(document.getElementById('dp-noise')?.value || 1.1)
+        dp_noise: parseFloat(document.getElementById('dp-noise')?.value || 1.2)
       })
     });
     const createData = await createRes.json();
     if (!createData.success) {
-      alert(`Job Creation Failed: ${createData.error}`);
+      showRunFeedback(`Pipeline could not be created: ${createData.error || 'The server did not provide a reason.'}`);
       if (btnStart) btnStart.disabled = false;
       return;
     }
@@ -235,7 +244,7 @@ async function startSecurePipeline() {
 
   } catch (err) {
     console.error('Failed to start pipeline:', err);
-    alert('Error starting pipeline. Check console logs.');
+    showRunFeedback(`Pipeline start failed: ${err?.message || 'Unexpected error. Check the server logs and try again.'}`);
     if (btnStart) btnStart.disabled = false;
   }
 }
@@ -598,7 +607,7 @@ async function loadSelectedRunMetrics(runId) {
   try {
     if (runId === 'benchmark' || runId === 'b8_historical') {
       // ── MODE A: Canonical Research Paper Benchmark Artifacts ──────────
-      if (tag) tag.textContent = 'Source: Real Experiment Output Artifacts (outputs/evaluation/)';
+      if (tag) tag.textContent = 'Historical research artifacts (outputs/evaluation/) — not this live run';
       
       const emptyStateEl = document.getElementById('metrics-empty-state');
       const chartsContainerEl = document.getElementById('metrics-charts-container');
@@ -712,9 +721,12 @@ async function loadSelectedRunMetrics(runId) {
         targetJobId = jobs[0].job_id;
         if (selector) selector.value = targetJobId;
       } else {
-        // Default to benchmark data so user sees all real empirical numbers and graphs
-        if (selector) selector.value = 'benchmark';
-        return loadSelectedRunMetrics('benchmark');
+        // Do not silently substitute historical research values for a live run.
+        if (selector) selector.value = 'latest';
+        if (tag) tag.textContent = 'No executed run found — historical results are available only when explicitly selected';
+        if (emptyStateEl) emptyStateEl.style.display = 'block';
+        if (chartsContainerEl) chartsContainerEl.style.display = 'none';
+        return;
       }
     }
 
@@ -728,9 +740,11 @@ async function loadSelectedRunMetrics(runId) {
     const hasData = (jobData.status === 'COMPLETED') || (jobData.loss_history && jobData.loss_history.length > 0) || jobData.eval_metrics;
 
     if (!hasData) {
-      // If selected run has no data at all, seamlessly fall back to benchmark data
-      if (selector) selector.value = 'benchmark';
-      return loadSelectedRunMetrics('benchmark');
+      // Never present historical artifacts as if they came from this run.
+      if (tag) tag.textContent = `Run ${targetJobId} has no completed metrics yet — no historical substitution`;
+      if (emptyStateEl) emptyStateEl.style.display = 'block';
+      if (chartsContainerEl) chartsContainerEl.style.display = 'none';
+      return;
     }
 
     // Run is executed and has data
