@@ -1086,29 +1086,29 @@ async function renderMetricsCharts(jobData = null) {
           dSets = [
             {
               label: 'Precision (%)',
-              data: entKeys.map(k => (Number(eb[k].precision || 1.0) * 100)),
+              data: entKeys.map(k => eb[k].precision == null ? null : Number(eb[k].precision) * 100),
               backgroundColor: '#3b82f6',
               borderRadius: 4
             },
             {
               label: 'Recall (%)',
-              data: entKeys.map(k => (Number(eb[k].recall || 1.0) * 100)),
+              data: entKeys.map(k => eb[k].recall == null ? null : Number(eb[k].recall) * 100),
               backgroundColor: '#10b981',
               borderRadius: 4
             },
             {
               label: 'F1 Score (%)',
-              data: entKeys.map(k => (Number(eb[k].f1 || 1.0) * 100)),
+              data: entKeys.map(k => eb[k].f1 == null ? null : Number(eb[k].f1) * 100),
               backgroundColor: '#f59e0b',
               borderRadius: 4
             }
           ];
         } else {
-          labels = ['No Entity Breakdown Available'];
+          labels = ['No Ground-Truth Metrics'];
           dSets = [
-            { label: 'Precision (%)', data: [0], backgroundColor: '#3b82f6', borderRadius: 4 },
-            { label: 'Recall (%)', data: [0], backgroundColor: '#10b981', borderRadius: 4 },
-            { label: 'F1 Score (%)', data: [0], backgroundColor: '#f59e0b', borderRadius: 4 }
+            { label: 'Precision (%)', data: [null], backgroundColor: '#3b82f6', borderRadius: 4 },
+            { label: 'Recall (%)', data: [null], backgroundColor: '#10b981', borderRadius: 4 },
+            { label: 'F1 Score (%)', data: [null], backgroundColor: '#f59e0b', borderRadius: 4 }
           ];
         }
       }
