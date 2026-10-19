@@ -50,6 +50,56 @@ function getAuthHeaders(extraHeaders = {}) {
 function initDashboard() {
   initDatasetTemplates();
   initMetricsPage();
+  updateSessionBadge();
+}
+function updateSessionBadge(connected = false) {
+  const badge = document.getElementById('deployment-badge');
+  const label = document.getElementById('deployment-badge-label');
+  if (!badge || !label) return;
+  const isConnected = connected || Boolean(sessionStorage.getItem('SECURELORA_API_TOKEN'));
+  badge.classList.toggle('is-connected', isConnected);
+  badge.classList.toggle('is-locked', !isConnected);
+  label.textContent = isConnected ? 'Token Set' : 'API Disconnected';
+  const action = badge.querySelector('.session-action');
+  if (action) action.textContent = isConnected ? 'Change' : 'Connect';
+}
+function openAuthDialog() {
+  const dialog = document.getElementById('auth-dialog');
+  if (!dialog) return;
+  dialog.hidden = false;
+  const input = document.getElementById('auth-token-input');
+  if (input) { input.value = ''; input.focus(); }
+  const feedback = document.getElementById('auth-feedback');
+  if (feedback) { feedback.className = 'auth-feedback'; feedback.textContent = ''; }
+}
+function closeAuthDialog() {
+  const dialog = document.getElementById('auth-dialog');
+  if (dialog) dialog.hidden = true;
+}
+async function connectApiSession(event) {
+  event.preventDefault();
+  const input = document.getElementById('auth-token-input');
+  const feedback = document.getElementById('auth-feedback');
+  const submit = document.getElementById('auth-connect-submit');
+  const token = (input?.value || '').trim();
+  if (!token) return;
+  if (submit) { submit.disabled = true; submit.textContent = 'Verifying…'; }
+  if (feedback) { feedback.className = 'auth-feedback'; feedback.textContent = 'Checking token with the API…'; }
+  try {
+    const response = await fetch('/api/orchestrator/jobs', {headers: {'Authorization': 'Bearer ' + token, 'Accept': 'application/json'}});
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.success === false) {
+      throw new Error(response.status === 401 ? 'Token rejected. Check the server token and try again.' : (payload.error || 'API verification failed.'));
+    }
+    sessionStorage.setItem('SECURELORA_API_TOKEN', token);
+    updateSessionBadge(true);
+    closeAuthDialog();
+    showRunFeedback('API session connected. You can start a pipeline now.', 'success');
+  } catch (error) {
+    if (feedback) { feedback.className = 'auth-feedback is-error'; feedback.textContent = error.message || 'Could not reach the API.'; }
+  } finally {
+    if (submit) { submit.disabled = false; submit.textContent = 'Verify & Connect'; }
+  }
 }
 
 if (document.readyState === 'loading') {
