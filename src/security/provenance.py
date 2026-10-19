@@ -419,7 +419,9 @@ class AntiReplayTracker:
         exp_str = manifest.get("expiration_timestamp")
         if exp_str:
             try:
-                exp_dt = datetime.fromisoformat(exp_str)
+                # Python 3.10 compatibility: fromisoformat does not parse trailing 'Z'
+                raw_exp = exp_str.replace("Z", "+00:00") if exp_str.endswith("Z") else exp_str
+                exp_dt = datetime.fromisoformat(raw_exp)
                 if exp_dt.tzinfo is None:
                     exp_dt = exp_dt.replace(tzinfo=timezone.utc)
                 if current_time > exp_dt:
