@@ -210,9 +210,11 @@ def test_workbench_html_structure_and_templates(client):
 
     # Jury-demo clarity and evidence-provenance regressions.
     assert "DEMO GUIDE" in html
-    assert 'id="auth-dialog"' in html
-    assert 'id="auth-token-input"' in html
-    assert "connectApiSession" in html
+    assert 'id="deployment-badge"' in html
+    assert "Checking API…" in html
+    assert 'id="auth-dialog"' not in html
+    assert 'id="auth-token-input"' not in html
+    assert "connectApiSession" not in js
     assert 'id="run-feedback"' in html
     assert "RESULT PROVENANCE" in html
     assert "synthetic baseline" in html
