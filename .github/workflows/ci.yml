@@ -28,6 +28,16 @@ jobs:
         run: |
           python -m compileall -q src tests
 
+      - name: Verify Dashboard JavaScript Syntax
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check Dashboard JavaScript
+        run: |
+          node --check src/evaluation/static/js/dashboard.js
+          git diff --check
+
       - name: Secret Scan (Defense-in-Depth)
         run: |
           echo "Scanning for plaintext private keys or sensitive credentials committed to repo..."
