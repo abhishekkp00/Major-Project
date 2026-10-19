@@ -230,13 +230,13 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                     <div>
                         <div style="font-size:1.1rem; font-weight:800; color:#34d399; display:flex; align-items:center; gap:0.5rem;">
-                            <span> SECURE PIPELINE COMPLETE & DEPLOYED</span>
+                            <span id="res-status-title">PIPELINE FINISHED — VERIFYING DEPLOYMENT</span>
                         </div>
                         <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary); display:flex; gap:1.5rem; flex-wrap:wrap;">
                             <span><strong>Base Model:</strong> <span id="res-base-model-name">JackFram/llama-68m</span></span>
                             <span><strong>Adapter:</strong> <span id="res-adapter-name">SecureLoRA-Adapter</span></span>
-                            <span><strong>Device:</strong> Authorized Hardware</span>
-                            <span><strong>Security Gate:</strong> <span class="badge badge-passed">VERIFIED</span></span>
+                            <span><strong>Device:</strong> <span id="res-device-status">Not verified</span></span>
+                            <span><strong>Security Gate:</strong> <span id="res-security-gate" class="badge badge-unverified">Checking evidence</span></span>
                         </div>
                     </div>
                     <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
