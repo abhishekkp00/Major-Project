@@ -180,17 +180,40 @@ def principal_id_for_token(token: str) -> str:
     return hashlib.sha256(b"securelora-principal-v1:" + token.encode("utf-8")).hexdigest()[:32]
 
 
+def _is_loopback_request() -> bool:
+    """True only for requests arriving from a loopback interface."""
+    try:
+        remote = (request.remote_addr or "").strip().lower()
+        return remote in {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
+    except RuntimeError:
+        return False
+
+
+def _local_demo_allowed(auth_header: Optional[str]) -> bool:
+    """
+    Permit tokenless requests only when explicitly enabled by the local launcher,
+    only from loopback, and only when the client did not supply credentials.
+    """
+    if auth_header and str(auth_header).strip():
+        return False
+    try:
+        return bool(current_app.config.get("SECURELORA_LOCAL_DEMO_MODE")) and _is_loopback_request()
+    except RuntimeError:
+        return False
+
+
 def authenticate_bearer(auth_header: Optional[str]) -> Tuple[bool, str, Optional[str]]:
     """
-    Validates an Authorization header. Returns (is_valid, error_message, principal_id).
+    Validate a Bearer token, with a loopback-only local-demo exception.
 
-    Security invariants:
-    - Fails closed on missing/empty/malformed headers, wrong scheme, empty token,
-      unconfigured server, or unknown token.
-    - Every configured token is compared with hmac.compare_digest and the loop
-      never exits early, so timing does not reveal which/whether a token matched.
-    - NEVER returns or logs the raw token.
+    Normal/network deployments remain fail-closed. The local demo exception
+    requires app configuration plus a loopback client address and never accepts
+    a malformed or incorrect token. Its stable principal keeps local job
+    ownership consistent across requests.
     """
+    if _local_demo_allowed(auth_header):
+        return True, "", "securelora-local-demo"
+
     if not auth_header or not isinstance(auth_header, str) or not auth_header.strip():
         return False, "Missing Authorization header", None
 
