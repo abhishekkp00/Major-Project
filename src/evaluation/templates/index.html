@@ -42,7 +42,7 @@
             <button class="btn btn-secondary btn-sm" onclick="switchTab(this,'model')" id="tabModel" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
                  MODEL
             </button>
-            <button type="button" id="deployment-badge" class="session-connect-btn is-locked" onclick="openAuthDialog()" aria-label="Connect to SecureLoRA API"><span class="session-dot"></span><span id="deployment-badge-label">API Disconnected</span><span class="session-action">Connect</span></button>
+            <div id="deployment-badge" class="session-connect-btn is-locked" role="status" aria-live="polite" aria-label="SecureLoRA API authentication mode"><span class="session-dot"></span><span id="deployment-badge-label">Checking API…</span><span class="session-action">Checking</span></div>
         </div>
     </header>
 
@@ -571,21 +571,6 @@
 
     </div>
 
-
-    <div id="auth-dialog" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" hidden>
-      <div class="auth-dialog-panel">
-        <div class="auth-kicker">SECURE SESSION</div>
-        <h2 id="auth-dialog-title">Connect to SecureLoRA</h2>
-        <p>Enter the API bearer token configured for this local server. The token stays in this browser tab and is never embedded in the application bundle.</p>
-        <form id="auth-form" onsubmit="connectApiSession(event)">
-          <label for="auth-token-input">API bearer token</label>
-          <input id="auth-token-input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste server token" required />
-          <div id="auth-feedback" class="auth-feedback" role="status" aria-live="polite"></div>
-          <div class="auth-actions"><button type="button" class="btn btn-secondary" onclick="closeAuthDialog()">Cancel</button><button type="submit" id="auth-connect-submit" class="btn btn-primary">Verify &amp; Connect</button></div>
-        </form>
-        <p class="auth-footnote">Local demo setup: use the value of <code>SECURELORA_API_TOKEN</code> from the server environment. Do not commit or share it.</p>
-      </div>
-    </div>
 
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
