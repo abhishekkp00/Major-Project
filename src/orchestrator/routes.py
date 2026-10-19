@@ -829,7 +829,7 @@ def get_pipeline_summary(job_id):
         {
             "id": "device_auth",
             "name": "Device Authorization",
-            "status": _vstep("Step 4: Device Authorization") if vsteps else _stage_status("running_device_authorization_check"),
+            "status": _vstep("Step 4: Device Authorization"),
             "purpose": "Verify that the current hardware fingerprint matches the authorized device fingerprint embedded in the package manifest.",
             "metrics": {
                 "fingerprint_check": _vstep("Step 4: Device Authorization") if vsteps else None,
@@ -860,7 +860,7 @@ def get_pipeline_summary(job_id):
         {
             "id": "inference",
             "name": "Secure Inference Validation",
-            "status": _vstep("Step 8: Inference Validation") if vsteps else _stage_status("secure_inference_validation"),
+            "status": _vstep("Step 8: Inference Validation"),
             "purpose": "Side-by-side inference test comparing baseline model vs. secured LoRA adapter. Validates adapter is active and functional.",
             "metrics": {
                 "inference_check": _vstep("Step 8: Inference Validation") if vsteps else None,
