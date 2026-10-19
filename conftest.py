@@ -15,3 +15,8 @@ import os
 DEFAULT_TEST_TOKEN = "test-bearer-token-securing-lora-2026"
 if "SECURELORA_API_TOKEN" not in os.environ and "API_BEARER_TOKEN" not in os.environ:
     os.environ["SECURELORA_API_TOKEN"] = DEFAULT_TEST_TOKEN
+
+# Ensure device secret exists in test runner environment so cryptographic operations succeed
+from src.security.device_secret import device_secret_exists, initialize_device_secret
+if not device_secret_exists():
+    initialize_device_secret()
