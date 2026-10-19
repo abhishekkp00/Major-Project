@@ -375,18 +375,55 @@ function updatePipelineUI(data) {
     logBox.textContent = `[${new Date().toLocaleTimeString()}] Progress: ${pct}% | Stage: ${data.stage} | Status: ${data.status}\n` + logBox.textContent;
   }
 
-  // Handle Post-Training State
-  if (data.status === 'COMPLETED') {
-    document.getElementById('post-training-card').style.display = 'block';
+  // Completion means orchestration ended; it does not by itself prove deployment.
+  if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+    const resultCard = document.getElementById('post-training-card');
+    if (resultCard) resultCard.style.display = 'block';
+    const title = document.getElementById('res-status-title');
+    const gate = document.getElementById('res-security-gate');
+    const device = document.getElementById('res-device-status');
     const bModelEl = document.getElementById('res-base-model-name');
     const adaptEl = document.getElementById('res-adapter-name');
-    if (bModelEl) bModelEl.textContent = data.model_name || data.base_model || (activeDataset?.name ? `${activeDataset.name} LoRA` : 'JackFram/llama-68m');
-    if (adaptEl) adaptEl.textContent = activeJobId ? `SecureLoRA (${activeJobId.slice(-8)})` : 'SecureLoRA-Adapter';
+    if (bModelEl) bModelEl.textContent = data.model_name || data.base_model || 'Configured base model';
+    if (adaptEl) adaptEl.textContent = activeJobId ? 'Run ' + activeJobId.slice(-8) : 'Adapter status unavailable';
+    if (title) title.textContent = data.status === 'FAILED' ? 'PIPELINE FAILED' : 'PIPELINE FINISHED — CHECKING VERIFICATION';
+    if (gate) { gate.className = 'badge badge-unverified'; gate.textContent = 'Checking evidence'; }
+    if (device) device.textContent = 'Checking evidence';
     if (sseSource) sseSource.close();
     loadRunHistory();
     if (activeJobId) {
       loadSelectedRunMetrics(activeJobId);
+      refreshCompletionEvidence(activeJobId);
     }
+  }
+}
+
+async function refreshCompletionEvidence(jobId) {
+  const title = document.getElementById('res-status-title');
+  const gate = document.getElementById('res-security-gate');
+  const device = document.getElementById('res-device-status');
+  try {
+    const response = await fetch('/api/orchestrator/jobs/' + encodeURIComponent(jobId) + '/pipeline-summary');
+    if (!response.ok) throw new Error('summary request failed: ' + response.status);
+    const summary = await response.json();
+    const stages = Array.isArray(summary.stages) ? summary.stages : [];
+    const deployment = stages.find(stage => stage.id === 'deployment');
+    const deviceStage = stages.find(stage => stage.id === 'device_auth');
+    const verified = deployment?.status === 'PASSED';
+    if (title) title.textContent = verified ? 'SECURE PIPELINE VERIFIED' : 'PIPELINE FINISHED — VERIFICATION INCOMPLETE';
+    if (gate) {
+      gate.className = verified ? 'badge badge-passed' : 'badge badge-unverified';
+      gate.textContent = verified ? 'VERIFIED' : 'INCOMPLETE';
+    }
+    if (device) device.textContent = deviceStage?.status === 'PASSED' ? 'Authorized' : 'Not verified';
+  } catch (error) {
+    if (title) title.textContent = 'PIPELINE FINISHED — STATUS UNAVAILABLE';
+    if (gate) {
+      gate.className = 'badge badge-unverified';
+      gate.textContent = 'UNVERIFIED';
+    }
+    if (device) device.textContent = 'Unknown';
+    console.warn('Could not refresh deployment evidence:', error);
   }
 }
 
