@@ -1,0 +1,153 @@
+name: SecureLoRA DevSecOps Automated Verification CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-secret-audit:
+    name: Code Hygiene, Syntax & Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Python Syntax & Bytecode Compilation
+        run: |
+          python -m compileall -q src tests
+
+      - name: Secret Scan (Defense-in-Depth)
+        run: |
+          echo "Scanning for plaintext private keys or sensitive credentials committed to repo..."
+          # Check for private keys in persistent directories
+          if grep -rn "BEGIN PRIVATE KEY" src/ config/ outputs/; then
+            echo "ERROR: Unredacted private key material detected in repository tree!"
+            exit 1
+          fi
+          # Check for plaintext .key secrets
+          if find . -name "*.key" -not -path "*/.*" | grep -v "/venv/" | grep .; then
+            echo "ERROR: Plaintext key files detected!"
+            exit 1
+          fi
+          echo "Secret scan passed cleanly. Zero persistent secrets found."
+
+  security-regressions:
+    name: Mandatory Security Regression Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install CPU PyTorch
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Core Security Regression Test Suites
+        run: |
+          # Fails immediately on any security regression; exit code determines CI status
+          pytest \
+            tests/security/test_signature.py \
+            tests/security/test_ephemeral_key_handling.py \
+            tests/security/test_device_bound_key_lifecycle.py \
+            tests/security/test_kdf_hkdf.py \
+            tests/security/test_package_creation_audit.py \
+            tests/security/test_secret_hardening.py \
+            tests/security/test_shred.py \
+            tests/unit/test_pii_fail_closed.py \
+            tests/unit/test_pii_name_masking.py \
+            tests/unit/test_adapter_security.py \
+            tests/unit/test_phase3_screening_integration.py \
+            tests/unit/test_safe_extract.py \
+            tests/unit/test_provenance_anti_replay.py \
+            tests/unit/test_api_auth.py \
+            tests/unit/test_api_authorization.py \
+            tests/unit/test_phase4_decryptor.py \
+            tests/unit/test_phase4_package_validator.py \
+            tests/unit/test_phase4_trust_boundary.py \
+            tests/unit/test_evaluation_provenance_audit.py \
+            -v --tb=short
+
+  test-matrix:
+    name: Test Suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: [security-regressions]
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install CPU PyTorch
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Full Test Suite
+        run: |
+          pytest \
+            --junitxml=test-results-${{ matrix.python-version }}.xml \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -ra
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-python-${{ matrix.python-version }}
+          path: test-results-${{ matrix.python-version }}.xml
+
+  clean-install-verification:
+    name: Clean Environment Dependency Install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Clean Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate Clean Install from requirements.txt
+        run: |
+          python -m venv test_env
+          source test_env/bin/activate
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          python -c "import src.phase1, src.phase2, src.phase3, src.phase4, src.security, src.orchestrator, src.evaluation; print('All SecureLoRA submodules imported successfully in clean environment!')"
