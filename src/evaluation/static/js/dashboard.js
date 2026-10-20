@@ -518,7 +518,7 @@ function showStageDetail(stepIndex) {
   } else if (stepIndex === 3) {
     const mode = trSt.metrics?.mode || activeTrainingMode;
     const isDp = mode === 'DP-LoRA' || trSt.metrics?.dp_enabled;
-    const eps = isDp ? (trSt.metrics?.epsilon != null ? Number(trSt.metrics.epsilon).toFixed(3) : 'Not measured');
+    const eps = isDp ? (trSt.metrics?.epsilon != null ? Number(trSt.metrics.epsilon).toFixed(3) : 'Not measured') : 'N/A';
     const delta = isDp ? (trSt.metrics?.delta || '1e-5') : 'N/A';
     const trainLoss = trSt.metrics?.final_train_loss != null ? Number(trSt.metrics.final_train_loss).toFixed(4) : (currentJobMetrics?.loss_history?.length ? Number(currentJobMetrics.loss_history[currentJobMetrics.loss_history.length-1].loss).toFixed(4) : 'Running...');
     const valLoss = trSt.metrics?.final_val_loss != null ? Number(trSt.metrics.final_val_loss).toFixed(4) : 'Pending';

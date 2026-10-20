@@ -42,6 +42,9 @@
             <button class="btn btn-secondary btn-sm" onclick="switchTab(this,'model')" id="tabModel" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
                  MODEL
             </button>
+            <a href="/workbench" class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:0.35rem 0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; background:var(--accent,#0ea5e9); color:#fff; border-radius:4px;">
+                 WORKBENCH
+            </a>
             <div id="deployment-badge" class="session-connect-btn is-locked" role="status" aria-live="polite" aria-label="SecureLoRA API authentication mode"><span class="session-dot"></span><span id="deployment-badge-label">Checking API…</span><span class="session-action">Checking</span></div>
         </div>
     </header>
@@ -572,6 +575,6 @@
     </div>
 
 
-    <script src="{{ url_for('static', filename='js/dashboard.js', v='20261019-ui2') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js', v='20261020-ui3') }}"></script>
 </body>
 </html>
