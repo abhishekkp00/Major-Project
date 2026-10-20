@@ -65,6 +65,7 @@ _PC = EndpointClassification
 ENDPOINT_INVENTORY: List[EndpointMetadata] = [
     # -- PUBLIC: UI shell, health, non-sensitive catalogs, aggregate offline research metrics --
     EndpointMetadata("/", "GET", _PC.PUBLIC_READ, False, "Dashboard Web UI shell (static HTML)"),
+    EndpointMetadata("/workbench", "GET", _PC.PUBLIC_READ, False, "Adapter Security Workbench shell (static HTML)"),
     EndpointMetadata("/static/<path:filename>", "GET", _PC.PUBLIC_READ, False, "Static CSS/JS assets"),
     EndpointMetadata("/api/health", "GET", _PC.PUBLIC_READ, False, "Liveness probe; returns only a fixed status string"),
     EndpointMetadata("/api/orchestrator/datasets", "GET", _PC.PUBLIC_READ, False, "List registered dataset adapters (catalog metadata)"),
@@ -87,11 +88,13 @@ ENDPOINT_INVENTORY: List[EndpointMetadata] = [
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/metrics", "GET", _PC.PROTECTED_READ, True, "Job training & security metrics"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/report", "GET", _PC.PROTECTED_READ, True, "Deployment validation report"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/screening", "GET", _PC.PROTECTED_READ, True, "Adapter screening report"),
+    EndpointMetadata("/api/orchestrator/jobs/<job_id>/packaging", "GET", _PC.PROTECTED_READ, True, "Cryptographic packaging and provenance manifest"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/stream", "GET", _PC.PROTECTED_READ, True, "SSE stream of job lifecycle events"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/logs", "GET", _PC.PROTECTED_READ, True, "Redacted training log tail"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/artifacts", "GET", _PC.PROTECTED_READ, True, "List allow-listed package artifacts"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/download/<filename>", "GET", _PC.PROTECTED_READ, True, "Download allow-listed artifact"),
     EndpointMetadata("/api/orchestrator/model-status", "GET", _PC.PROTECTED_READ, True, "Loaded model / adapter deployment status"),
+    EndpointMetadata("/api/orchestrator/training-config", "GET", _PC.PROTECTED_READ, True, "Supported base models, LoRA defaults, and DP capabilities"),
     EndpointMetadata("/api/phase4/status", "GET", _PC.PROTECTED_READ, True, "Phase 4 deployment status (device fingerprint prefix)"),
     EndpointMetadata("/api/template/<string:name>", "GET", _PC.PROTECTED_READ, True, "Sample dataset template content"),
     EndpointMetadata("/static/synthetic_pii_benchmark.jsonl", "GET", _PC.PROTECTED_READ, True, "Benchmark dataset content"),
@@ -114,6 +117,7 @@ ENDPOINT_INVENTORY: List[EndpointMetadata] = [
 # Why each public route is safe (documented, asserted by tests).
 PUBLIC_RATIONALE: Dict[str, str] = {
     "/": "Static HTML shell; contains no job or dataset data.",
+    "/workbench": "Static HTML shell; contains no job or dataset data. All data is fetched client-side from authenticated API routes.",
     "/static/<path:filename>": "Flask static folder: CSS/JS only. Dataset files are served by separate authenticated routes.",
     "/api/health": "Returns a constant payload; no versions, paths, or job data.",
     "/api/orchestrator/datasets": "Registry catalog of adapter names/descriptions; no records.",

@@ -157,29 +157,248 @@ def home():
     return render_template('index.html')
 
 
+def _workbench_asset_version() -> str:
+    """Cache-busting token derived from the newest workbench asset mtime."""
+    try:
+        files = (BASE_DIR / "static" / "workbench").rglob("*")
+        return str(max((int(p.stat().st_mtime) for p in files if p.is_file()), default=0))
+    except OSError:
+        return "0"
+
+
+@app.route('/workbench', strict_slashes=False)
+def workbench():
+    """Adapter Security Workbench application shell (static HTML; no job data)."""
+    return render_template('workbench.html', asset_version=_workbench_asset_version())
+
+
+def _build_deployment_response(steps_status, error_msg=None, manifest=None, fp_hash=None):
+    manifest = manifest or {}
+    fp = fp_hash or get_fingerprint_hash()
+
+    # 1. Package signature verification
+    sig_step = steps_status.get("Step 3: Signature Verification", "PENDING")
+    if sig_step == "PASSED":
+        sig_check = {
+            "id": "signature",
+            "name": "Package Signature Verification",
+            "status": "PASSED",
+            "algorithm": "RSA-PSS-2048-SHA256",
+            "evidence": "RSA-2048-PSS signature verified over canonical manifest digest using trusted public key.",
+            "error": None
+        }
+    elif sig_step == "FAILED":
+        sig_check = {
+            "id": "signature",
+            "name": "Package Signature Verification",
+            "status": "FAILED",
+            "algorithm": "RSA-PSS-2048-SHA256",
+            "evidence": "RSA-2048-PSS signature verification failed against trusted public key.",
+            "error": error_msg or "SignatureValidationError: RSA-PSS 2048-bit signature verification failed."
+        }
+    elif sig_step == "SKIPPED":
+        sig_check = {
+            "id": "signature",
+            "name": "Package Signature Verification",
+            "status": "NOT_EVALUATED",
+            "algorithm": "RSA-PSS-2048-SHA256",
+            "evidence": "Check was not evaluated due to upstream gate failure.",
+            "error": None
+        }
+    else:
+        sig_check = {
+            "id": "signature",
+            "name": "Package Signature Verification",
+            "status": "PENDING",
+            "algorithm": "RSA-PSS-2048-SHA256",
+            "evidence": "Awaiting verification pipeline execution.",
+            "error": None
+        }
+
+    # 2. Integrity digest verification
+    int_step = steps_status.get("Step 2: Integrity Verification", "PENDING")
+    if int_step == "PASSED":
+        int_check = {
+            "id": "integrity",
+            "name": "Integrity Digest Verification",
+            "status": "PASSED",
+            "algorithm": "SHA-256 (FIPS 180-4)",
+            "evidence": "Computed ciphertext SHA-256 matches package adapter.hash and manifest recorded digest.",
+            "error": None
+        }
+    elif int_step == "FAILED":
+        int_check = {
+            "id": "integrity",
+            "name": "Integrity Digest Verification",
+            "status": "FAILED",
+            "algorithm": "SHA-256 (FIPS 180-4)",
+            "evidence": "SHA-256 digest mismatch. Package archive has been tampered with or corrupted.",
+            "error": error_msg or "IntegrityValidationError: SHA-256 digest mismatch."
+        }
+    elif int_step == "SKIPPED":
+        int_check = {
+            "id": "integrity",
+            "name": "Integrity Digest Verification",
+            "status": "NOT_EVALUATED",
+            "algorithm": "SHA-256 (FIPS 180-4)",
+            "evidence": "Check was not evaluated due to upstream gate failure.",
+            "error": None
+        }
+    else:
+        int_check = {
+            "id": "integrity",
+            "name": "Integrity Digest Verification",
+            "status": "PENDING",
+            "algorithm": "SHA-256 (FIPS 180-4)",
+            "evidence": "Awaiting verification pipeline execution.",
+            "error": None
+        }
+
+    # 3. Device authorization
+    dev_step = steps_status.get("Step 4: Device Authorization", "PENDING")
+    if dev_step == "PASSED":
+        dev_check = {
+            "id": "device_auth",
+            "name": "Device Authorization",
+            "status": "PASSED",
+            "evidence": f"Host hardware telemetry ({fp[:12]}…) matches authorized package binding ref.",
+            "error": None
+        }
+    elif dev_step == "FAILED":
+        dev_check = {
+            "id": "device_auth",
+            "name": "Device Authorization",
+            "status": "FAILED",
+            "evidence": "Host hardware telemetry does not match package authorized device binding.",
+            "error": error_msg or "DeviceAuthorizationError: Hardware fingerprint mismatch."
+        }
+    elif dev_step == "SKIPPED":
+        dev_check = {
+            "id": "device_auth",
+            "name": "Device Authorization",
+            "status": "NOT_EVALUATED",
+            "evidence": "Check was not evaluated due to upstream gate failure.",
+            "error": None
+        }
+    else:
+        dev_check = {
+            "id": "device_auth",
+            "name": "Device Authorization",
+            "status": "PENDING",
+            "evidence": "Awaiting verification pipeline execution.",
+            "error": None
+        }
+
+    # 4. Replay-state verification
+    is_replay_err = bool(error_msg and ("replay" in error_msg.lower() or "nonce" in error_msg.lower()))
+    kdf_step = steps_status.get("Step 5: Key Derivation", "PENDING")
+    if is_replay_err:
+        replay_check = {
+            "id": "replay_state",
+            "name": "Replay-State Verification",
+            "status": "FAILED",
+            "evidence": "Anti-replay protection triggered: sequence number already used or expired.",
+            "error": error_msg or "ReplayProtectionError: Package sequence nonce expired."
+        }
+    elif dev_step == "PASSED" and kdf_step in ("PASSED", "PENDING"):
+        replay_check = {
+            "id": "replay_state",
+            "name": "Replay-State Verification",
+            "status": "PASSED" if kdf_step == "PASSED" else "PENDING",
+            "evidence": f"Package sequence #{manifest.get('sequence_number', 1)} monotonic order verified.",
+            "error": None
+        }
+    elif any(s == "FAILED" for s in [int_step, sig_step, dev_step]):
+        replay_check = {
+            "id": "replay_state",
+            "name": "Replay-State Verification",
+            "status": "NOT_EVALUATED",
+            "evidence": "Check was not reached due to preceding gate failure.",
+            "error": None
+        }
+    else:
+        replay_check = {
+            "id": "replay_state",
+            "name": "Replay-State Verification",
+            "status": "PENDING",
+            "evidence": "Awaiting verification pipeline execution.",
+            "error": None
+        }
+
+    has_failed = any(c["status"] == "FAILED" for c in [sig_check, int_check, dev_check, replay_check])
+    all_passed = all(c["status"] == "PASSED" for c in [sig_check, int_check, dev_check, replay_check]) and steps_status.get("Step 8: Inference Validation") == "PASSED"
+
+    if has_failed or (error_msg and not all_passed):
+        terminal_state = "REJECTED"
+    elif all_passed:
+        terminal_state = "ACCEPTED"
+    else:
+        terminal_state = "PENDING"
+
+    return {
+        "checks": {
+            "signature": sig_check,
+            "integrity": int_check,
+            "device_auth": dev_check,
+            "replay_state": replay_check,
+        },
+        "terminal_state": terminal_state,
+        "rejection_reason": error_msg if terminal_state == "REJECTED" else None,
+        "device_identity": {
+            "status": "AUTHORIZED" if dev_check["status"] == "PASSED" else ("UNAUTHORIZED" if dev_check["status"] == "FAILED" else "UNEVALUATED"),
+            "fingerprint_prefix": fp[:16] + "..." if fp else "UNKNOWN",
+            "hardware_attestation_type": "Software-derived OS telemetry binding (machine-id, CPU architecture, OS kernel)",
+            "is_hardware_backed": False,
+            "disclaimer": "Software-derived device binding: Telemetry is gathered from host OS properties and CSPRNG secrets; it is not hardware-isolated (no TPM 2.0 / enclave assumed)."
+        },
+        "crypto_metadata": {
+            "kdf_scheme": "HKDF-SHA256 (RFC 5869)",
+            "kdf_version": manifest.get("kdf_version") or "hkdf-sha256-v2",
+            "salt_masked": get_masked_salt(Phase4Config.DEVICE_SALT),
+            "cipher": "AES-256-GCM (NIST SP 800-38D)",
+            "iv_length_bytes": 12,
+            "tag_length_bytes": 16,
+            "zeroization_guarantee": "Decryption keys reside exclusively in volatile process memory and are zeroized upon context exit."
+        },
+        "adapter_provenance": {
+            "adapter_loaded": adapter_loaded,
+            "adapter_id": manifest.get("adapter_id", "secure_lora_adapter"),
+            "base_model_name": Phase4Config.DEFAULT_BASE_MODEL,
+            "package_id": manifest.get("package_id", "verified_deployment"),
+            "sequence_number": manifest.get("sequence_number", 1),
+            "transient_plaintext_warning": "Warning: Temporary decrypted adapter weights exist in volatile memory during PEFT loading. Ensure secure tmpfs usage in high-security environments."
+        }
+    }
+
+
 @app.route('/api/phase4/status')
 @require_bearer_token
 def get_p4_status():
     global adapter_loaded, last_verification_steps
-    
+
     steps = last_verification_steps
     report_path = Phase4Config.VALIDATION_REPORT_JSON
+    manifest = {}
     if not steps and report_path.exists():
         try:
             report_data = json.loads(report_path.read_text(encoding="utf-8"))
             steps = report_data.get("verification_pipeline", {}).get("steps", {})
+            manifest = report_data.get("manifest", {})
             last_verification_steps = steps
         except Exception:
             pass
-            
+
     fp = get_fingerprint_hash()
-    return jsonify({
+    dep_meta = _build_deployment_response(steps or {}, manifest=manifest, fp_hash=fp)
+    res = {
         "loaded": adapter_loaded,
         "fingerprint_prefix": fp[:16] + "..." if fp else "UNKNOWN",
         "salt_masked": get_masked_salt(Phase4Config.DEVICE_SALT),
         "base_model_name": Phase4Config.DEFAULT_BASE_MODEL,
-        "steps": steps
-    })
+        "steps": steps or {},
+    }
+    res.update(dep_meta)
+    return jsonify(res)
 
 
 @app.route('/api/phase4/verify', methods=['POST'])
@@ -187,15 +406,15 @@ def get_p4_status():
 def trigger_p4_verify():
     global base_model, peft_model, tokenizer, adapter_loaded, last_verification_steps
     from src.orchestrator.model_registry import model_registry
-    
+
     data = request.json or {}
     scenario = str(data.get("scenario", "default")).lower()
-    
+
     package_path = Phase4Config.PACKAGE_PATH
     salt = Phase4Config.DEVICE_SALT
     base_model_name = Phase4Config.DEFAULT_BASE_MODEL
     output_dir = Phase4Config.DEPLOYMENT_OUTPUT_DIR
-    
+
     steps_status = {
         "Step 1: Package Completeness": "PENDING",
         "Step 2: Integrity Verification": "PENDING",
@@ -222,10 +441,13 @@ def trigger_p4_verify():
         last_verification_steps = steps_status
         adapter_loaded = False
         model_registry.clear()
+        err = "IntegrityValidationError: SHA-256 digest mismatch. Package archive has been tampered with or corrupted in transit."
+        dep_meta = _build_deployment_response(steps_status, error_msg=err)
         return jsonify({
             "success": False,
             "steps": steps_status,
-            "error": "IntegrityValidationError: SHA-256 digest mismatch. Package archive has been tampered with or corrupted in transit."
+            "error": err,
+            **dep_meta
         })
     elif scenario in ["invalid_signature", "signature"]:
         steps_status = {
@@ -241,10 +463,13 @@ def trigger_p4_verify():
         last_verification_steps = steps_status
         adapter_loaded = False
         model_registry.clear()
+        err = "SignatureValidationError: RSA-PSS 2048-bit signature verification failed against trusted public key."
+        dep_meta = _build_deployment_response(steps_status, error_msg=err)
         return jsonify({
             "success": False,
             "steps": steps_status,
-            "error": "SignatureValidationError: RSA-PSS 2048-bit signature verification failed against trusted public key."
+            "error": err,
+            **dep_meta
         })
     elif scenario in ["wrong_device", "device"]:
         steps_status = {
@@ -260,10 +485,13 @@ def trigger_p4_verify():
         last_verification_steps = steps_status
         adapter_loaded = False
         model_registry.clear()
+        err = "DeviceAuthorizationError: Hardware fingerprint mismatch. Host device identity does not match package reference."
+        dep_meta = _build_deployment_response(steps_status, error_msg=err)
         return jsonify({
             "success": False,
             "steps": steps_status,
-            "error": "DeviceAuthorizationError: Hardware fingerprint mismatch. Host device identity does not match package reference."
+            "error": err,
+            **dep_meta
         })
     elif scenario in ["replay"]:
         steps_status = {
@@ -279,10 +507,13 @@ def trigger_p4_verify():
         last_verification_steps = steps_status
         adapter_loaded = False
         model_registry.clear()
+        err = "ReplayProtectionError: Package sequence #1 nonce expired. Replay attack blocked."
+        dep_meta = _build_deployment_response(steps_status, error_msg=err)
         return jsonify({
             "success": False,
             "steps": steps_status,
-            "error": "ReplayProtectionError: Package sequence #1 nonce expired. Replay attack blocked."
+            "error": err,
+            **dep_meta
         })
     elif scenario in ["successful", "success", "demo_success"]:
         steps_status = {
@@ -297,10 +528,12 @@ def trigger_p4_verify():
         }
         last_verification_steps = steps_status
         adapter_loaded = True
+        dep_meta = _build_deployment_response(steps_status)
         return jsonify({
             "success": True,
             "steps": steps_status,
-            "error": None
+            "error": None,
+            **dep_meta
         })
 
     
@@ -430,10 +663,12 @@ def trigger_p4_verify():
     except Exception as e:
         logger.error("Failed to generate report in API: %s", e)
 
+    dep_meta = _build_deployment_response(steps_status, error_msg=error_msg, manifest=manifest, fp_hash=fingerprint_hash)
     return jsonify({
         "success": verification_success,
         "steps": steps_status,
-        "error": redact_text(error_msg)
+        "error": redact_text(error_msg) if error_msg else None,
+        **dep_meta
     })
 
 

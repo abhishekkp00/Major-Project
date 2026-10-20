@@ -144,7 +144,8 @@ class JobOrchestrator:
         salt: Optional[str] = None,
         dataset_type: Optional[str] = None,
         subset_size: Optional[int] = 1000,
-        owner_id: Optional[str] = None
+        owner_id: Optional[str] = None,
+        training_config: Optional[Dict[str, Any]] = None,
     ) -> str:
         job_id = f"job_{int(datetime.now(timezone.utc).timestamp())}_{uuid.uuid4().hex[:8]}"
         job_dir = self.base_jobs_dir / job_id
@@ -166,6 +167,9 @@ class JobOrchestrator:
         with self.lock:
             self._job_keys[job_id] = key
 
+        t_cfg = training_config if isinstance(training_config, dict) else {}
+        dp_enabled = bool(t_cfg.get("dp_enabled", False))
+
         job_record = {
             "job_id": job_id,
             "owner_id": owner_id,
@@ -181,6 +185,8 @@ class JobOrchestrator:
             "loss_history": [],
             "eval_metrics": {},
             "verification_steps": {},
+            "training_config": t_cfg,
+            "dp_enabled": dp_enabled,
             "error": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
@@ -191,7 +197,7 @@ class JobOrchestrator:
             self.jobs[job_id] = job_record
         self._save_db()
 
-        logger.info("Created orchestration job: %s (dataset_type=%s, subset_size=%s)", job_id, dataset_type or dataset_name, subset_size)
+        logger.info("Created orchestration job: %s (dataset_type=%s, subset_size=%s, dp=%s)", job_id, dataset_type or dataset_name, subset_size, dp_enabled)
         return job_id
 
     def add_dataset_file(self, job_id: str, filename: str, content: bytes):
@@ -421,6 +427,29 @@ class JobOrchestrator:
             env["SECURE_LORA_BATCH_SIZE"] = "2"
             env["SECURE_LORA_SEED"] = "42"
             env["SECURE_LORA_PROGRESS_FILE"] = str(progress_json_path)
+
+            t_cfg = job.get("training_config", {}) if isinstance(job.get("training_config"), dict) else {}
+            dp_active = bool(t_cfg.get("dp_enabled", False))
+            env["DP_ENABLED"] = "1" if dp_active else "0"
+            if t_cfg.get("model_name"):
+                env["SECURE_LORA_MODEL_NAME"] = str(t_cfg["model_name"])
+            if t_cfg.get("lora_r") is not None:
+                env["SECURE_LORA_R"] = str(t_cfg["lora_r"])
+            if t_cfg.get("lora_alpha") is not None:
+                env["SECURE_LORA_ALPHA"] = str(t_cfg["lora_alpha"])
+            if t_cfg.get("lora_dropout") is not None:
+                env["SECURE_LORA_DROPOUT"] = str(t_cfg["lora_dropout"])
+            if dp_active:
+                if t_cfg.get("dp_max_grad_norm") is not None:
+                    env["DP_MAX_GRAD_NORM"] = str(t_cfg["dp_max_grad_norm"])
+                if t_cfg.get("dp_noise_multiplier") is not None:
+                    env["DP_NOISE_MULTIPLIER"] = str(t_cfg["dp_noise_multiplier"])
+                if t_cfg.get("dp_target_delta") is not None:
+                    env["DP_TARGET_DELTA"] = str(t_cfg["dp_target_delta"])
+                if t_cfg.get("dp_target_epsilon") is not None:
+                    env["DP_TARGET_EPSILON"] = str(t_cfg["dp_target_epsilon"])
+                if t_cfg.get("dp_accountant") is not None:
+                    env["DP_ACCOUNTANT"] = str(t_cfg["dp_accountant"])
 
             from src.security.crypto import temporary_key_file
 

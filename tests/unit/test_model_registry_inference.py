@@ -147,14 +147,15 @@ class TestModelRegistryAndInference(unittest.TestCase):
 
     def test_4_analytics_fallback_cannot_replace_valid_model_inference(self):
         # Unloaded model must return MODEL_UNAVAILABLE status without synthetic analytics
-        res = compare_base_and_securelora("Summarize dataset records.")
-        self.assertEqual(res["status"], "MODEL_UNAVAILABLE")
-        self.assertEqual(res["base_output"], "[MODEL_UNAVAILABLE]")
-        self.assertEqual(res["securelora_output"], "[MODEL_UNAVAILABLE]")
+        with patch("src.orchestrator.inference_service.ensure_model_loaded", return_value=False):
+            res = compare_base_and_securelora("Summarize dataset records.")
+            self.assertEqual(res["status"], "MODEL_UNAVAILABLE")
+            self.assertEqual(res["base_output"], "[MODEL_UNAVAILABLE]")
+            self.assertEqual(res["securelora_output"], "[MODEL_UNAVAILABLE]")
 
-        ans_res, status, blocked = answer_question("Summarize dataset records.")
-        self.assertIn("MODEL_UNAVAILABLE", ans_res)
-        self.assertEqual(status, "UNAVAILABLE")
+            ans_res, status, blocked = answer_question("Summarize dataset records.")
+            self.assertIn("MODEL_UNAVAILABLE", ans_res)
+            self.assertEqual(status, "UNAVAILABLE")
 
     def test_5_tokenizer_model_compatibility_is_checked(self):
         tokenizer = DummyTokenizer()
