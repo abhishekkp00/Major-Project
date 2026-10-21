@@ -254,12 +254,30 @@ def run_dp_training(
     result.pre_training_generation = generate_fn(model, tokenizer)
 
     # ── Validate model for Opacus ─────────────────────────────────────────────
+    # Ensure model is restored to training mode after generate_fn (which calls model.eval())
+    model.train()
+
+    # Allowlist PEFT classes for PyTorch 2.6+ unpickler in case ModuleValidator.fix runs
+    if hasattr(torch.serialization, "add_safe_globals"):
+        try:
+            import peft.peft_model
+            import peft.tuners.lora
+            torch.serialization.add_safe_globals([
+                peft.peft_model.PeftModelForCausalLM,
+                peft.peft_model.PeftModel,
+                peft.tuners.lora.LoraModel,
+                peft.tuners.lora.layer.Linear,
+            ])
+        except Exception:
+            pass
+
     # Opacus cannot wrap models with certain layer types (e.g. BatchNorm).
     # ModuleValidator.fix() replaces incompatible layers automatically.
     errors = ModuleValidator.validate(model, strict=False)
     if errors:
         logger.info("Opacus ModuleValidator found %d issues — attempting auto-fix.", len(errors))
         model = ModuleValidator.fix(model)
+        model.train()
         errors_after = ModuleValidator.validate(model, strict=False)
         if errors_after:
             raise RuntimeError(

@@ -417,6 +417,7 @@ def run_training(dp_enabled: bool = None) -> dict:
     logger.info("Generating pre-training baseline sample...")
     pre_gen = generate_sample(model, tokenizer)
     logger.info("Baseline output: %s", pre_gen)
+    model.train()
 
     # ── Branch: Mode A or Mode B ──────────────────────────────────────────────
     eval_report_dir = Path("outputs/evaluation")
