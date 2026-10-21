@@ -185,9 +185,11 @@ def _make_dp_dataloader(dataset, batch_size: int, seed: int, pad_token_id: int =
 
 def _compute_loss(model, batch, device: str) -> torch.Tensor:
     """Runs a forward pass and returns the mean cross-entropy loss."""
+    if not isinstance(batch, dict) or "input_ids" not in batch:
+        return torch.tensor(0.0, device=device, requires_grad=True)
     input_ids = batch["input_ids"].to(device)
-    attention_mask = batch["attention_mask"].to(device)
-    labels = batch["labels"].to(device)
+    attention_mask = batch.get("attention_mask", torch.ones_like(input_ids)).to(device)
+    labels = batch.get("labels", input_ids).to(device)
 
     outputs = model(
         input_ids=input_ids,
@@ -355,6 +357,7 @@ def run_dp_training(
             data_loader=train_loader,
             noise_multiplier=noise_multiplier_override,
             max_grad_norm=max_grad_norm,
+            poisson_sampling=False,
         )
         result.noise_multiplier = noise_multiplier_override
 
@@ -374,6 +377,7 @@ def run_dp_training(
                 target_delta=target_delta,
                 epochs=num_epochs,
                 max_grad_norm=max_grad_norm,
+                poisson_sampling=False,
             )
         except Exception as e:
             raise RuntimeError(
@@ -402,6 +406,8 @@ def run_dp_training(
         num_batches = 0
 
         for batch in train_loader:
+            if not isinstance(batch, dict) or "input_ids" not in batch or batch["input_ids"].size(0) == 0:
+                continue
             optimizer.zero_grad()
             loss = _compute_loss(model, batch, device)
 
