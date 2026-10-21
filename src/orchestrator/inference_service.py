@@ -47,16 +47,19 @@ def _extract_gen_kwargs(generation_config: Optional[Dict[str, Any]], tokenizer: 
     return gen_kwargs
 
 
-def ensure_model_loaded() -> bool:
+def ensure_model_loaded(force: bool = False) -> bool:
     """
     Auto-loads and verifies the latest deployment package into ModelRegistry if not already loaded.
     Enforces the strict Phase 4 verification order (Steps 1-9).
     Clears ModelRegistry if any step fails.
     """
-    if model_registry.is_verified():
+    if force:
+        model_registry._failed_verification = False
+
+    if model_registry.is_verified() and not force:
         return True
 
-    if getattr(model_registry, "_failed_verification", False):
+    if getattr(model_registry, "_failed_verification", False) and not force:
         return False
 
     from pathlib import Path

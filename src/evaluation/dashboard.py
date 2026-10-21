@@ -528,6 +528,13 @@ def trigger_p4_verify():
         }
         last_verification_steps = steps_status
         adapter_loaded = True
+        try:
+            from src.orchestrator.inference_service import ensure_model_loaded
+            from src.orchestrator.model_registry import model_registry
+            model_registry._failed_verification = False
+            ensure_model_loaded(force=True)
+        except Exception as e:
+            logger.warning("Could not reload model in ModelRegistry after successful scenario: %s", e)
         dep_meta = _build_deployment_response(steps_status)
         return jsonify({
             "success": True,

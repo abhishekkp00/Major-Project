@@ -107,6 +107,7 @@ ENDPOINT_INVENTORY: List[EndpointMetadata] = [
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/upload", "POST", _PC.SECURITY_CRITICAL, True, "Upload dataset to job workspace"),
     EndpointMetadata("/api/orchestrator/jobs/<job_id>/start", "POST", _PC.SECURITY_CRITICAL, True, "Start training & security pipeline"),
     EndpointMetadata("/api/orchestrator/chat", "POST", _PC.SECURITY_CRITICAL, True, "Secure Q&A inference"),
+    EndpointMetadata("/api/orchestrator/model-reload", "POST", _PC.SECURITY_CRITICAL, True, "Reload/re-verify model into ModelRegistry"),
     EndpointMetadata("/api/chat", "POST", _PC.SECURITY_CRITICAL, True, "Chat inference"),
     EndpointMetadata("/api/phase4/generate", "POST", _PC.SECURITY_CRITICAL, True, "Side-by-side generation"),
     EndpointMetadata("/api/phase4/verify", "POST", _PC.SECURITY_CRITICAL, True, "Phase 4 deployment gate verification"),

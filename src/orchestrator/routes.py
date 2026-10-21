@@ -1419,7 +1419,7 @@ def orchestrator_chat():
                 "deployment_id": "N/A",
                 "deployment_status": "UNAVAILABLE"
             })
-        }), 400
+        }), 200
 
     gen_config = {
         "max_new_tokens": max_new_tokens,
@@ -1463,7 +1463,29 @@ def orchestrator_chat():
             "adapter_loaded": res.get("adapter_loaded", False),
             "deployment_verified": res.get("deployment_verified", False),
             "model_info": res.get("model_info", {})
-        }), 400 if res.get("status") == "MODEL_UNAVAILABLE" else 500
+        }), 200 if res.get("status") == "MODEL_UNAVAILABLE" else 500
+
+
+@orchestrator_bp.route("/api/orchestrator/model-reload", methods=["POST"])
+@require_bearer_token
+def reload_model():
+    """Forces verification and loading of the latest deployment package into ModelRegistry."""
+    from src.orchestrator.model_registry import model_registry
+    from src.orchestrator.inference_service import ensure_model_loaded
+    loaded = ensure_model_loaded(force=True)
+    info = model_registry.get_info()
+    verified = model_registry.is_verified()
+    return jsonify({
+        "success": loaded,
+        "model_verified": verified,
+        "adapter_loaded": info["adapter_loaded"],
+        "base_model_name": info["base_model_name"],
+        "adapter_name": info["adapter_id"],
+        "adapter_id": info["adapter_id"],
+        "deployment_id": info["deployment_id"],
+        "deployment_status": info["deployment_status"],
+        "status": info["deployment_status"]
+    })
 
 
 @orchestrator_bp.route("/api/orchestrator/model-status", methods=["GET"])

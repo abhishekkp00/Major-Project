@@ -361,6 +361,17 @@ def run_security_orchestration(
     finally:
         shutil.rmtree(job_dir / "deployment_unauth", ignore_errors=True)
 
+    # Restore valid authorized deployment in ModelRegistry after security probes
+    if authorized_pass == "pass" and package_archive_path.exists():
+        try:
+            from src.orchestrator.inference_service import ensure_model_loaded
+            from src.orchestrator.model_registry import model_registry
+            model_registry._failed_verification = False
+            ensure_model_loaded(force=True)
+            logger.info("[%s] Restored authorized deployment in ModelRegistry for serving.", job_id)
+        except Exception as e:
+            logger.warning("[%s] Could not restore authorized deployment in ModelRegistry: %s", job_id, e)
+
     # ────────────────────────────────────────────────────────────────
     # STATUS: security_validation_completed
     # ────────────────────────────────────────────────────────────────

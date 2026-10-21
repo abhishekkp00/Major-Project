@@ -2028,6 +2028,7 @@ async function loadModelStatus() {
   const baseEl = document.getElementById('model-status-base');
   const adpEl = document.getElementById('model-status-adapter');
   const badgeEl = document.getElementById('model-status-badge');
+  const reloadBtn = document.getElementById('btn-reload-model');
   if (!badgeEl) return;
 
   try {
@@ -2043,15 +2044,41 @@ async function loadModelStatus() {
       if (data.model_verified) {
         badgeEl.className = 'badge badge-passed';
         badgeEl.textContent = 'VERIFIED';
+        if (reloadBtn) reloadBtn.style.display = 'none';
       } else {
         badgeEl.className = 'badge badge-unverified';
         badgeEl.textContent = 'UNAVAILABLE';
+        if (reloadBtn) reloadBtn.style.display = 'inline-block';
       }
     }
   } catch (err) {
     console.error('Failed fetching model status:', err);
   }
 }
+
+async function reloadVerifiedModel() {
+  const btn = document.getElementById('btn-reload-model');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+  }
+  try {
+    const res = await fetch('/api/orchestrator/model-reload', {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    await loadModelStatus();
+  } catch (err) {
+    console.error('Failed reloading model:', err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Verify & Load';
+    }
+  }
+}
+window.reloadVerifiedModel = reloadVerifiedModel;
 
 function setPromptExample(type) {
   const input = document.getElementById('model-prompt-input');
