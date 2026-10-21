@@ -1,6 +1,6 @@
 {
   "report_type": "Phase 4 Secure Deployment & Inference Validation Report",
-  "generated_at_utc": "2026-08-16T16:36:13.821481+00:00",
+  "generated_at_utc": "2026-10-21T09:08:28.960937+00:00",
   "schema_version": "4.0.0",
   "adapter_metadata": {
     "adapter_id": "lora-adapter-v1",
@@ -31,8 +31,11 @@
     "adapter_active": false
   },
   "security_guarantees": {
-    "zero_plaintext_at_rest": true,
+    "zero_plaintext_at_rest": false,
+    "ephemeral_plaintext_lifecycle": "temporary_directory_shredded_on_exit",
+    "bounded_disk_exposure": true,
     "cryptographic_shredding_applied": true,
+    "physical_erasure_limitations_acknowledged": true,
     "secrets_masked_in_logs": true
   }
 }
