@@ -129,12 +129,43 @@ class DPTrainingResult:
 # DP-SGD training loop
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _make_dp_dataloader(dataset, batch_size: int, seed: int) -> DataLoader:
+def _collate_dp_batch(batch, pad_token_id: int = 0):
+    """Pads variable-length tokenized sequences uniformly across a batch for DPDataLoader."""
+    def _to_list(val):
+        if isinstance(val, torch.Tensor):
+            return val.tolist()
+        return list(val)
+
+    if not batch or not isinstance(batch[0], dict) or "input_ids" not in batch[0]:
+        from torch.utils.data._utils.collate import default_collate
+        return default_collate(batch)
+
+    max_len = max(len(_to_list(item["input_ids"])) for item in batch)
+    input_ids = []
+    attention_mask = []
+    labels = []
+    for item in batch:
+        ids = _to_list(item["input_ids"])
+        mask = _to_list(item.get("attention_mask", [1] * len(ids)))
+        labs = _to_list(item.get("labels", ids))
+        pad_len = max_len - len(ids)
+        input_ids.append(ids + [pad_token_id] * pad_len)
+        attention_mask.append(mask + [0] * pad_len)
+        labels.append(labs + [-100] * pad_len)
+
+    return {
+        "input_ids": torch.tensor(input_ids, dtype=torch.long),
+        "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
+        "labels": torch.tensor(labels, dtype=torch.long),
+    }
+
+
+def _make_dp_dataloader(dataset, batch_size: int, seed: int, pad_token_id: int = 0) -> DataLoader:
     """
-    Creates a DataLoader suitable for Opacus.
+    Creates a DataLoader suitable for Opacus with dynamic batch padding.
 
     Opacus requires a standard DataLoader with batch_size (not a custom
-    batch_sampler).  We use drop_last=True to guarantee uniform batch sizes,
+    batch_sampler). We use drop_last=True to guarantee uniform batch sizes,
     which is required for the Poisson sampling approximation used by the
     privacy accountant.
     """
@@ -148,6 +179,7 @@ def _make_dp_dataloader(dataset, batch_size: int, seed: int) -> DataLoader:
         generator=generator,
         num_workers=0,         # keep in-process for compatibility
         pin_memory=torch.cuda.is_available(),
+        collate_fn=lambda b: _collate_dp_batch(b, pad_token_id=pad_token_id),
     )
 
 
@@ -286,7 +318,10 @@ def run_dp_training(
             )
 
     # ── DataLoader ────────────────────────────────────────────────────────────
-    train_loader = _make_dp_dataloader(train_dataset, batch_size, seed)
+    pad_token_id = getattr(tokenizer, "pad_token_id", None)
+    if pad_token_id is None:
+        pad_token_id = getattr(tokenizer, "eos_token_id", 0) or 0
+    train_loader = _make_dp_dataloader(train_dataset, batch_size, seed, pad_token_id=pad_token_id)
 
     if len(train_loader) == 0:
         raise ValueError(
@@ -411,7 +446,13 @@ def run_dp_training(
 
     # ── Validation loss ───────────────────────────────────────────────────────
     model.eval()
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=lambda b: _collate_dp_batch(b, pad_token_id=pad_token_id),
+    )
     val_losses = []
     with torch.no_grad():
         for batch in val_loader:
@@ -445,10 +486,16 @@ def run_dp_training(
 # Standard LoRA validation helper (shared evaluation path)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def evaluate_validation_loss(model, val_dataset, batch_size: int, device: str) -> float:
+def evaluate_validation_loss(model, val_dataset, batch_size: int, device: str, pad_token_id: int = 0) -> float:
     """Compute mean validation loss over val_dataset. Shared by Mode A and B."""
     model.eval()
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=lambda b: _collate_dp_batch(b, pad_token_id=pad_token_id),
+    )
     losses = []
     with torch.no_grad():
         for batch in val_loader:
