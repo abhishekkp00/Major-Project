@@ -262,16 +262,34 @@ class DynamicMLNER:
                     "ORGANIZATION", "LOCATION", "GEO", "PASSPORT", "DRIVERLICENSE",
                     "IPADDRESS", "SECRET", "IBAN", "MEDICAL_RECORD", "CREDIT_SCORE"
                 }
+                STOP_WORDS = {
+                    "OR", "AND", "IN", "ON", "AT", "TO", "BY", "FOR", "WITH",
+                    "AS", "IS", "IT", "AN", "THE", "OF", "NOT", "BUT", "ALL",
+                    "ANY", "CAN", "BE", "DO", "NO", "IF", "SO", "UP", "OUT"
+                }
+                bracket_spans = [(m.start(), m.end()) for m in re.finditer(r"\[[A-Za-z0-9_\-]+\]", text)]
+
                 for out in outputs:
                     grp = out.get("entity_group") or out.get("entity")
-                    if grp in {"PER", "ORG", "LOC"}:
-                        if "start" in out and "end" in out and out["start"] is not None and out["end"] is not None:
-                            span_word = text[out["start"]:out["end"]].strip()
+                    score = float(out.get("score", 1.0))
+                    if grp in {"PER", "ORG", "LOC"} and score >= 0.70:
+                        s = out.get("start")
+                        e = out.get("end")
+                        if s is not None and e is not None:
+                            if any(b_s <= s and e <= b_e for b_s, b_e in bracket_spans):
+                                continue
+                            while s > 0 and (text[s-1].isalnum() or text[s-1] == "_"):
+                                s -= 1
+                            while e < len(text) and (text[e].isalnum() or text[e] == "_"):
+                                e += 1
+                            span_word = text[s:e].strip()
                         else:
                             span_word = (out.get("word") or "").strip()
 
                         clean_word = span_word.strip("[]'\"`.,;:()’‘“” \t\n")
-                        if not clean_word or clean_word.startswith("##") or len(clean_word) < 2 or clean_word in PLACEHOLDER_WORDS:
+                        if not clean_word or clean_word.startswith("##") or len(clean_word) < 2:
+                            continue
+                        if clean_word in PLACEHOLDER_WORDS or clean_word.upper() in STOP_WORDS:
                             continue
 
                         label_map = {"PER": "PERSON", "ORG": "ORGANIZATION", "LOC": "LOCATION"}
@@ -374,15 +392,23 @@ class HybridPIIEngine:
                 masked = pat.sub("[GIVENNAME]", masked)
                 counts["PERSON"] = counts.get("PERSON", 0) + n_matches
 
-        # 3. Dynamic ML NER Masking
+        # 3. Dynamic ML NER Masking with multi-pass and whole-word regex
         if self.enable_ml:
             ml_engine = get_ml_engine()
-            ml_entities = ml_engine.extract_entities(masked)
-            for ent_text, ent_label in ml_entities:
-                if ent_text in masked:
+            for _ in range(3):
+                ml_entities = ml_engine.extract_entities(masked)
+                if not ml_entities:
+                    break
+                changed = False
+                for ent_text, ent_label in ml_entities:
                     tag = "[GIVENNAME]" if ent_label == "PERSON" else "[LOCATION]" if ent_label == "LOCATION" else "[ORGANIZATION]"
-                    masked = masked.replace(ent_text, tag)
-                    counts[ent_label] = counts.get(ent_label, 0) + 1
+                    pattern = rf"\b{re.escape(ent_text)}\b"
+                    if re.search(pattern, masked):
+                        masked = re.sub(pattern, tag, masked)
+                        counts[ent_label] = counts.get(ent_label, 0) + 1
+                        changed = True
+                if not changed:
+                    break
 
         return masked, counts
 

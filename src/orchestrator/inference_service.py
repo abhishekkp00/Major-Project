@@ -310,6 +310,9 @@ def compare_base_and_securelora(
         else:
             securelora_out = masked_sec_gen
 
+        # Ensure complete privacy protection pass across entire output block
+        securelora_out, _ = pii_engine.mask(securelora_out)
+
         # Independent PII Detection on raw outputs
         base_detected = pii_engine.detect(base_out) if base_out else {}
         securelora_detected = pii_engine.detect(securelora_out) if securelora_out else {}
