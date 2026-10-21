@@ -581,8 +581,6 @@ function showStageDetail(stepIndex, fromUserClick = true) {
   const stMap = {};
   stages.forEach(s => { stMap[s.id] = s; });
 
-  const pct = Math.round(currentJobMetrics?.progress || 0);
-  const curStageNode = getStageNodeFromJobStage(currentJobMetrics?.stage, pct);
   const jobStatus = currentJobMetrics?.status || (activeJobId ? 'RUNNING' : 'READY');
 
   const stageStatus = getStageStatusForIndex(stepIndex, curStageNode, jobStatus, stMap);
