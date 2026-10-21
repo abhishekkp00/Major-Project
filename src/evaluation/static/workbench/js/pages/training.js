@@ -795,58 +795,65 @@ export default {
     // ─────────────────────────────────────────────────────────────────────────
     // Historical Experiments & Active Monitor Selectors
     // ─────────────────────────────────────────────────────────────────────────
+    const initialJobId = activeJobId || (recentJobs.length > 0 ? recentJobs[0].job_id : "");
+
     const historySelect = h(
       "select",
-      { class: "select", id: "historical-run-select", style: "max-width: 380px;" },
-      h("option", { value: "" }, "-- Select Run to Inspect --"),
+      { class: "select mono", id: "historical-run-select", style: "min-width: 320px; max-width: 500px;" },
+      h("option", { value: "" }, recentJobs.length ? "-- Select Run to Inspect --" : "No pipeline runs recorded"),
       ...recentJobs.map((j) =>
         h(
           "option",
-          { value: j.job_id, selected: j.job_id === activeJobId },
+          { value: j.job_id, selected: j.job_id === initialJobId },
           `${j.job_id} · ${j.status} · ${j.dataset_name || j.dataset_type || "dataset"} (${fmtDate(j.created_at)})`
         )
       )
     );
 
+    function selectAndRenderJob(val) {
+      if (!val) {
+        renderEmptyMonitor();
+        return;
+      }
+      historySelect.value = val;
+      renderJobMonitor(val, true);
+      monitorContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
     const historyBar = h(
       "div",
       {
         class: "card row-between",
-        style: "padding: 12px 16px; margin-bottom: 16px; background: var(--bg-card); gap: 12px; flex-wrap: wrap;",
+        style: "padding: 12px 16px; background: var(--bg-card); gap: 12px; flex-wrap: wrap;",
       },
       h(
         "div",
         { class: "row", style: "gap: 8px;" },
-        icon("clock", { cls: "text-muted" }),
+        icon("clock", { cls: "text-muted", size: 18 }),
         h("strong", null, "Run Telemetry & Audit:"),
-        h("span", { class: "text-muted", style: "font-size: 0.85rem;" }, "Switch between active runs and historical experiments")
+        h("span", { class: "text-muted", style: "font-size: 0.85rem;" }, "Inspect loss curves, logs, and privacy accounting for active or past runs")
       ),
       h(
         "div",
         { class: "row", style: "gap: 8px;" },
         historySelect,
         button({
-          label: "View",
-          kind: "ghost",
+          label: "View Run",
+          iconName: "evaluation",
+          kind: "primary",
           small: true,
           onClick: () => {
-            const val = historySelect.value;
-            if (val) {
-              renderJobMonitor(val, true);
-            }
+            selectAndRenderJob(historySelect.value);
           },
         })
       )
     );
 
     historySelect.addEventListener("change", () => {
-      const val = historySelect.value;
-      if (val) {
-        renderJobMonitor(val, true);
-      }
+      selectAndRenderJob(historySelect.value);
     });
 
-    // Monitor Container
+    // Monitor Container - placed immediately below the run audit bar for instant visibility
     const monitorContainer = h("div", { id: "training-monitor-container", class: "stack", style: "gap: 16px;" });
 
     const layout = h(
@@ -854,17 +861,15 @@ export default {
       { class: "stack", style: "gap: 20px;" },
       header,
       historyBar,
-      formCard,
-      monitorContainer
+      monitorContainer,
+      formCard
     );
 
     replace(root, layout);
 
     // Initial load: render active job or most recent job
-    if (activeJobId) {
-      renderJobMonitor(activeJobId, false);
-    } else if (recentJobs.length > 0) {
-      renderJobMonitor(recentJobs[0].job_id, true);
+    if (initialJobId) {
+      renderJobMonitor(initialJobId, !activeJobId);
     } else {
       renderEmptyMonitor();
     }
@@ -890,6 +895,9 @@ export default {
     function renderJobMonitor(jobId, forceHistorical = false) {
       if (pollInterval) clearInterval(pollInterval);
       if (timerInterval) clearInterval(timerInterval);
+      if (historySelect && historySelect.value !== jobId) {
+        historySelect.value = jobId;
+      }
 
       // Create skeleton cards
       const monitorCard = card({

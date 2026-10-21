@@ -322,6 +322,7 @@ html[data-sidebar="collapsed"] .sidebar-toggle svg { transform: rotate(180deg); 
 .stack-sm { display: flex; flex-direction: column; gap: 8px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.row > svg, .row-between > svg, .row .nav-icon, .row-between .nav-icon { flex: none; width: 18px; height: 18px; }
 .grid { display: grid; gap: 16px; }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }

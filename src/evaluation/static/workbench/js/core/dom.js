@@ -71,13 +71,27 @@ const ICONS = {
   play: "M5 3l14 9-14 9V3z",
   lock: "M5 11h14v10H5zM8 11V7a4 4 0 118 0v4",
   shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z",
+  clock: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+  "alert-circle": "M12 8v4m0 4h.01M22 12a10 10 0 11-20 0 10 10 0 0120 0z",
 };
 
-export function icon(name, { cls = "nav-icon", label } = {}) {
+export function icon(name, { cls = "", label, size = 18 } = {}) {
   const path = ICONS[name] || ICONS.info;
+  const classes = ["nav-icon", cls].filter(Boolean).join(" ");
   return h("svg", {
-    class: cls, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8",
-    "stroke-linecap": "round", "stroke-linejoin": "round",
-    "aria-hidden": label ? null : "true", role: label ? "img" : null, "aria-label": label || null, focusable: "false",
+    class: classes,
+    width: String(size),
+    height: String(size),
+    style: `width: ${size}px; height: ${size}px; flex-shrink: 0; display: inline-block; vertical-align: middle;`,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "1.8",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": label ? null : "true",
+    role: label ? "img" : null,
+    "aria-label": label || null,
+    focusable: "false",
   }, h("path", { d: path }));
 }
