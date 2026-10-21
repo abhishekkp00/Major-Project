@@ -476,7 +476,14 @@ def run_dp_training(
         result.val_loss = float("nan")
         result.perplexity = float("nan")
 
-    result.post_training_generation = generate_fn(model, tokenizer)
+    try:
+        unwrapped_model = model
+        while hasattr(unwrapped_model, "_module"):
+            unwrapped_model = unwrapped_model._module
+        result.post_training_generation = generate_fn(unwrapped_model, tokenizer)
+    except Exception as exc:
+        logger.warning("Could not generate post-training sample: %s", exc)
+        result.post_training_generation = ""
 
     # ── Save DP report ────────────────────────────────────────────────────────
     output_dir.mkdir(parents=True, exist_ok=True)

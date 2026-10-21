@@ -149,26 +149,32 @@ def generate_sample(model, tokenizer, prompt_text: str = None) -> str:
             "Input: Nombre: Blaise. Edad: 25.",
         )
 
-    model.eval()
-    device = next(model.parameters()).device
+    # Unwrap any wrappers (Opacus GradSampleModule, DDP, etc.)
+    unwrapped = model
+    while hasattr(unwrapped, "_module"):
+        unwrapped = unwrapped._module
+
+    unwrapped.eval()
+    device = next(unwrapped.parameters()).device
     formatted_prompt = f"Instruction: {prompt_text}\nResponse: "
     inputs = tokenizer(formatted_prompt, return_tensors="pt").to(device)
 
     with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=40,
-            pad_token_id=tokenizer.pad_token_id,
-            eos_token_id=tokenizer.eos_token_id,
-            do_sample=True,
-            temperature=0.7,
-            top_k=50,
-        )
-
-    full_output = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    if "Response: " in full_output:
-        return full_output.split("Response: ")[1].strip()
-    return full_output.strip()
+        if hasattr(unwrapped, "generate"):
+            outputs = unwrapped.generate(
+                **inputs,
+                max_new_tokens=40,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                do_sample=True,
+                temperature=0.7,
+                top_k=50,
+            )
+            full_output = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            if "Response: " in full_output:
+                return full_output.split("Response: ")[1].strip()
+            return full_output.strip()
+        return "Model generation unavailable"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -459,8 +465,9 @@ def run_training(dp_enabled: bool = None) -> dict:
         # Save the PEFT adapter (Opacus does not call model.save_pretrained automatically)
         # Unwrap the PrivacyEngine wrapper before saving.
         try:
-            from opacus import GradSampleModule
-            unwrapped = model._module if isinstance(model, GradSampleModule) else model
+            unwrapped = model
+            while hasattr(unwrapped, "_module"):
+                unwrapped = unwrapped._module
             unwrapped.save_pretrained(config.lora_output_dir)
             tokenizer.save_pretrained(config.lora_output_dir)
         except Exception as e:
