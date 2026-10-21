@@ -89,7 +89,7 @@ def ensure_model_loaded() -> bool:
                 # Steps 2, 3, 4: Manifest schema, RSA-PSS signature & SHA-256 digest validation
                 manifest, ciphertext_digest = validate_package_provenance(extracted_dir)
 
-                target_model_name = manifest.get("base_model_name", base_model_name)
+                target_model_name = manifest.get("base_model_id") or manifest.get("base_model_name") or base_model_name
                 target_adapter_id = manifest.get("adapter_id", "secure_lora_adapter")
 
                 # Step 5: Anti-replay, version, and model/adapter binding validation
@@ -98,6 +98,7 @@ def ensure_model_loaded() -> bool:
                     manifest=manifest,
                     target_base_model_id=target_model_name,
                     target_adapter_id=target_adapter_id,
+                    allow_already_deployed=True,
                 )
 
                 # Step 6: Device authorization check
@@ -113,7 +114,6 @@ def ensure_model_loaded() -> bool:
                 hkdf_salt_hex = manifest.get("hkdf_salt_hex") or manifest.get("encryption", {}).get("hkdf_salt_hex")
                 if not hkdf_salt_hex:
                     logger.warning("Package at %s has no hkdf_salt_hex in manifest; Phase 4 verification failed.", pkg_path)
-                    model_registry.clear()
                     continue
                 hkdf_salt_bytes = bytes.fromhex(hkdf_salt_hex)
                 key = get_device_bound_key(hkdf_salt_bytes, kdf_version=kdf_ver)
@@ -138,11 +138,12 @@ def ensure_model_loaded() -> bool:
                     logger.info("Successfully verified and loaded model package into ModelRegistry from %s", pkg_path)
                     return True
         except Exception as e:
-            logger.warning("Package at %s failed Phase 4 verification: %s. Clearing registry.", pkg_path, e)
-            model_registry.clear()
+            logger.warning("Package at %s failed Phase 4 verification: %s.", pkg_path, e)
+            continue
 
     logger.warning("No valid, verified SecureLoRA package archive found to load into ModelRegistry.")
-    model_registry.clear()
+    if not model_registry.is_verified():
+        model_registry.clear()
     return False
 
 

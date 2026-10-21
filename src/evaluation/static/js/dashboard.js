@@ -1572,7 +1572,9 @@ async function loadModelStatus() {
   if (!badgeEl) return;
 
   try {
-    const res = await fetch('/api/orchestrator/model-status');
+    const res = await fetch('/api/orchestrator/model-status', {
+      headers: getAuthHeaders()
+    });
     const data = await res.json();
 
     if (data.success) {
@@ -1652,8 +1654,25 @@ async function generateModelResponse() {
     const data = await res.json();
 
     if (data.status === 'MODEL_UNAVAILABLE' || !data.success) {
-      if (baseOut) baseOut.textContent = `[MODEL UNAVAILABLE]\n${data.message || 'SecureLoRA deployment must be verified first.'}`;
-      if (secOut) secOut.textContent = `[MODEL UNAVAILABLE]\n${data.message || 'SecureLoRA deployment must be verified first.'}`;
+      if (baseOut) {
+        baseOut.textContent = (data.base_output && data.base_output !== '[MODEL_UNAVAILABLE]')
+          ? data.base_output
+          : `[BASE MODEL UNAVAILABLE]\nUn-tuned base model is unavailable.`;
+      }
+      if (secOut) {
+        secOut.textContent = (data.securelora_output && data.securelora_output !== '[MODEL_UNAVAILABLE]')
+          ? data.securelora_output
+          : `[SECURELORA ADAPTER UNAVAILABLE]\n${data.message || 'Deployment must be verified first in Phase 4.'}`;
+      }
+      if (basePiiBadge) {
+        const bCount = (data.base_pii && data.base_pii.count !== undefined) ? data.base_pii.count : (data.base_pii_count !== undefined ? data.base_pii_count : 'N/A');
+        basePiiBadge.textContent = bCount !== 'N/A' ? (bCount > 0 ? `PII DETECTED: ${bCount}` : 'PII SAFE: 0') : 'PII: N/A';
+        basePiiBadge.className = bCount > 0 ? 'badge badge-danger' : 'badge badge-unverified';
+      }
+      if (secPiiBadge) {
+        secPiiBadge.textContent = 'PII: N/A';
+        secPiiBadge.className = 'badge badge-unverified';
+      }
       loadModelStatus();
       return;
     }

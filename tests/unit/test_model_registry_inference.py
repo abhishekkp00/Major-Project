@@ -175,10 +175,11 @@ class TestModelRegistryAndInference(unittest.TestCase):
 
     def test_6_failed_model_loading_produces_model_unavailable(self):
         model_registry.clear()
-        res = generate_with_securelora_model("Test prompt")
-        self.assertEqual(res["status"], "MODEL_UNAVAILABLE")
-        self.assertFalse(res["adapter_loaded"])
-        self.assertFalse(res["deployment_verified"])
+        with patch("src.orchestrator.inference_service.ensure_model_loaded", return_value=False):
+            res = generate_with_securelora_model("Test prompt")
+            self.assertEqual(res["status"], "MODEL_UNAVAILABLE")
+            self.assertFalse(res["adapter_loaded"])
+            self.assertFalse(res["deployment_verified"])
 
     def test_7_side_by_side_comparison_with_pii_evaluation(self):
         base_model = DummyBaseModel()

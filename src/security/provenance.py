@@ -406,10 +406,13 @@ class AntiReplayTracker:
         target_base_model_id: Optional[str] = None,
         target_adapter_id: Optional[str] = None,
         now_utc: Optional[datetime] = None,
+        allow_already_deployed: bool = False,
     ) -> None:
         """
         Validates timestamp expiration, target model ID, target adapter ID, and anti-replay status.
         Updates state atomically upon success under an exclusive lock.
+        If allow_already_deployed is True and package_id has already been deployed, validation passes
+        without re-recording or raising ReplayAttackError.
         """
         if not isinstance(manifest, dict):
             raise ManifestSchemaError("Manifest must be a dictionary.")
@@ -472,6 +475,12 @@ class AntiReplayTracker:
             adapter_record = adapters_state.get(adapter_id, {"last_sequence": 0, "processed_packages": []})
 
             if package_id in adapter_record.get("processed_packages", []):
+                if allow_already_deployed:
+                    logger.info(
+                        "Package ID '%s' is already deployed for adapter '%s'; accepting existing deployment for inference loading.",
+                        package_id, adapter_id
+                    )
+                    return
                 raise ReplayAttackError(
                     f"Replay attack detected! Package ID '{package_id}' has already been deployed."
                 )

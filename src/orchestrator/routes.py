@@ -1371,7 +1371,7 @@ def orchestrator_chat():
     Exposes max_new_tokens and temperature generation parameters.
     No analytics fallback. Returns status="MODEL_UNAVAILABLE" if model is not loaded.
     """
-    from src.orchestrator.inference_service import compare_base_and_securelora
+    from src.orchestrator.inference_service import compare_base_and_securelora, ensure_model_loaded
     from src.orchestrator.model_registry import model_registry
 
     data = request.json or {}
@@ -1383,25 +1383,33 @@ def orchestrator_chat():
     if not question:
         return jsonify({"success": False, "status": "INVALID_REQUEST", "error": "question parameter is required"}), 400
 
+    ensure_model_loaded()
+
     if not model_registry.is_verified():
+        gen_config = {
+            "max_new_tokens": max_new_tokens,
+            "temperature": temperature,
+            "top_p": top_p
+        }
+        res = compare_base_and_securelora(prompt=question, generation_config=gen_config)
         return jsonify({
             "success": False,
             "status": "MODEL_UNAVAILABLE",
             "message": "SecureLoRA model is unavailable. Deployment must be verified first.",
-            "base_output": "[MODEL_UNAVAILABLE]",
-            "securelora_output": "[MODEL_UNAVAILABLE]",
-            "base_pii_entities": [],
+            "base_output": res.get("base_output", "[BASE MODEL UNAVAILABLE] Base model un-tuned inference is inactive."),
+            "securelora_output": res.get("securelora_output", "[SECURELORA ADAPTER UNAVAILABLE]\nSecureLoRA model is unavailable. Deployment must be verified first."),
+            "base_pii_entities": res.get("base_pii_entities", []),
             "securelora_pii_entities": [],
-            "base_pii_count": 0,
+            "base_pii_count": res.get("base_pii_count", 0),
             "securelora_pii_count": 0,
             "adapter_loaded": False,
             "deployment_verified": False,
-            "model_info": {
+            "model_info": res.get("model_info", {
                 "base_model_name": "N/A",
                 "adapter_id": "N/A",
                 "deployment_id": "N/A",
                 "deployment_status": "UNAVAILABLE"
-            }
+            })
         }), 400
 
     gen_config = {
