@@ -257,11 +257,25 @@ class DynamicMLNER:
 
             elif self.engine_type == "transformers":
                 outputs = self.engine(text)
+                PLACEHOLDER_WORDS = {
+                    "GIVENNAME", "SURNAME", "EMAIL", "TEL", "CREDITCARD", "SSN",
+                    "ORGANIZATION", "LOCATION", "GEO", "PASSPORT", "DRIVERLICENSE",
+                    "IPADDRESS", "SECRET", "IBAN", "MEDICAL_RECORD", "CREDIT_SCORE"
+                }
                 for out in outputs:
                     grp = out.get("entity_group") or out.get("entity")
                     if grp in {"PER", "ORG", "LOC"}:
+                        if "start" in out and "end" in out and out["start"] is not None and out["end"] is not None:
+                            span_word = text[out["start"]:out["end"]].strip()
+                        else:
+                            span_word = (out.get("word") or "").strip()
+
+                        clean_word = span_word.strip("[]'\"`.,;:()’‘“” \t\n")
+                        if not clean_word or clean_word.startswith("##") or len(clean_word) < 2 or clean_word in PLACEHOLDER_WORDS:
+                            continue
+
                         label_map = {"PER": "PERSON", "ORG": "ORGANIZATION", "LOC": "LOCATION"}
-                        extracted.append((out["word"], label_map.get(grp, grp)))
+                        extracted.append((clean_word, label_map.get(grp, grp)))
 
         except Exception as e:
             logger.warning("Dynamic ML NER extraction error: %s", e)
