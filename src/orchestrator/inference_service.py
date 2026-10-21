@@ -56,6 +56,9 @@ def ensure_model_loaded() -> bool:
     if model_registry.is_verified():
         return True
 
+    if getattr(model_registry, "_failed_verification", False):
+        return False
+
     from pathlib import Path
     import os
     import json

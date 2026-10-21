@@ -25,6 +25,7 @@ class ModelRegistry:
         self.deployment_id: Optional[str] = None
         self.deployment_status: str = "UNAVAILABLE"
         self.adapter_loaded: bool = False
+        self._failed_verification: bool = False
 
     def register(
         self,
@@ -40,6 +41,7 @@ class ModelRegistry:
         """Registers the verified base model, PEFT adapter, tokenizer, and deployment metadata in memory."""
         eff_adapter_id = adapter_id or kwargs.get("adapter_name") or "secure_lora_adapter"
         with self._lock:
+            self._failed_verification = False
             # Tokenizer / Model compatibility check
             if tokenizer is not None and getattr(tokenizer, "pad_token", None) is None:
                 if hasattr(tokenizer, "eos_token") and tokenizer.eos_token is not None:
@@ -93,6 +95,7 @@ class ModelRegistry:
             self.deployment_id = None
             self.deployment_status = "UNAVAILABLE"
             self.adapter_loaded = False
+            self._failed_verification = True
         logger.info("ModelRegistry: Cleared registered model context.")
 
 

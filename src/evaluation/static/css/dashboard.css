@@ -2737,6 +2737,18 @@ body.presentation-mode .card {
   color: #34d399;
 }
 
+.timeline-step.selected .step-node {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+  transform: scale(1.12);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+}
+
+.timeline-step.selected .step-name {
+  color: #38bdf8;
+  font-weight: 800;
+}
+
 .step-name {
   font-size: 0.72rem;
   font-weight: 700;
