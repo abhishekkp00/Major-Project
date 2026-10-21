@@ -93,6 +93,12 @@ export function skeletonKpis(n = 4) {
     Array.from({ length: n }, () => skeleton("kpi")));
 }
 
+export function skeletonCards(n = 3) {
+  return h("div", { class: "cards-grid", role: "status", "aria-label": "Loading content" },
+    h("span", { class: "sr-only" }, "Loading content…"),
+    Array.from({ length: n }, () => skeleton("card")));
+}
+
 export function kpi({ label, value, foot, text = false }) {
   return h("div", { class: "card kpi" },
     h("div", { class: "kpi-label" }, label),

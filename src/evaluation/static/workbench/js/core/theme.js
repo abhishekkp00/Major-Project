@@ -24,6 +24,9 @@ export function currentTheme() {
   return document.documentElement.getAttribute("data-theme") || resolveTheme(getStoredTheme(), !!mq?.matches);
 }
 
+export const getTheme = currentTheme;
+export const isSystemDark = () => !!mq?.matches;
+
 function apply(theme) {
   const root = document.documentElement;
   root.setAttribute("data-theme", theme);
