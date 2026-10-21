@@ -143,16 +143,23 @@ export async function withBusy(btn, fn) {
 }
 
 /* ---- Forms -------------------------------------------------------------- */
-export function field({ label, hint, control, id }) {
-  const fid = id || control.id || nextId("f");
-  control.id = fid;
+export function field({ label, hint, control, input, id }) {
+  const ctrl = control || input;
+  const fid = id || ctrl?.id || nextId("f");
+  if (ctrl) {
+    ctrl.id = fid;
+    const errId = `${fid}-err`;
+    const hintId = `${fid}-hint`;
+    const described = [hint ? hintId : null, errId].filter(Boolean).join(" ");
+    if (typeof ctrl.setAttribute === "function") {
+      ctrl.setAttribute("aria-describedby", described);
+    }
+  }
   const errId = `${fid}-err`;
   const hintId = `${fid}-hint`;
-  const described = [hint ? hintId : null, errId].filter(Boolean).join(" ");
-  control.setAttribute("aria-describedby", described);
   return h("div", { class: "field" },
     h("label", { for: fid }, label),
-    control,
+    ctrl,
     hint ? h("div", { class: "hint", id: hintId }, hint) : null,
     h("div", { class: "error-text", id: errId, role: "alert" }));
 }

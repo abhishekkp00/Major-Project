@@ -224,14 +224,14 @@ export default {
       ...supportedModels.map((m) =>
         h(
           "option",
-          { value: m.id, selected: m.default },
-          `${m.name} [${m.parameters}]`
+          { value: m?.id || "", selected: Boolean(m?.default) },
+          `${m?.name || m?.id || "Model"} [${m?.parameters || "Unknown"}]`
         )
       )
     );
     const modelField = field({
       label: "Base Foundation Model",
-      input: modelSelect,
+      control: modelSelect,
       hint: "Causal language model architecture to be frozen and adapted with low-rank matrices.",
     });
 
@@ -247,7 +247,7 @@ export default {
     );
     const datasetField = field({
       label: "Dataset Source",
-      input: datasetSelect,
+      control: datasetSelect,
       hint: "Standardized or custom training corpus for adaptation.",
     });
 
@@ -261,7 +261,7 @@ export default {
     );
     const subsetField = field({
       label: "Sample Subset Size",
-      input: subsetSelect,
+      control: subsetSelect,
       hint: "Bounded sample count to control memory footprint and compute bounds.",
     });
 
@@ -274,7 +274,7 @@ export default {
     });
     const versionField = field({
       label: "Adapter Version",
-      input: versionInput,
+      control: versionInput,
       hint: "Semantic version format: X.Y.Z (e.g. 1.0.0).",
     });
 
@@ -288,7 +288,7 @@ export default {
     });
     const epochsField = field({
       label: "Training Epochs",
-      input: epochsInput,
+      control: epochsInput,
       hint: "Number of full passes over dataset (1 – 20).",
     });
 
@@ -303,7 +303,7 @@ export default {
     });
     const rankField = field({
       label: `LoRA Rank (r: ${loraDefaults.r_min}–${loraDefaults.r_max})`,
-      input: rankInput,
+      control: rankInput,
       hint: "Bottleneck dimension for low-rank adapter matrices (A and B).",
     });
 
@@ -317,7 +317,7 @@ export default {
     });
     const alphaField = field({
       label: `LoRA Alpha (α: ${loraDefaults.alpha_min}–${loraDefaults.alpha_max})`,
-      input: alphaInput,
+      control: alphaInput,
       hint: "Scaling hyperparameter for weight update magnitude (ΔW = α/r · BA).",
     });
 
@@ -332,7 +332,7 @@ export default {
     });
     const dropoutField = field({
       label: `LoRA Dropout (${loraDefaults.dropout_min}–${loraDefaults.dropout_max})`,
-      input: dropoutInput,
+      control: dropoutInput,
       hint: "Dropout regularization applied to adapter intermediate activations.",
     });
 
@@ -361,7 +361,7 @@ export default {
     );
     const modulesField = field({
       label: "Target Attention Modules",
-      input: modulesBox,
+      control: modulesBox,
       hint: "Transformer weight matrices to inject LoRA adapters into.",
     });
 
@@ -377,7 +377,7 @@ export default {
     });
     const clipNormField = field({
       label: "Max Gradient Clipping Norm (C)",
-      input: clipNormInput,
+      control: clipNormInput,
       hint: "Per-example gradient bound: g̃_i = g_i · min(1, C / ||g_i||₂).",
     });
 
@@ -392,7 +392,7 @@ export default {
     });
     const noiseMultField = field({
       label: "Noise Multiplier (σ)",
-      input: noiseMultInput,
+      control: noiseMultInput,
       hint: "Standard deviation of Gaussian noise calibrated to clipping norm: N(0, σ²C²I).",
     });
 
@@ -404,7 +404,7 @@ export default {
     });
     const targetDeltaField = field({
       label: "Target Delta (δ)",
-      input: targetDeltaInput,
+      control: targetDeltaInput,
       hint: "Failure probability bound (must be < 1 / N, typically 1e-5).",
     });
 
@@ -419,7 +419,7 @@ export default {
     });
     const targetEpsilonField = field({
       label: "Target Epsilon Budget (ε)",
-      input: targetEpsilonInput,
+      control: targetEpsilonInput,
       hint: "Target upper bound on privacy expenditure across total training iterations.",
     });
 
@@ -431,7 +431,7 @@ export default {
     );
     const accountantField = field({
       label: "Privacy Accountant Mechanism",
-      input: accountantSelect,
+      control: accountantSelect,
       hint: "Composition accountant tracking privacy loss distribution across steps.",
     });
 
@@ -466,7 +466,7 @@ export default {
     });
     const saltField = field({
       label: "Device Binding Salt (Optional)",
-      input: saltInput,
+      control: saltInput,
       hint: "Hardware-unique salt for HKDF key derivation. Defaults to local host identity.",
     });
 
@@ -595,7 +595,7 @@ export default {
         }
 
         // 2. Pre-launch Confirmation Summary Modal
-        const selectedModelObj = supportedModels.find((m) => m.id === modelSelect.value) || {
+        const selectedModelObj = supportedModels.find((m) => m?.id === modelSelect.value) || {
           name: modelSelect.value,
           parameters: "N/A",
         };
